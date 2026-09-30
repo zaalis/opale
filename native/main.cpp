@@ -315,6 +315,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
                                 COREWEBVIEW2_COLOR background = { 255, 0x1e, 0x1d, 0x25 };
                                 controller2->put_DefaultBackgroundColor(background);
                             }
+                            // WebView2 blocks files dragged from Explorer unless this
+                            // controller capability is explicitly enabled. The web UI
+                            // validates and imports the dropped files itself.
+                            ComPtr<ICoreWebView2Controller4> controller4;
+                            if (SUCCEEDED(g_controller.As(&controller4))) controller4->put_AllowExternalDrop(TRUE);
                             ComPtr<ICoreWebView2Settings> settings;
                             if (SUCCEEDED(g_webview->get_Settings(&settings))) {
                                 settings->put_IsStatusBarEnabled(FALSE);

@@ -168,14 +168,17 @@ function handleBackspace(textarea) {
 }
 
 // -------------------------------------------------------------- attachments
-export async function uploadFile(file, sourcePath) {
+// `targetFolder` is deliberately optional: note attachments follow the vault
+// setting, whereas an image created from the file explorer belongs exactly in
+// the folder the user selected.
+export async function uploadFile(file, sourcePath, targetFolder = '') {
   let name = file.name && file.name !== 'image.png' ? file.name : '';
   if (!name) {
     const ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '') || 'png';
     name = `Image collée ${Meta.formatDate(new Date(), 'YYYYMMDDHHmmss')}.${ext}`;
   }
   name = name.replace(/[<>:"|?*\\/\u0000-\u001f]/g, '-').replace(/^\.+/, '').replace(/[. ]+$/, '') || 'Fichier';
-  const result = await api(`/api/file?name=${encodeURIComponent(name)}&source=${encodeURIComponent(sourcePath || '')}`, { method: 'PUT', body: file, raw: true });
+  const result = await api(`/api/file?name=${encodeURIComponent(name)}&source=${encodeURIComponent(sourcePath || '')}&folder=${encodeURIComponent(targetFolder || '')}`, { method: 'PUT', body: file, raw: true });
   return result.path;
 }
 

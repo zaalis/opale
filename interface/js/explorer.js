@@ -1,6 +1,7 @@
 // Opale — file explorer: the vault's folders and files as a tree, with
 // create, rename, move (drag and drop), duplicate and delete.
-import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, reportError, showMenu, toast } from './core.js';
+import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, platform, reportError, showMenu, toast } from './core.js';
+import { uploadFile } from './editing.js';
 import { store } from './store.js';
 
 const SORTS = {
@@ -19,7 +20,8 @@ export const explorer = {
     this.list = h('div.tree', { role: 'tree', tabIndex: 0, 'aria-label': 'Fichiers du coffre' });
     this.el = h('div.panel.explorer',
       h('div.panel-toolbar',
-        iconButton('file-plus', 'Nouvelle note (Ctrl+N)', () => this.newNote(this.targetFolder())),
+        iconButton('file-plus', `Nouvelle note (${platform.shortcut('Ctrl+N')})`, () => this.newNote(this.targetFolder())),
+        iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder())),
         iconButton('folder-plus', 'Nouveau dossier', () => this.newFolder(this.targetFolder())),
         iconButton('sort', 'Ordre de tri', (event) => this.sortMenu(event)),
         iconButton('collapse', 'Tout replier', () => { this.expanded.clear(); this.render(); app.workspace.persist(); }),
@@ -153,7 +155,7 @@ export const explorer = {
         this.render();
       } else if (current && event.key === 'Enter') { event.preventDefault(); current.click(); }
       else if (current && event.key === 'F2') { event.preventDefault(); this.startRename(this.selected); }
-      else if (current && event.key === 'Delete') { event.preventDefault(); this.remove(this.selected); }
+      else if (current && (event.key === 'Delete' || (platform.isMac && event.metaKey && event.key === 'Backspace'))) { event.preventDefault(); this.remove(this.selected); }
     });
 
     list.addEventListener('dragstart', (event) => {
@@ -168,8 +170,9 @@ export const explorer = {
       if (!row) return '';
       return row.dataset.folder ? row.dataset.path : Meta.dirName(row.dataset.path);
     };
+    const hasExternalFiles = (event) => event.dataTransfer && [...event.dataTransfer.types].includes('Files');
     list.addEventListener('dragover', (event) => {
-      if (![...event.dataTransfer.types].includes('application/x-opale-path')) return;
+      if (![...event.dataTransfer.types].includes('application/x-opale-path') && !hasExternalFiles(event)) return;
       event.preventDefault();
       const folder = dropFolder(event);
       for (const row of list.querySelectorAll('.drop-target')) row.classList.remove('drop-target');
@@ -181,9 +184,11 @@ export const explorer = {
     list.addEventListener('drop', (event) => {
       const from = event.dataTransfer.getData('application/x-opale-path');
       clearDrop();
-      if (!from) return;
       event.preventDefault();
       const folder = dropFolder(event);
+      const files = [...event.dataTransfer.files];
+      if (files.length && !from) { this.importImages(files, folder); return; }
+      if (!from) return;
       if (Meta.dirName(from) === folder || folder === from || folder.startsWith(`${from}/`)) return;
       this.move(from, Meta.joinPath(folder, Meta.baseName(from)), folder);
     });
@@ -202,14 +207,16 @@ export const explorer = {
     if (!path) {
       return showMenu(x, y, [
         { label: 'Nouvelle note', icon: 'file-plus', run: () => this.newNote('') },
+        { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages('') },
         { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder('') },
         'separator',
-        { label: 'Afficher le coffre dans l’Explorateur Windows', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
+        { label: `Afficher le coffre dans ${platform.fileManager}`, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
       ]);
     }
     const bookmarked = app.bookmarks.includes(path);
     return showMenu(x, y, [
       isFolder ? { label: 'Nouvelle note', icon: 'file-plus', run: () => this.newNote(path) } : { label: 'Ouvrir dans un nouvel onglet', icon: 'plus', run: () => app.workspace.openPath(path, { newTab: true }) },
+      isFolder ? { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages(path) } : null,
       isFolder ? { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder(path) } : { label: 'Dupliquer', icon: 'copy', run: () => this.duplicate(path), disabled: Meta.kindOf(path) !== 'note' },
       'separator',
       { label: 'Renommer', icon: 'pencil', run: () => this.startRename(path), hint: 'F2' },
@@ -217,7 +224,7 @@ export const explorer = {
       isFolder ? null : { label: bookmarked ? 'Retirer des signets' : 'Ajouter aux signets', icon: 'bookmark', run: () => app.panels.toggleBookmark(path) },
       'separator',
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(path).then(() => toast('Chemin copié')) },
-      { label: 'Afficher dans l’Explorateur Windows', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
+      { label: `Afficher dans ${platform.fileManager}`, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
       'separator',
       { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: 'Suppr' },
     ]);
@@ -240,6 +247,33 @@ export const explorer = {
       await app.workspace.waitFor(created.path);
       this.selected = created.path;
       app.workspace.openPath(created.path, { focusTitle: true, mode: app.settings.defaultMode === 'reading' ? 'live' : undefined });
+    } catch (error) { reportError(error); }
+  },
+
+  chooseImages(folder = '') {
+    const input = h('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true, 'aria-label': 'Choisir une ou plusieurs images' });
+    input.addEventListener('change', () => {
+      const files = [...input.files];
+      input.remove();
+      if (files.length) this.importImages(files, folder || '');
+    }, { once: true });
+    document.body.append(input);
+    input.click();
+  },
+
+  async importImages(files, folder = '') {
+    const images = [...files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
+    if (!images.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+    if (images.length !== files.length) toast('Les fichiers non image ont été ignorés.');
+    try {
+      const paths = [];
+      for (const file of images) paths.push(await uploadFile(file, '', folder));
+      for (const path of paths) await app.workspace.waitFor(path);
+      if (folder) this.expanded.add(folder);
+      this.selected = paths[paths.length - 1];
+      this.reveal(this.selected);
+      app.workspace.openPath(paths[0], { newTab: paths.length > 1 });
+      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'}${folder ? ` dans « ${folder} »` : ' à la racine du coffre'}.`);
     } catch (error) { reportError(error); }
   },
 
@@ -297,7 +331,7 @@ export const explorer = {
   async remove(path) {
     const isFolder = store.folders.includes(path);
     const count = isFolder ? [...store.files.keys()].filter((file) => file.startsWith(`${path}/`)).length : 0;
-    const fate = app.settings.trash === 'permanent' ? 'supprimé définitivement' : app.settings.trash === 'system' ? 'envoyé à la corbeille de Windows' : 'déplacé dans la corbeille du coffre (.trash)';
+    const fate = app.settings.trash === 'permanent' ? 'supprimé définitivement' : app.settings.trash === 'system' ? `envoyé à la ${platform.recycleBin}` : 'déplacé dans la corbeille du coffre (.trash)';
     const ok = await confirmDialog({
       title: isFolder ? 'Supprimer le dossier' : 'Supprimer le fichier',
       message: `« ${Meta.baseName(path)} »${isFolder && count ? ` et ses ${count} fichier(s)` : ''} sera ${fate}.`,

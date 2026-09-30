@@ -2,7 +2,7 @@
 
 Carnet de notes Markdown local, dans l'esprit d'Obsidian : un **coffre** est un simple
 dossier de fichiers `.md`, reliés par des liens `[[…]]`. Code entièrement original,
-sans dépendance : un serveur Node, une interface web, une fenêtre native WebView2.
+sans dépendance applicative : un serveur Node, une interface web et une fenêtre native sur chaque système.
 
 Un coffre Obsidian existant s'ouvre tel quel (Opale range ses réglages dans `.opale/`
 et ne touche pas à `.obsidian/`).
@@ -17,7 +17,11 @@ npm run serve        # serveur seul, puis http://127.0.0.1:27184
 Opale est un projet autonome : il ne dépend d'aucun autre dossier et peut être placé
 n'importe où.
 
-## Construire l'application Windows
+## Construire l’application
+
+Les trois cibles partagent le serveur, le stockage et l’interface. `interface/js/platform.js` adapte seulement les conventions locales : raccourcis et vocabulaire macOS, polices et gestionnaire de fichiers Linux, et conventions Windows.
+
+### Windows
 
 Prérequis : Node.js et Visual Studio avec « Développement Desktop en C++ ». Les
 fichiers du SDK WebView2 nécessaires sont fournis dans `native/webview2`.
@@ -29,6 +33,31 @@ npm run shortcut     # raccourcis Bureau et menu Démarrer, et enregistrement po
 
 `Opale.exe` démarre `opale-server.exe` placé à côté de lui ; sans lui, il lance
 `..\server.js` avec Node. Le serveur s'arrête quand la fenêtre se ferme.
+
+### Linux
+
+Prérequis : Node.js, `build-essential`, `pkg-config`, GTK3 et WebKitGTK.
+
+```bash
+npm ci
+npm run build:linux      # dist/linux/Opale + opale-server + pickfolder
+npm run package:linux    # .deb et .tar.gz dans dist/
+npm run install-local:linux
+```
+
+Voir [native/linux/README.md](native/linux/README.md) pour les dépendances et l’installation locale.
+
+### macOS
+
+Prérequis : macOS, Xcode et Node.js.
+
+```bash
+npm ci
+npm run build:macos
+npm run build:macos -- --dmg
+```
+
+Voir [native/macos/README.md](native/macos/README.md). La signature et la notarisation Apple restent une étape de distribution distincte.
 
 ## Ce qu'Opale fait
 
@@ -48,8 +77,7 @@ volets côte à côte.
 
 ## Connexion à zaalis IDE
 
-Tant qu'Opale tourne, il publie son adresse dans `%APPDATA%\Opale\instance.json`
-(port, jeton, coffre ouvert). zaalis IDE lit ce fichier :
+Tant qu’Opale tourne, il publie son adresse dans `%APPDATA%\Opale\instance.json` sous Windows, `~/Library/Application Support/Opale/instance.json` sous macOS, ou `~/.config/Opale/instance.json` sous Linux (port, jeton, coffre ouvert). zaalis IDE lit ce fichier :
 
 Les deux projets sont séparés, et reliés par défaut : dès qu'Opale est présent sur le
 PC et lancé, l'assistant de l'IDE a accès au coffre ouvert, sans réglage. Dans l'IDE,

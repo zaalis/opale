@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Opale
+Comment=Carnet de notes Markdown local
+Exec=/usr/lib/opale/Opale
+Icon=opale
+Terminal=false
+Categories=Office;Utility;TextEditor;
+StartupWMClass=Opale
+MimeType=text/markdown;

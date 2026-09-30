@@ -1,6 +1,6 @@
 // Opale — the central area: tabs, the view each one shows, and per-tab
 // back/forward history.
-import { api, app, bus, debounce, fileUrl, h, icon, iconButton, Meta, noteTitle, reportError, showMenu } from './core.js';
+import { api, app, bus, debounce, fileUrl, h, icon, iconButton, Meta, noteTitle, platform, reportError, showMenu } from './core.js';
 import { store } from './store.js';
 import { NoteView } from './note.js';
 import { GraphView } from './graph.js';
@@ -8,8 +8,8 @@ import { GraphView } from './graph.js';
 let nextId = 1;
 
 function simpleHeader(title) {
-  const back = iconButton('back', 'Précédent (Alt+←)', () => workspace.back());
-  const forward = iconButton('forward', 'Suivant (Alt+→)', () => workspace.forward());
+  const back = iconButton('back', `Précédent (${platform.isMac ? '⌥⌘←' : 'Alt+←'})`, () => workspace.back());
+  const forward = iconButton('forward', `Suivant (${platform.isMac ? '⌥⌘→' : 'Alt+→'})`, () => workspace.forward());
   const header = h('div.view-header', h('div.view-nav', back, forward), h('div.view-crumbs', h('span.crumb.current', title)), h('div.view-actions'));
   header.update = () => { back.disabled = !workspace.canGo(-1); forward.disabled = !workspace.canGo(1); };
   return header;
@@ -26,7 +26,7 @@ class FileView {
     else if (kind === 'audio') content = h('div.file-stage', h('audio', { controls: true, src: url }));
     else if (kind === 'video') content = h('div.file-stage', h('video.file-video', { controls: true, src: url }));
     else content = h('div.empty-state', h('p', `Opale n’affiche pas les fichiers « .${Meta.extOf(path) || '?'} ».`),
-      h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, 'Afficher dans l’Explorateur Windows'));
+      h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, `Afficher dans ${platform.fileManager}`));
     this.el = h('div.view.file-view', this.header, content);
   }
   updateHeader() { this.header.update(); }

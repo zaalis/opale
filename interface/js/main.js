@@ -8,6 +8,7 @@ import { panels } from './panels.js';
 import { commands } from './commands.js';
 import { settingsUi } from './settings.js';
 import { launcher } from './launcher.js';
+import { uploadFile } from './editing.js';
 
 const root = document.getElementById('app');
 
@@ -61,6 +62,42 @@ function connectEvents() {
   };
 }
 
+function installFileDrop() {
+  let depth = 0;
+  const hasFiles = (event) => event.dataTransfer && [...event.dataTransfer.types].includes('Files');
+  const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); };
+  document.addEventListener('dragenter', (event) => {
+    if (!hasFiles(event)) return;
+    depth++;
+    document.body.classList.add('is-dropping');
+  });
+  document.addEventListener('dragover', (event) => { if (hasFiles(event)) event.preventDefault(); });
+  document.addEventListener('dragleave', (event) => {
+    if (!hasFiles(event)) return;
+    depth = Math.max(0, depth - 1);
+    if (!depth) document.body.classList.remove('is-dropping');
+  });
+  document.addEventListener('drop', async (event) => {
+    if (!hasFiles(event)) return;
+    clear();
+    // The explorer owns direct imports into its selected folder; a textarea
+    // already owns precise caret insertion.
+    if (event.target.closest('.tree, textarea')) return;
+    event.preventDefault();
+    const files = [...event.dataTransfer.files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
+    if (!files.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+    const note = workspace.activeNote;
+    if (!note) return explorer.importImages(files, explorer.targetFolder() || '');
+    try {
+      const paths = [];
+      for (const file of files) paths.push(await uploadFile(file, note.path));
+      await Promise.all(paths.map((path) => workspace.waitFor(path)));
+      note.insertAttachments(paths);
+      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'} à la note.`);
+    } catch (error) { console.error(error); toast(error.message || String(error), { kind: 'error' }); }
+  });
+}
+
 async function start() {
   let state;
   try { state = await api('/api/state'); }
@@ -85,6 +122,7 @@ async function start() {
   workspace.restore(saved, state.pendingOpen);
   panels.renderTags(); panels.renderBookmarks(); panels.refreshRight();
   layout.updateAgent(); layout.updateStatus();
+  installFileDrop();
 
   // Settings that change how an open note is drawn.
   bus.on('settings', (patch) => { if (patch && ('spellcheck' in patch || 'showProperties' in patch)) for (const tab of workspace.tabs) if (tab.view.type === 'note' && tab.view.loaded && !tab.view.active) tab.view.render(); });

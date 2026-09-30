@@ -66,9 +66,11 @@ export const layout = {
 
   apply() {
     for (const [name, side] of Object.entries(this.sides)) {
-      side.el.hidden = !side.open;
+      side.el.hidden = false;
+      side.el.classList.toggle('is-collapsed', !side.open);
       side.el.style.width = `${side.width}px`;
-      this.resizers[name].hidden = !side.open;
+      this.resizers[name].hidden = false;
+      this.resizers[name].classList.toggle('is-collapsed', !side.open);
       for (const [key, pane] of Object.entries(side.panes)) {
         pane.hidden = key !== side.tab;
         side.buttons[key].classList.toggle('active', key === side.tab);
