@@ -28,6 +28,7 @@ fichiers du SDK WebView2 nécessaires sont fournis dans `native/webview2`.
 
 ```powershell
 npm run build        # dist\Opale.exe + opale-server.exe + pickfolder.exe
+npm run installer    # produit aussi dist\Opale-Setup.exe et Uninstall Opale.exe
 npm run shortcut     # raccourcis Bureau et menu Démarrer, et enregistrement pour zaalis IDE
 ```
 

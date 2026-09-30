@@ -4,6 +4,7 @@ REM  Builds the Opale desktop application into ..\dist\ :
 REM    Opale.exe          native window (C++ + WebView2)
 REM    pickfolder.exe     native folder dialog
 REM    opale-server.exe   the Node server, packaged (--with-server)
+REM    Opale-Setup.exe    optional self-contained installer (--installer)
 REM  Requires Visual Studio with the C++ workload (MSVC). The WebView2 SDK
 REM  files it needs are in native\webview2 (version 1.0.3967.48).
 REM  Without opale-server.exe, Opale.exe runs ..\server.js with Node.
@@ -42,6 +43,18 @@ if /I "%~1"=="--with-server" (
     call npx --no-install pkg . --targets node22-win-x64 --no-bytecode --public --output dist\opale-server.exe
     if errorlevel 1 ( popd & goto :failed )
     popd
+)
+
+if /I "%~2"=="--installer" (
+    echo Compiling uninstaller ...
+    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE uninstaller.cpp /Fe:"..\dist\Uninstall Opale.exe" /Fo:..\dist\ /link /SUBSYSTEM:WINDOWS ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib
+    if errorlevel 1 goto :failed
+    echo Packaging Opale installer ...
+    rc /nologo /fo ..\dist\installer.res installer.rc
+    if errorlevel 1 goto :failed
+    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE installer.cpp /Fe:"..\dist\Opale-Setup.exe" /Fo:..\dist\ /link /SUBSYSTEM:WINDOWS ..\dist\installer.res ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib gdi32.lib uuid.lib
+    if errorlevel 1 goto :failed
+    del /Q "..\dist\installer.res" "..\dist\*.obj" installer.obj uninstaller.obj >nul 2>&1
 )
 
 echo.

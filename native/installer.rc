@@ -1,0 +1,9 @@
+#include <winres.h>
+
+101 RCDATA "..\\dist\\Opale.exe"
+102 RCDATA "..\\dist\\opale-server.exe"
+103 RCDATA "..\\dist\\pickfolder.exe"
+104 RCDATA "..\\dist\\Uninstall Opale.exe"
+
+1 ICON "opale.ico"
+
