@@ -67,7 +67,7 @@ export class GraphView {
     const style = getComputedStyle(this.el);
     const get = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
     this.colours = {
-      node: get('--graph-node', '#9a97ab'), active: get('--accent', '#8b7cf6'), tag: get('--graph-tag', '#34d399'),
+      node: get('--graph-node', '#9a97ab'), active: get('--accent', '#fbbf24'), tag: get('--graph-tag', '#34d399'),
       attachment: get('--graph-attachment', '#f59e0b'), unresolved: get('--graph-unresolved', '#5b586a'),
       line: get('--graph-line', 'rgba(150,150,170,.22)'), text: get('--text-1', '#c9c6d6'), dim: get('--graph-dim', 'rgba(150,150,170,.12)'),
     };

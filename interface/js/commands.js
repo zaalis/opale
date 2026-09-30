@@ -1,7 +1,7 @@
 // Opale — commands, keyboard shortcuts, the command palette and the quick
 // switcher. Everything the interface can do is a command, so it can be run
 // from a button, a shortcut or the palette alike.
-import { api, app, fuzzy, h, highlighted, isTextInput, Meta, openModal, platform, reportError, toast, topModal } from './core.js';
+import { api, app, fuzzy, h, highlighted, isTextInput, Meta, openModal, reportError, toast, topModal } from './core.js';
 import { store } from './store.js';
 import { FORMATS } from './editing.js';
 
@@ -9,7 +9,7 @@ const list = [];
 const byId = new Map();
 
 function register(id, name, run, options = {}) {
-  const command = { id, name, run, hotkey: options.hotkey || '', hint: options.hint || '', when: options.when, hidden: !!options.hidden };
+  const command = { id, name, run, hotkey: options.hotkey || '', when: options.when, hidden: !!options.hidden };
   list.push(command); byId.set(id, command);
 }
 
@@ -56,7 +56,7 @@ function openPalette() {
     items: (query) => list.filter((command) => !command.hidden && (!command.when || command.when()))
       .map((command) => ({ command, match: fuzzy(query, command.name) })).filter((item) => item.match)
       .sort((a, b) => b.match.score - a.match.score || a.command.name.localeCompare(b.command.name)).slice(0, 80)
-      .map((item) => ({ label: item.command.name, ranges: item.match.ranges, hint: item.command.hint || platform.shortcut(item.command.hotkey), run: () => run(item.command.id) })),
+      .map((item) => ({ label: item.command.name, ranges: item.match.ranges, hint: item.command.hotkey, run: () => run(item.command.id) })),
   });
 }
 
@@ -185,10 +185,10 @@ export const commands = {
 
     register('tab:new', 'Nouvel onglet', () => ws.newTab(), { hotkey: 'Ctrl+T' });
     register('tab:close', 'Fermer l’onglet', () => ws.closeActive(), { hotkey: 'Ctrl+W' });
-    register('tab:next', 'Onglet suivant', () => ws.cycle(1), { hotkey: 'Ctrl+Tab', hint: platform.isMac ? '⌃⇥' : 'Ctrl+Tab' });
-    register('tab:previous', 'Onglet précédent', () => ws.cycle(-1), { hotkey: 'Ctrl+Maj+Tab', hint: platform.isMac ? '⌃⇧⇥' : 'Ctrl+Maj+Tab' });
-    register('nav:back', 'Revenir en arrière', () => ws.back(), { hotkey: platform.isMac ? 'Ctrl+Alt+ArrowLeft' : 'Alt+ArrowLeft', hint: platform.isMac ? '⌥⌘←' : 'Alt+←' });
-    register('nav:forward', 'Aller en avant', () => ws.forward(), { hotkey: platform.isMac ? 'Ctrl+Alt+ArrowRight' : 'Alt+ArrowRight', hint: platform.isMac ? '⌥⌘→' : 'Alt+→' });
+    register('tab:next', 'Onglet suivant', () => ws.cycle(1), { hotkey: 'Ctrl+Tab' });
+    register('tab:previous', 'Onglet précédent', () => ws.cycle(-1), { hotkey: 'Ctrl+Maj+Tab' });
+    register('nav:back', 'Revenir en arrière', () => ws.back(), { hotkey: 'Alt+ArrowLeft' });
+    register('nav:forward', 'Aller en avant', () => ws.forward(), { hotkey: 'Alt+ArrowRight' });
 
     register('view:reading', 'Basculer entre lecture et édition', () => note().toggleReading(), { hotkey: 'Ctrl+E', when: hasNote });
     register('view:source', 'Basculer le mode source', () => note().toggleSource(), { when: hasNote });

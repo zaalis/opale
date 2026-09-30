@@ -4,7 +4,7 @@
 //   reading  rendered, read-only
 // The note text lives in `content`; every mode edits that one string, and it
 // is saved shortly after each change.
-import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, Meta, platform, reportError, showMenu, toast } from './core.js';
+import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
 import { attachEditing, caretPoint, closeSuggest } from './editing.js';
 import { bindNoteInteractions, decorate } from './renderer.js';
@@ -70,8 +70,8 @@ export class NoteView {
 
   // ------------------------------------------------------------- structure
   build() {
-    this.backBtn = iconButton('back', `Précédent (${platform.isMac ? '⌥⌘←' : 'Alt+←'})`, () => app.workspace.back());
-    this.forwardBtn = iconButton('forward', `Suivant (${platform.isMac ? '⌥⌘→' : 'Alt+→'})`, () => app.workspace.forward());
+    this.backBtn = iconButton('back', 'Précédent (Alt+←)', () => app.workspace.back());
+    this.forwardBtn = iconButton('forward', 'Suivant (Alt+→)', () => app.workspace.forward());
     this.crumbs = h('div.view-crumbs');
     this.modeBtn = iconButton('book', 'Basculer lecture / édition (Ctrl+E)', () => this.toggleReading());
     this.moreBtn = iconButton('more', 'Plus d’options', (event) => this.openMenu(event));

@@ -1,6 +1,5 @@
 // Opale — shared building blocks of the interface: DOM helpers, icons, the
 // server API, a small event bus, toasts, dialogs and menus.
-export { platform } from './platform.js';
 export const Meta = window.OpaleMeta;
 export const Markdown = window.OpaleMarkdown;
 

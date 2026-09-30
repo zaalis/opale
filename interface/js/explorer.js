@@ -1,6 +1,6 @@
 // Opale — file explorer: the vault's folders and files as a tree, with
 // create, rename, move (drag and drop), duplicate and delete.
-import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, platform, reportError, showMenu, toast } from './core.js';
+import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, reportError, showMenu, toast } from './core.js';
 import { uploadFile } from './editing.js';
 import { store } from './store.js';
 
@@ -20,7 +20,7 @@ export const explorer = {
     this.list = h('div.tree', { role: 'tree', tabIndex: 0, 'aria-label': 'Fichiers du coffre' });
     this.el = h('div.panel.explorer',
       h('div.panel-toolbar',
-        iconButton('file-plus', `Nouvelle note (${platform.shortcut('Ctrl+N')})`, () => this.newNote(this.targetFolder())),
+        iconButton('file-plus', 'Nouvelle note (Ctrl+N)', () => this.newNote(this.targetFolder())),
         iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder())),
         iconButton('folder-plus', 'Nouveau dossier', () => this.newFolder(this.targetFolder())),
         iconButton('sort', 'Ordre de tri', (event) => this.sortMenu(event)),
@@ -155,7 +155,7 @@ export const explorer = {
         this.render();
       } else if (current && event.key === 'Enter') { event.preventDefault(); current.click(); }
       else if (current && event.key === 'F2') { event.preventDefault(); this.startRename(this.selected); }
-      else if (current && (event.key === 'Delete' || (platform.isMac && event.metaKey && event.key === 'Backspace'))) { event.preventDefault(); this.remove(this.selected); }
+      else if (current && event.key === 'Delete') { event.preventDefault(); this.remove(this.selected); }
     });
 
     list.addEventListener('dragstart', (event) => {
@@ -210,7 +210,7 @@ export const explorer = {
         { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages('') },
         { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder('') },
         'separator',
-        { label: `Afficher le coffre dans ${platform.fileManager}`, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
+        { label: 'Afficher le coffre dans l’Explorateur Windows', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
       ]);
     }
     const bookmarked = app.bookmarks.includes(path);
@@ -224,7 +224,7 @@ export const explorer = {
       isFolder ? null : { label: bookmarked ? 'Retirer des signets' : 'Ajouter aux signets', icon: 'bookmark', run: () => app.panels.toggleBookmark(path) },
       'separator',
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(path).then(() => toast('Chemin copié')) },
-      { label: `Afficher dans ${platform.fileManager}`, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
+      { label: 'Afficher dans l’Explorateur Windows', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
       'separator',
       { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: 'Suppr' },
     ]);
@@ -331,7 +331,7 @@ export const explorer = {
   async remove(path) {
     const isFolder = store.folders.includes(path);
     const count = isFolder ? [...store.files.keys()].filter((file) => file.startsWith(`${path}/`)).length : 0;
-    const fate = app.settings.trash === 'permanent' ? 'supprimé définitivement' : app.settings.trash === 'system' ? `envoyé à la ${platform.recycleBin}` : 'déplacé dans la corbeille du coffre (.trash)';
+    const fate = app.settings.trash === 'permanent' ? 'supprimé définitivement' : app.settings.trash === 'system' ? 'envoyé à la corbeille de Windows' : 'déplacé dans la corbeille du coffre (.trash)';
     const ok = await confirmDialog({
       title: isFolder ? 'Supprimer le dossier' : 'Supprimer le fichier',
       message: `« ${Meta.baseName(path)} »${isFolder && count ? ` et ses ${count} fichier(s)` : ''} sera ${fate}.`,

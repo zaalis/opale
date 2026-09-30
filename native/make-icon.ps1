@@ -15,7 +15,7 @@ function New-GemPng([int]$size) {
     $outline = @((& $pt 32 3), (& $pt 56 20), (& $pt 47 54), (& $pt 17 54), (& $pt 8 20))
     $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush((& $pt 8 3), (& $pt 56 54), [System.Drawing.Color]::White, [System.Drawing.Color]::White)
     $blend = New-Object System.Drawing.Drawing2D.ColorBlend(3)
-    $blend.Colors = @([System.Drawing.Color]::FromArgb(255, 125, 211, 252), [System.Drawing.Color]::FromArgb(255, 167, 139, 250), [System.Drawing.Color]::FromArgb(255, 240, 171, 252))
+    $blend.Colors = @([System.Drawing.Color]::FromArgb(255, 253, 230, 138), [System.Drawing.Color]::FromArgb(255, 245, 158, 11), [System.Drawing.Color]::FromArgb(255, 194, 65, 12))
     $blend.Positions = @(0.0, 0.5, 1.0)
     $brush.InterpolationColors = $blend
     $g.FillPolygon($brush, $outline)

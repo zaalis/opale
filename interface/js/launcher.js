@@ -53,7 +53,7 @@ export const launcher = {
   showFull(state, root) {
     root.replaceChildren(h('div.launcher-screen',
       h('div.launcher-brand',
-        h('div', { html: '<svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7dd3fc"/><stop offset=".5" stop-color="#a78bfa"/><stop offset="1" stop-color="#f0abfc"/></linearGradient></defs><path d="M32 4 54 20 46 52 18 52 10 20Z" fill="url(#lg)"/><path d="M32 4 38 24 54 20M38 24 46 52M38 24 24 30 10 20M24 30 18 52M24 30 32 4" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.4" stroke-linejoin="round"/></svg>' }),
+        h('div', { html: '<svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset=".5" stop-color="#f59e0b"/><stop offset="1" stop-color="#c2410c"/></linearGradient></defs><path d="M32 4 54 20 46 52 18 52 10 20Z" fill="url(#lg)"/><path d="M32 4 38 24 54 20M38 24 46 52M38 24 24 30 10 20M24 30 18 52M24 30 32 4" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.4" stroke-linejoin="round"/></svg>' }),
         h('h1', 'Opale'), h('p', `Vos notes, reliées entre elles. Version ${state.version}.`)),
       content(state)));
   },

@@ -2,7 +2,7 @@
 import { api, app, bus, confirmDialog, h, icon, openModal, reportError, toast } from './core.js';
 import { store } from './store.js';
 
-const ACCENTS = ['#8b7cf6', '#38bdf8', '#2dd4bf', '#4ade80', '#fbbf24', '#fb7185', '#e879f9'];
+const ACCENTS = ['#fbbf24', '#8b7cf6', '#38bdf8', '#2dd4bf', '#4ade80', '#fb7185', '#e879f9'];
 
 const SECTIONS = [
   ['editor', 'Éditeur'], ['files', 'Fichiers et liens'], ['appearance', 'Apparence'], ['daily', 'Notes quotidiennes et modèles'],
@@ -95,7 +95,11 @@ export const settingsUi = {
     const settings = app.settings || {};
     const root = document.documentElement;
     root.dataset.theme = settings.theme === 'light' ? 'light' : 'dark';
-    root.style.setProperty('--accent', /^#[0-9a-f]{6}$/i.test(settings.accent || '') ? settings.accent : '#8b7cf6');
+    const accent = /^#[0-9a-f]{6}$/i.test(settings.accent || '') ? settings.accent : '#fbbf24';
+    root.style.setProperty('--accent', accent);
+    // Light accents (yellow, green…) need dark text on primary buttons.
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(accent.slice(i, i + 2), 16));
+    root.style.setProperty('--on-accent', 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1c1407' : '#fff');
     root.style.setProperty('--font-size', `${Math.max(12, Math.min(24, Number(settings.fontSize) || 16))}px`);
     document.body.classList.toggle('readable', settings.readableLineLength !== false);
     document.body.classList.toggle('hide-properties', settings.showProperties === false);

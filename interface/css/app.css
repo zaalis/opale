@@ -4,7 +4,7 @@
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-text: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, "Courier New", monospace;
-  --accent: #8b7cf6;
+  --accent: #fbbf24;
   --font-size: 16px;
   color-scheme: dark;
   --radius: 6px;
@@ -28,7 +28,7 @@
   --link: color-mix(in srgb, var(--accent) 72%, #fff);
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
   --accent-softer: color-mix(in srgb, var(--accent) 9%, transparent);
-  --on-accent: #fff;
+  --on-accent: #1c1407;
   --danger: #f87171;
   --ok: #34d399;
   --warn: #fbbf24;
@@ -63,10 +63,6 @@
   --graph-line: rgba(90, 86, 120, .22);
   --graph-dim: rgba(90, 86, 120, .08);
 }
-
-:root[data-platform="macos"] { --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; --font-mono: "SF Mono", ui-monospace, monospace; }
-:root[data-platform="linux"] { --font-ui: system-ui, "Noto Sans", sans-serif; --font-text: system-ui, "Noto Sans", sans-serif; --font-mono: "Noto Sans Mono", ui-monospace, monospace; }
-:root[data-platform="macos"] ::-webkit-scrollbar { width: 8px; height: 8px; }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }

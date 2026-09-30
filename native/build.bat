@@ -4,7 +4,7 @@ REM  Builds the Opale desktop application into ..\dist\ :
 REM    Opale.exe          native window (C++ + WebView2)
 REM    pickfolder.exe     native folder dialog
 REM    opale-server.exe   the Node server, packaged (--with-server)
-REM    Opale-Setup.exe    optional self-contained installer (--installer)
+REM    Opale-Setup.exe    optional self-contained Windows installer (--installer)
 REM  Requires Visual Studio with the C++ workload (MSVC). The WebView2 SDK
 REM  files it needs are in native\webview2 (version 1.0.3967.48).
 REM  Without opale-server.exe, Opale.exe runs ..\server.js with Node.
@@ -12,10 +12,11 @@ REM ============================================================
 setlocal
 cd /d "%~dp0"
 
-set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
-if not exist "%VSWHERE%" goto :novs
 set "VSPATH="
-for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSPATH=%%i"
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if exist "%VSWHERE%" for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSPATH=%%i"
+if not defined VSPATH if exist "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" set "VSPATH=C:\Program Files\Microsoft Visual Studio\18\Community"
+if not defined VSPATH if exist "C:\Program Files\Microsoft Visual Studio\17\Community\VC\Auxiliary\Build\vcvars64.bat" set "VSPATH=C:\Program Files\Microsoft Visual Studio\17\Community"
 if not defined VSPATH goto :novs
 set "VCVARS=%VSPATH%\VC\Auxiliary\Build\vcvars64.bat"
 if not exist "%VCVARS%" goto :nocpp
@@ -47,14 +48,14 @@ if /I "%~1"=="--with-server" (
 
 if /I "%~2"=="--installer" (
     echo Compiling uninstaller ...
-    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE uninstaller.cpp /Fe:"..\dist\Uninstall Opale.exe" /Fo:..\dist\ /link /SUBSYSTEM:WINDOWS ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib
+    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE uninstaller.cpp /Fe:"..\dist\Uninstall Opale.exe" /link /SUBSYSTEM:WINDOWS ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib
     if errorlevel 1 goto :failed
     echo Packaging Opale installer ...
     rc /nologo /fo ..\dist\installer.res installer.rc
     if errorlevel 1 goto :failed
-    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE installer.cpp /Fe:"..\dist\Opale-Setup.exe" /Fo:..\dist\ /link /SUBSYSTEM:WINDOWS ..\dist\installer.res ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib gdi32.lib uuid.lib
+    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE installer.cpp /Fe:"..\dist\Opale-Setup.exe" /link /SUBSYSTEM:WINDOWS ..\dist\installer.res ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib gdi32.lib uuid.lib
     if errorlevel 1 goto :failed
-    del /Q "..\dist\installer.res" "..\dist\*.obj" installer.obj uninstaller.obj >nul 2>&1
+    del /Q "..\dist\installer.res" >nul 2>&1
 )
 
 echo.

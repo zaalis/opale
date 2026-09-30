@@ -2,7 +2,7 @@
 
 Carnet de notes Markdown local, dans l'esprit d'Obsidian : un **coffre** est un simple
 dossier de fichiers `.md`, reliés par des liens `[[…]]`. Code entièrement original,
-sans dépendance applicative : un serveur Node, une interface web et une fenêtre native sur chaque système.
+sans dépendance : un serveur Node, une interface web, une fenêtre native WebView2.
 
 Un coffre Obsidian existant s'ouvre tel quel (Opale range ses réglages dans `.opale/`
 et ne touche pas à `.obsidian/`).
@@ -17,23 +17,25 @@ npm run serve        # serveur seul, puis http://127.0.0.1:27184
 Opale est un projet autonome : il ne dépend d'aucun autre dossier et peut être placé
 n'importe où.
 
-## Construire l’application
-
-Cette branche est la cible Windows. Les sources communes restent identiques aux branches [Linux](https://github.com/zaalis/opale/tree/Linux) et [macOS](https://github.com/zaalis/opale/tree/macOS), qui portent chacune leur fenêtre native et leurs livrables propres.
-
-### Windows
+## Construire l'application Windows
 
 Prérequis : Node.js et Visual Studio avec « Développement Desktop en C++ ». Les
 fichiers du SDK WebView2 nécessaires sont fournis dans `native/webview2`.
 
 ```powershell
 npm run build        # dist\Opale.exe + opale-server.exe + pickfolder.exe
-npm run installer    # produit aussi dist\Opale-Setup.exe et Uninstall Opale.exe
+npm run installer    # dist\Opale-Setup.exe, installateur Windows autonome
 npm run shortcut     # raccourcis Bureau et menu Démarrer, et enregistrement pour zaalis IDE
 ```
 
 `Opale.exe` démarre `opale-server.exe` placé à côté de lui ; sans lui, il lance
 `..\server.js` avec Node. Le serveur s'arrête quand la fenêtre se ferme.
+
+Pour distribuer l'application, utilisez `Opale-Setup.exe`. Il installe Opale dans
+le profil Windows de l'utilisateur, crée le raccourci du menu Démarrer (et, au
+choix, celui du Bureau), l'enregistre dans la liste des applications installées et
+ajoute **Opale — Désinstallation**. Les coffres de notes et les réglages sont
+préservés lors de la désinstallation.
 
 ## Ce qu'Opale fait
 
@@ -53,7 +55,8 @@ volets côte à côte.
 
 ## Connexion à zaalis IDE
 
-Tant qu’Opale tourne, il publie son adresse dans `%APPDATA%\Opale\instance.json` sous Windows, `~/Library/Application Support/Opale/instance.json` sous macOS, ou `~/.config/Opale/instance.json` sous Linux (port, jeton, coffre ouvert). zaalis IDE lit ce fichier :
+Tant qu'Opale tourne, il publie son adresse dans `%APPDATA%\Opale\instance.json`
+(port, jeton, coffre ouvert). zaalis IDE lit ce fichier :
 
 Les deux projets sont séparés, et reliés par défaut : dès qu'Opale est présent sur le
 PC et lancé, l'assistant de l'IDE a accès au coffre ouvert, sans réglage. Dans l'IDE,

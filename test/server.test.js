@@ -21,15 +21,6 @@ const appdata = require('../lib/appdata.js');
 const { Vault, VaultError } = require('../lib/vault.js');
 const { search } = require('../lib/search.js');
 
-test('application data locations follow each desktop convention', () => {
-  const saved = process.env.OPALE_HOME;
-  delete process.env.OPALE_HOME;
-  try {
-    assert.equal(appdata.homeDir('darwin'), path.join(os.homedir(), 'Library', 'Application Support', 'Opale'));
-    assert.equal(appdata.homeDir('linux'), path.join(os.homedir(), '.config', 'Opale'));
-  } finally { process.env.OPALE_HOME = saved; }
-});
-
 let app; let base;
 const api = (route, options = {}) => fetch(base + route, { ...options, headers: { Authorization: `Bearer ${app.token}`, 'Content-Type': 'application/json', ...(options.headers || {}) } });
 let rpcId = 0;
@@ -246,16 +237,9 @@ test('watcher picks up files written behind Opale’s back', async () => {
   vault.close();
 });
 
-test(process.platform === 'linux' ? 'Linux keeps paths distinct by case' : 'case-insensitive paths map onto the indexed spelling', () => {
+test('case-insensitive paths map onto the indexed spelling', () => {
   const vault = app.vault;
   const entry = vault.write('accueil.md', '# Accueil\n');
-  if (process.platform === 'linux') {
-    assert.equal(entry.path, 'accueil.md');
-    assert.ok(vault.files.has('Accueil.md') && vault.files.has('accueil.md'));
-    assert.equal(vault.read('Accueil.md').path, 'Accueil.md');
-    assert.equal(vault.read('accueil.md').path, 'accueil.md');
-    return;
-  }
   assert.equal(entry.path, 'Accueil.md');
   assert.equal([...vault.files.keys()].filter((file) => file.toLowerCase() === 'accueil.md').length, 1);
   assert.throws(() => vault.rename('Accueil.md', 'Archives/Projets/Plan.md'), VaultError);

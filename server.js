@@ -197,17 +197,9 @@ function createOpale(options = {}) {
   // ---------------------------------------------------------- folder picker
   function pickFolder() {
     return new Promise((resolve, reject) => {
+      if (process.platform !== 'win32') return reject(new VaultError('Le sélecteur de dossier n’est disponible que sous Windows.', 501, 'unsupported'));
       const done = (error, stdout) => (error ? reject(new VaultError(`Sélecteur de dossier indisponible : ${error.message}`, 500, 'picker')) : resolve(String(stdout || '').trim()));
       const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-      if (process.platform === 'darwin') {
-        return execFile('/usr/bin/osascript', ['-e', 'POSIX path of (choose folder with prompt "Choisissez le dossier du coffre")'], { timeout: 300000 }, done);
-      }
-      if (process.platform === 'linux') {
-        const picker = [path.join(base, 'pickfolder'), path.join(base, 'dist', 'pickfolder')].find((file) => fs.existsSync(file));
-        if (picker) return execFile(picker, { timeout: 300000 }, done);
-        return execFile('zenity', ['--file-selection', '--directory', '--title=Choisissez le dossier du coffre'], { timeout: 300000 }, done);
-      }
-      if (process.platform !== 'win32') return reject(new VaultError('Le sélecteur de dossier n’est pas disponible sur ce système.', 501, 'unsupported'));
       const picker = [path.join(base, 'pickfolder.exe'), path.join(base, 'dist', 'pickfolder.exe')].find((file) => fs.existsSync(file));
       if (picker) return execFile(picker, { timeout: 300000, windowsHide: true }, done);
       const script = "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = 'Choisissez le dossier du coffre'; $d.ShowNewFolderButton = $true; $null = $d.ShowDialog(); [Console]::Out.Write($d.SelectedPath)";
@@ -317,8 +309,6 @@ function createOpale(options = {}) {
       const rel = String((await ctx.json()).path || '');
       const full = rel ? vault.abs(vault.canonical(cleanRelative(rel))) : vault.root;
       if (process.platform === 'win32') spawn('explorer.exe', rel ? [`/select,${full}`] : [full], { detached: true, stdio: 'ignore' }).unref();
-      else if (process.platform === 'darwin') spawn('open', rel ? ['-R', full] : [full], { detached: true, stdio: 'ignore' }).unref();
-      else if (process.platform === 'linux') spawn('xdg-open', [rel ? path.dirname(full) : full], { detached: true, stdio: 'ignore' }).unref();
       return { ok: true };
     },
 
@@ -493,8 +483,7 @@ async function runningInstance() {
 // How another program can start Opale again. Prefers the desktop shell.
 function launchCommand() {
   const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-  const shellName = process.platform === 'win32' ? 'Opale.exe' : 'Opale';
-  const shell = process.env.OPALE_SHELL_EXE || [path.join(base, shellName), path.join(base, 'dist', shellName)].find((file) => fs.existsSync(file));
+  const shell = process.env.OPALE_SHELL_EXE || [path.join(base, 'Opale.exe'), path.join(base, 'dist', 'Opale.exe')].find((file) => fs.existsSync(file));
   if (shell && fs.existsSync(shell)) return { file: shell, args: [], cwd: path.dirname(shell) };
   if (process.pkg) return { file: process.execPath, args: ['--window'], cwd: base };
   return { file: process.execPath, args: [path.join(__dirname, 'server.js'), '--window'], cwd: __dirname };
@@ -504,8 +493,7 @@ function launchCommand() {
 function shellExe() {
   if (process.env.OPALE_SHELL_EXE) return null;
   const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-  const shellName = process.platform === 'win32' ? 'Opale.exe' : 'Opale';
-  return [path.join(base, shellName), path.join(base, 'dist', shellName)].find((file) => fs.existsSync(file)) || null;
+  return [path.join(base, 'Opale.exe'), path.join(base, 'dist', 'Opale.exe')].find((file) => fs.existsSync(file)) || null;
 }
 
 function openWindow(url) {
