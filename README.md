@@ -19,7 +19,7 @@ n'importe où.
 
 ## Construire l’application
 
-Les trois cibles partagent le serveur, le stockage et l’interface. `interface/js/platform.js` adapte seulement les conventions locales : raccourcis et vocabulaire macOS, polices et gestionnaire de fichiers Linux, et conventions Windows.
+Cette branche est la cible Windows. Les sources communes restent identiques aux branches [Linux](https://github.com/zaalis/opale/tree/Linux) et [macOS](https://github.com/zaalis/opale/tree/macOS), qui portent chacune leur fenêtre native et leurs livrables propres.
 
 ### Windows
 
@@ -34,31 +34,6 @@ npm run shortcut     # raccourcis Bureau et menu Démarrer, et enregistrement po
 
 `Opale.exe` démarre `opale-server.exe` placé à côté de lui ; sans lui, il lance
 `..\server.js` avec Node. Le serveur s'arrête quand la fenêtre se ferme.
-
-### Linux
-
-Prérequis : Node.js, `build-essential`, `pkg-config`, GTK3 et WebKitGTK.
-
-```bash
-npm ci
-npm run build:linux      # dist/linux/Opale + opale-server + pickfolder
-npm run package:linux    # .deb et .tar.gz dans dist/
-npm run install-local:linux
-```
-
-Voir [native/linux/README.md](native/linux/README.md) pour les dépendances et l’installation locale.
-
-### macOS
-
-Prérequis : macOS, Xcode et Node.js.
-
-```bash
-npm ci
-npm run build:macos
-npm run build:macos -- --dmg
-```
-
-Voir [native/macos/README.md](native/macos/README.md). La signature et la notarisation Apple restent une étape de distribution distincte.
 
 ## Ce qu'Opale fait
 
