@@ -10,9 +10,9 @@
     "start": "node server.js --window",
     "serve": "node server.js",
     "test": "node --test \"test/*.test.js\"",
-    "build:linux": "bash native/linux/build.sh",
-    "package:linux": "bash native/linux/package.sh",
-    "install-local:linux": "bash native/linux/install.sh"
+    "build": "bash native/build.sh",
+    "package": "bash native/package.sh",
+    "install-local": "bash native/install.sh"
   },
   "pkg": {
     "assets": [

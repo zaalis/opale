@@ -8,9 +8,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { execFile, spawn } = require('child_process');
+const { spawn } = require('child_process');
 
 const appdata = require('./lib/appdata.js');
+const platform = require('./lib/platform.js');
 const { Vault, VaultError, cleanRelative } = require('./lib/vault.js');
 const { search } = require('./lib/search.js');
 const mcp = require('./lib/mcp.js');
@@ -112,6 +113,7 @@ function createOpale(options = {}) {
     const pendingOpen = state.pendingOpen; state.pendingOpen = '';
     return {
       version: VERSION,
+      platform: process.platform,
       vault: vault ? { name: vault.name, path: vault.root } : null,
       vaults: config.vaults.map((item) => ({ ...item, exists: fs.existsSync(item.path) })),
       settings: vault ? vault.settings : null,
@@ -196,23 +198,8 @@ function createOpale(options = {}) {
 
   // ---------------------------------------------------------- folder picker
   function pickFolder() {
-    return new Promise((resolve, reject) => {
-      const done = (error, stdout) => (error ? reject(new VaultError(`Sélecteur de dossier indisponible : ${error.message}`, 500, 'picker')) : resolve(String(stdout || '').trim()));
-      const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-      if (process.platform === 'darwin') {
-        return execFile('/usr/bin/osascript', ['-e', 'POSIX path of (choose folder with prompt "Choisissez le dossier du coffre")'], { timeout: 300000 }, done);
-      }
-      if (process.platform === 'linux') {
-        const picker = [path.join(base, 'pickfolder'), path.join(base, 'dist', 'pickfolder')].find((file) => fs.existsSync(file));
-        if (picker) return execFile(picker, { timeout: 300000 }, done);
-        return execFile('zenity', ['--file-selection', '--directory', '--title=Choisissez le dossier du coffre'], { timeout: 300000 }, done);
-      }
-      if (process.platform !== 'win32') return reject(new VaultError('Le sélecteur de dossier n’est pas disponible sur ce système.', 501, 'unsupported'));
-      const picker = [path.join(base, 'pickfolder.exe'), path.join(base, 'dist', 'pickfolder.exe')].find((file) => fs.existsSync(file));
-      if (picker) return execFile(picker, { timeout: 300000, windowsHide: true }, done);
-      const script = "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = 'Choisissez le dossier du coffre'; $d.ShowNewFolderButton = $true; $null = $d.ShowDialog(); [Console]::Out.Write($d.SelectedPath)";
-      execFile('powershell.exe', ['-NoProfile', '-STA', '-Command', script], { timeout: 300000, windowsHide: true }, done);
-    });
+    const base = process.pkg ? path.dirname(process.execPath) : __dirname;
+    return platform.pickFolder(base).catch((error) => { throw new VaultError(error.message, 500, 'picker'); });
   }
 
   // ------------------------------------------------------------ API routes
@@ -282,12 +269,10 @@ function createOpale(options = {}) {
       const vault = needVault();
       const name = cleanRelative(String(ctx.query.get('name') || 'Fichier'));
       if (name.includes('/')) throw new VaultError('Nom de fichier invalide.');
-      // A folder is supplied only by the explicit “add image” action in the
-      // explorer. Keep ordinary paste/drop attachments governed by settings.
-      const explicitFolder = ctx.query.get('folder');
-      const folder = explicitFolder === null || explicitFolder === ''
+      const requestedFolder = ctx.query.get('folder');
+      const folder = requestedFolder === null || requestedFolder === ''
         ? vault.attachmentFolder(ctx.query.get('source') || '')
-        : cleanRelative(explicitFolder, { allowRoot: true });
+        : cleanRelative(requestedFolder, { allowRoot: true });
       const ext = Meta.extOf(name);
       const target = vault.uniquePath(folder, ext ? name.slice(0, -(ext.length + 1)) : name, ext);
       const entry = vault.writeBinary(target, await readBody(ctx.req, MAX_UPLOAD_BYTES));
@@ -316,9 +301,7 @@ function createOpale(options = {}) {
       const vault = needVault();
       const rel = String((await ctx.json()).path || '');
       const full = rel ? vault.abs(vault.canonical(cleanRelative(rel))) : vault.root;
-      if (process.platform === 'win32') spawn('explorer.exe', rel ? [`/select,${full}`] : [full], { detached: true, stdio: 'ignore' }).unref();
-      else if (process.platform === 'darwin') spawn('open', rel ? ['-R', full] : [full], { detached: true, stdio: 'ignore' }).unref();
-      else if (process.platform === 'linux') spawn('xdg-open', [rel ? path.dirname(full) : full], { detached: true, stdio: 'ignore' }).unref();
+      platform.reveal(full, !!rel);
       return { ok: true };
     },
 
@@ -493,8 +476,7 @@ async function runningInstance() {
 // How another program can start Opale again. Prefers the desktop shell.
 function launchCommand() {
   const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-  const shellName = process.platform === 'win32' ? 'Opale.exe' : 'Opale';
-  const shell = process.env.OPALE_SHELL_EXE || [path.join(base, shellName), path.join(base, 'dist', shellName)].find((file) => fs.existsSync(file));
+  const shell = process.env.OPALE_SHELL_EXE || platform.findShell(base);
   if (shell && fs.existsSync(shell)) return { file: shell, args: [], cwd: path.dirname(shell) };
   if (process.pkg) return { file: process.execPath, args: ['--window'], cwd: base };
   return { file: process.execPath, args: [path.join(__dirname, 'server.js'), '--window'], cwd: __dirname };
@@ -504,19 +486,13 @@ function launchCommand() {
 function shellExe() {
   if (process.env.OPALE_SHELL_EXE) return null;
   const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-  const shellName = process.platform === 'win32' ? 'Opale.exe' : 'Opale';
-  return [path.join(base, shellName), path.join(base, 'dist', shellName)].find((file) => fs.existsSync(file)) || null;
+  return platform.findShell(base);
 }
 
 function openWindow(url) {
   const shell = shellExe();
   if (shell) { try { spawn(shell, [], { cwd: path.dirname(shell), detached: true, stdio: 'ignore' }).unref(); return; } catch {} }
-  const roots = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA].filter(Boolean);
-  const edge = roots.map((root) => path.join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe')).find((file) => fs.existsSync(file));
-  try {
-    if (edge) spawn(edge, [`--app=${url}`, `--user-data-dir=${path.join(appdata.homeDir(), 'Fenetre')}`, '--no-first-run', '--no-default-browser-check'], { detached: true, stdio: 'ignore' }).unref();
-    else if (process.platform === 'win32') spawn('cmd.exe', ['/c', 'start', '', url], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-  } catch {}
+  try { platform.openUrl(url, appdata.homeDir()); } catch {}
 }
 
 async function main() {
@@ -542,7 +518,9 @@ async function main() {
   if (wantsWindow) openWindow(url);
 
   const stop = () => { app.close().finally(() => process.exit(0)); };
-  process.on('SIGINT', stop); process.on('SIGTERM', stop);
+  process.on('SIGINT', stop); process.on('SIGTERM', stop); process.on('SIGHUP', stop);
+  const parent = Number(process.env.OPALE_PARENT_PID);
+  if (parent > 0) setInterval(() => { if (!appdata.pidAlive(parent)) stop(); }, 2000).unref();
   process.on('exit', () => appdata.clearInstance());
 }
 

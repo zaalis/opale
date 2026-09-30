@@ -2,14 +2,15 @@
 // outgoing links, outline and the local graph of the active note.
 import { api, app, bus, debounce, h, highlighted, icon, iconButton, Markdown, Meta, reportError, showMenu } from './core.js';
 import { store } from './store.js';
+import { primary } from './platform.js';
 import { GraphView } from './graph.js';
 
 function fileRow(path, options = {}) {
   return h(`div.result-file${options.unresolved ? '.unresolved' : ''}`, {
     title: path, role: 'button', tabIndex: 0,
-    onClick: (event) => options.onOpen(event.ctrlKey || event.metaKey),
+    onClick: (event) => options.onOpen(primary(event)),
     onAuxclick: (event) => { if (event.button === 1) options.onOpen(true); },
-    onKeydown: (event) => { if (event.key === 'Enter') options.onOpen(event.ctrlKey); },
+    onKeydown: (event) => { if (event.key === 'Enter') options.onOpen(primary(event)); },
     onContextmenu: options.onMenu,
   }, h('span.result-name', options.label || (Meta.kindOf(path) === 'note' ? Meta.stem(path) : Meta.baseName(path))),
   options.detail ? h('span.result-detail', options.detail) : (Meta.dirName(path) ? h('span.result-detail', Meta.dirName(path)) : null),
@@ -17,7 +18,7 @@ function fileRow(path, options = {}) {
 }
 
 function matchLine(path, item) {
-  return h('div.result-line', { role: 'button', tabIndex: 0, onClick: (event) => app.workspace.openPath(path, { line: item.line, newTab: event.ctrlKey || event.metaKey }), onKeydown: (event) => { if (event.key === 'Enter') app.workspace.openPath(path, { line: item.line }); } },
+  return h('div.result-line', { role: 'button', tabIndex: 0, onClick: (event) => app.workspace.openPath(path, { line: item.line, newTab: primary(event) }), onKeydown: (event) => { if (event.key === 'Enter') app.workspace.openPath(path, { line: item.line }); } },
     item.ranges ? highlighted(item.text, item.ranges) : item.text || ' ');
 }
 

@@ -1,7 +1,0 @@
-# Native Unix sources must remain executable/readable by Bash after a checkout
-# from a Windows workstation.
-*.sh text eol=lf
-*.c text eol=lf
-*.desktop text eol=lf
-*.swift text eol=lf
-*.plist text eol=lf

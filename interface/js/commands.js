@@ -1,15 +1,16 @@
 // Opale — commands, keyboard shortcuts, the command palette and the quick
 // switcher. Everything the interface can do is a command, so it can be run
 // from a button, a shortcut or the palette alike.
-import { api, app, fuzzy, h, highlighted, isTextInput, Meta, openModal, platform, reportError, toast, topModal } from './core.js';
+import { api, app, fuzzy, h, highlighted, isTextInput, Meta, openModal, reportError, toast, topModal } from './core.js';
 import { store } from './store.js';
+import { HOTKEY_OVERRIDES, keyLabel, modifierPrefix, primary, TEXT } from './platform.js';
 import { FORMATS } from './editing.js';
 
 const list = [];
 const byId = new Map();
 
 function register(id, name, run, options = {}) {
-  const command = { id, name, run, hotkey: options.hotkey || '', hint: options.hint || '', when: options.when, hidden: !!options.hidden };
+  const command = { id, name, run, hotkey: options.hotkey || '', when: options.when, hidden: !!options.hidden };
   list.push(command); byId.set(id, command);
 }
 
@@ -56,7 +57,7 @@ function openPalette() {
     items: (query) => list.filter((command) => !command.hidden && (!command.when || command.when()))
       .map((command) => ({ command, match: fuzzy(query, command.name) })).filter((item) => item.match)
       .sort((a, b) => b.match.score - a.match.score || a.command.name.localeCompare(b.command.name)).slice(0, 80)
-      .map((item) => ({ label: item.command.name, ranges: item.match.ranges, hint: item.command.hint || platform.shortcut(item.command.hotkey), run: () => run(item.command.id) })),
+      .map((item) => ({ label: item.command.name, ranges: item.match.ranges, hint: item.command.hotkey, run: () => run(item.command.id) })),
   });
 }
 
@@ -73,13 +74,13 @@ async function createNamed(name, newTab) {
 function openSwitcher() {
   openPicker({
     placeholder: 'Ouvrir ou créer une note…',
-    footer: [h('span', h('kbd', '↵'), ' ouvrir'), h('span', h('kbd', 'Ctrl ↵'), ' nouvel onglet'), h('span', h('kbd', 'Maj ↵'), ' créer')],
-    onSubmitEmpty: (name, event) => createNamed(name, event.ctrlKey),
+    footer: [h('span', h('kbd', '↵'), ' ouvrir'), h('span', h('kbd', keyLabel('Ctrl+Enter')), ' nouvel onglet'), h('span', h('kbd', keyLabel('Maj+Enter')), ' créer')],
+    onSubmitEmpty: (name, event) => createNamed(name, primary(event)),
     items: (query) => {
       const entries = [...store.files.values()];
       if (!query) {
         return entries.filter((entry) => entry.kind === 'note').sort((a, b) => b.mtime - a.mtime).slice(0, 40)
-          .map((entry) => ({ label: Meta.stem(entry.path), detail: Meta.dirName(entry.path), run: (event) => app.workspace.openPath(entry.path, { newTab: event.ctrlKey }) }));
+          .map((entry) => ({ label: Meta.stem(entry.path), detail: Meta.dirName(entry.path), run: (event) => app.workspace.openPath(entry.path, { newTab: primary(event) }) }));
       }
       const results = [];
       for (const entry of entries) {
@@ -95,7 +96,7 @@ function openSwitcher() {
           if (aliasMatch) results.push({ score: aliasMatch.score, label: alias, ranges: aliasMatch.ranges, detail: `alias de ${name}`, path: entry.path });
         }
       }
-      return results.sort((a, b) => b.score - a.score).slice(0, 50).map((item) => ({ ...item, run: (event) => app.workspace.openPath(item.path, { newTab: event.ctrlKey }) }));
+      return results.sort((a, b) => b.score - a.score).slice(0, 50).map((item) => ({ ...item, run: (event) => app.workspace.openPath(item.path, { newTab: primary(event) }) }));
     },
   });
 }
@@ -146,13 +147,13 @@ function combo(event) {
   let key = event.key;
   if (key === ' ') key = 'Space';
   if (key.length === 1) key = key.toUpperCase();
-  return `${event.ctrlKey || event.metaKey ? 'Ctrl+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Maj+' : ''}${key}`;
+  return `${modifierPrefix(event)}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Maj+' : ''}${key}`;
 }
 
 function onKeydown(event) {
   if (event.defaultPrevented || event.isComposing) return;
   if (event.key === 'Escape') { const modal = topModal(); if (modal) { event.preventDefault(); modal.close(); } return; }
-  // AltGr shows up as Ctrl+Alt on Windows keyboards: never a shortcut.
+  // AltGr can show up as Ctrl+Alt on some keyboards: never a shortcut.
   if (event.ctrlKey && event.altKey) return;
   const pressed = combo(event);
   const command = list.find((item) => item.hotkey === pressed);
@@ -185,10 +186,10 @@ export const commands = {
 
     register('tab:new', 'Nouvel onglet', () => ws.newTab(), { hotkey: 'Ctrl+T' });
     register('tab:close', 'Fermer l’onglet', () => ws.closeActive(), { hotkey: 'Ctrl+W' });
-    register('tab:next', 'Onglet suivant', () => ws.cycle(1), { hotkey: 'Ctrl+Tab', hint: platform.isMac ? '⌃⇥' : 'Ctrl+Tab' });
-    register('tab:previous', 'Onglet précédent', () => ws.cycle(-1), { hotkey: 'Ctrl+Maj+Tab', hint: platform.isMac ? '⌃⇧⇥' : 'Ctrl+Maj+Tab' });
-    register('nav:back', 'Revenir en arrière', () => ws.back(), { hotkey: platform.isMac ? 'Ctrl+Alt+ArrowLeft' : 'Alt+ArrowLeft', hint: platform.isMac ? '⌥⌘←' : 'Alt+←' });
-    register('nav:forward', 'Aller en avant', () => ws.forward(), { hotkey: platform.isMac ? 'Ctrl+Alt+ArrowRight' : 'Alt+ArrowRight', hint: platform.isMac ? '⌥⌘→' : 'Alt+→' });
+    register('tab:next', 'Onglet suivant', () => ws.cycle(1), { hotkey: 'Ctrl+Tab' });
+    register('tab:previous', 'Onglet précédent', () => ws.cycle(-1), { hotkey: 'Ctrl+Maj+Tab' });
+    register('nav:back', 'Revenir en arrière', () => ws.back(), { hotkey: 'Alt+ArrowLeft' });
+    register('nav:forward', 'Aller en avant', () => ws.forward(), { hotkey: 'Alt+ArrowRight' });
 
     register('view:reading', 'Basculer entre lecture et édition', () => note().toggleReading(), { hotkey: 'Ctrl+E', when: hasNote });
     register('view:source', 'Basculer le mode source', () => note().toggleSource(), { when: hasNote });
@@ -196,7 +197,7 @@ export const commands = {
     register('note:move', 'Déplacer la note vers un autre dossier', () => app.explorer.moveDialog(note().path), { when: hasNote });
     register('note:delete', 'Supprimer la note', () => note().deleteNote(), { when: hasNote });
     register('note:bookmark', 'Ajouter ou retirer des signets', () => app.panels.toggleBookmark(note().path), { when: hasNote });
-    register('note:reveal', 'Afficher la note dans l’explorateur de fichiers', () => app.explorer.reveal(note().path), { when: hasNote });
+    register('note:reveal', `Afficher la note dans ${TEXT.fileManager}`, () => app.explorer.reveal(note().path), { when: hasNote });
     register('note:copy-link', 'Copier le lien vers la note', () => navigator.clipboard.writeText(`[[${store.linkText(note().path)}]]`).then(() => toast('Lien copié')), { when: hasNote });
     register('note:save', 'Enregistrer maintenant', () => note().flush().then(() => toast('Enregistré')), { hotkey: 'Ctrl+S', when: hasNote });
 
@@ -220,9 +221,13 @@ export const commands = {
     register('settings:connection', 'Connexion à zaalis IDE', () => app.settings_ui.open('connection'));
     register('theme:toggle', 'Basculer entre thème clair et sombre', () => app.settings_ui.change({ theme: app.settings.theme === 'light' ? 'dark' : 'light' }));
     register('vault:switch', 'Changer de coffre', () => app.launcher.open());
-    register('vault:reveal', 'Afficher le coffre dans l’Explorateur Windows', () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError));
+    register('vault:reveal', TEXT.revealVault, () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError));
     register('app:reload', 'Recharger Opale', () => ws.flushAll().then(() => location.reload()), { hotkey: 'Ctrl+R' });
 
+    // Some shortcuts are spelled differently on this system (⌃Tab on a Mac, ⌥⌘← for back…).
+    for (const [id, hotkey] of Object.entries(HOTKEY_OVERRIDES)) { const command = byId.get(id); if (command) command.hotkey = hotkey; }
+
+    window.opaleRun = (id) => run(id);
     document.addEventListener('keydown', onKeydown);
   },
   hotkeys() { return list.filter((command) => command.hotkey).map((command) => ({ name: command.name, hotkey: command.hotkey.replace('​', '') })); },
