@@ -1,5 +1,3 @@
 node_modules/
 dist/
 *.log
-native/macos/*.app
-native/*.obj

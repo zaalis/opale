@@ -80,7 +80,7 @@ details.callout[open] > summary.callout-title::after { transform: rotate(45deg);
 .task-list-item-checkbox { position: absolute; left: -1.45em; top: .38em; width: 1em; height: 1em; margin: 0; cursor: pointer; accent-color: var(--accent); }
 .markdown li.task-list-item.is-checked > .list-text, .markdown li.task-list-item.is-checked > p { color: var(--text-3); text-decoration: line-through; }
 
-.math { font-family: "Cambria Math", Cambria, "Times New Roman", serif; font-style: italic; padding: 0 .15em; }
+.math { font-family: "STIX Two Math", "Times New Roman", serif; font-style: italic; padding: 0 .15em; }
 .math-block { display: block; text-align: center; margin: 0 0 .85em; padding: .4em 0; white-space: pre-wrap; font-size: 1.08em; }
 
 .properties { margin: 0 0 1.1em; padding: 9px 14px 10px; border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--bg-1) 70%, transparent); font-size: .88em; }

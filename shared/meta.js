@@ -28,6 +28,10 @@
   function joinPath(a, b) { return a ? (b ? a + '/' + b : a) : b; }
   // Collapse "." and ".." segments. Returns null when the path climbs above
   // the vault root.
+  // Key for comparing names: case-insensitive, and accents compared composed (a Mac
+  // stores "é" decomposed, a keyboard types it composed).
+  function fold(text) { return String(text).normalize('NFC').toLowerCase(); }
+
   function normalizePath(p) {
     const out = [];
     for (const part of String(p).replace(/\\/g, '/').split('/')) {
@@ -318,8 +322,8 @@
   function buildResolver(paths) {
     const byLower = new Map(); const byBase = new Map();
     for (const path of paths) {
-      byLower.set(path.toLowerCase(), path);
-      const base = baseName(path).toLowerCase();
+      byLower.set(fold(path), path);
+      const base = fold(baseName(path));
       if (!byBase.has(base)) byBase.set(base, []);
       byBase.get(base).push(path);
     }
@@ -329,14 +333,14 @@
       if (!cleaned) return sourcePath || null;
       const candidates = /\.md$/i.test(cleaned) ? [cleaned] : [cleaned + '.md', cleaned];
       for (const candidate of candidates) {
-        const lower = candidate.toLowerCase();
+        const lower = fold(candidate);
         if (byLower.has(lower)) return byLower.get(lower);
         if (sourcePath) {
           const relative = normalizePath(joinPath(dirName(sourcePath), candidate));
-          if (relative && byLower.has(relative.toLowerCase())) return byLower.get(relative.toLowerCase());
+          if (relative && byLower.has(fold(relative))) return byLower.get(fold(relative));
         }
         const named = byBase.get(baseName(lower)) || [];
-        const matches = lower.includes('/') ? named.filter((p) => p.toLowerCase().endsWith('/' + lower)) : named;
+        const matches = lower.includes('/') ? named.filter((p) => fold(p).endsWith('/' + lower)) : named;
         if (matches.length) return best(matches);
       }
       return null;
@@ -345,11 +349,11 @@
     function linkText(path) {
       const isNote = kindOf(path) === 'note';
       const short = isNote ? stem(path) : baseName(path);
-      const same = byBase.get(baseName(path).toLowerCase()) || [];
+      const same = byBase.get(fold(baseName(path))) || [];
       if (same.length <= 1 || best(same) === path) return short;
       return isNote ? notePathWithoutExt(path) : path;
     }
-    return { resolve, linkText, has: (path) => byLower.has(String(path).toLowerCase()) };
+    return { resolve, linkText, has: (path) => byLower.has(fold(path)) };
   }
 
   // ------------------------------------------------------------------ dates
@@ -369,7 +373,7 @@
 
   return {
     IMAGE_EXTS, AUDIO_EXTS, VIDEO_EXTS, formatDate,
-    baseName, dirName, extOf, stem, kindOf, joinPath, normalizePath, notePathWithoutExt,
+    baseName, dirName, extOf, stem, kindOf, joinPath, normalizePath, fold, notePathWithoutExt,
     splitFrontmatter, parseYaml, stringifyYaml, withFrontmatter, listValue,
     maskLines, parseWikiInner, extract, rewriteLinks, buildResolver,
   };

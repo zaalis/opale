@@ -3,6 +3,7 @@
 // note, as the "local graph" of the right panel.
 import { api, app, bus, debounce, h, iconButton, Meta } from './core.js';
 import { store } from './store.js';
+import { primary } from './platform.js';
 
 const CELL = 280;
 
@@ -67,7 +68,7 @@ export class GraphView {
     const style = getComputedStyle(this.el);
     const get = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
     this.colours = {
-      node: get('--graph-node', '#9a97ab'), active: get('--accent', '#8b7cf6'), tag: get('--graph-tag', '#34d399'),
+      node: get('--graph-node', '#9a97ab'), active: get('--accent', '#fbbf24'), tag: get('--graph-tag', '#34d399'),
       attachment: get('--graph-attachment', '#f59e0b'), unresolved: get('--graph-unresolved', '#5b586a'),
       line: get('--graph-line', 'rgba(150,150,170,.22)'), text: get('--text-1', '#c9c6d6'), dim: get('--graph-dim', 'rgba(150,150,170,.12)'),
     };
@@ -307,7 +308,7 @@ export class GraphView {
       const up = (upEvent) => {
         window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
         const drag = this.drag; this.drag = null;
-        if (drag && drag.node && !drag.moved) this.open(drag.node, upEvent.ctrlKey || upEvent.metaKey || drag.button === 1);
+        if (drag && drag.node && !drag.moved) this.open(drag.node, primary(upEvent) || drag.button === 1);
         canvas.style.cursor = '';
         this.kick(0.02);
       };

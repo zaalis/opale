@@ -10,8 +10,9 @@
     "start": "node server.js --window",
     "serve": "node server.js",
     "test": "node --test \"test/*.test.js\"",
-    "build:macos": "bash native/macos/build.sh",
-    "build": "bash native/macos/build.sh"
+    "build": "bash native/build.sh",
+    "dmg": "bash native/build.sh --dmg",
+    "build:universal": "bash native/build.sh --universal --dmg"
   },
   "pkg": {
     "assets": [

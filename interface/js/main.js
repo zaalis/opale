@@ -66,22 +66,12 @@ function installFileDrop() {
   let depth = 0;
   const hasFiles = (event) => event.dataTransfer && [...event.dataTransfer.types].includes('Files');
   const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); };
-  document.addEventListener('dragenter', (event) => {
-    if (!hasFiles(event)) return;
-    depth++;
-    document.body.classList.add('is-dropping');
-  });
+  document.addEventListener('dragenter', (event) => { if (hasFiles(event)) { depth++; document.body.classList.add('is-dropping'); } });
   document.addEventListener('dragover', (event) => { if (hasFiles(event)) event.preventDefault(); });
-  document.addEventListener('dragleave', (event) => {
-    if (!hasFiles(event)) return;
-    depth = Math.max(0, depth - 1);
-    if (!depth) document.body.classList.remove('is-dropping');
-  });
+  document.addEventListener('dragleave', (event) => { if (hasFiles(event) && !--depth) clear(); });
   document.addEventListener('drop', async (event) => {
     if (!hasFiles(event)) return;
     clear();
-    // The explorer owns direct imports into its selected folder; a textarea
-    // already owns precise caret insertion.
     if (event.target.closest('.tree, textarea')) return;
     event.preventDefault();
     const files = [...event.dataTransfer.files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');

@@ -3,6 +3,7 @@
 // and hovering a link previews the note behind it.
 import { app, h, icon, Markdown, Meta, toast } from './core.js';
 import { store } from './store.js';
+import { primary } from './platform.js';
 
 // The part of a note that "Note#Section" or "Note#^bloc" refers to.
 export function sectionOf(text, subpath) {
@@ -96,7 +97,7 @@ export function bindNoteInteractions(container, view) {
     hidePreview();
     app.workspace.openLink({
       target: link.dataset.href || '', subpath: link.dataset.subpath || '', path: link.dataset.path || '',
-      source: sourceOf(link), newTab: event.ctrlKey || event.metaKey || event.button === 1, view,
+      source: sourceOf(link), newTab: primary(event) || event.button === 1, view,
     });
   };
 
@@ -118,7 +119,7 @@ export function bindNoteInteractions(container, view) {
       return;
     }
     const image = event.target.closest('img.embed-image[data-path]');
-    if (image && (event.ctrlKey || event.metaKey)) app.workspace.openPath(image.dataset.path, { newTab: true });
+    if (image && primary(event)) app.workspace.openPath(image.dataset.path, { newTab: true });
   });
   container.addEventListener('auxclick', (event) => {
     const link = event.button === 1 && event.target.closest('a.internal-link');

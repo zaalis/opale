@@ -4,8 +4,9 @@
 //   reading  rendered, read-only
 // The note text lives in `content`; every mode edits that one string, and it
 // is saved shortly after each change.
-import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, Meta, platform, reportError, showMenu, toast } from './core.js';
+import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
+import { keys, primary, TEXT } from './platform.js';
 import { attachEditing, caretPoint, closeSuggest } from './editing.js';
 import { bindNoteInteractions, decorate } from './renderer.js';
 
@@ -70,8 +71,8 @@ export class NoteView {
 
   // ------------------------------------------------------------- structure
   build() {
-    this.backBtn = iconButton('back', `Précédent (${platform.isMac ? '⌥⌘←' : 'Alt+←'})`, () => app.workspace.back());
-    this.forwardBtn = iconButton('forward', `Suivant (${platform.isMac ? '⌥⌘→' : 'Alt+→'})`, () => app.workspace.forward());
+    this.backBtn = iconButton('back', 'Précédent (Alt+←)', () => app.workspace.back());
+    this.forwardBtn = iconButton('forward', 'Suivant (Alt+→)', () => app.workspace.forward());
     this.crumbs = h('div.view-crumbs');
     this.modeBtn = iconButton('book', 'Basculer lecture / édition (Ctrl+E)', () => this.toggleReading());
     this.moreBtn = iconButton('more', 'Plus d’options', (event) => this.openMenu(event));
@@ -109,7 +110,7 @@ export class NoteView {
     this.forwardBtn.disabled = !app.workspace.canGo(1);
     const reading = this.mode === 'reading';
     this.modeBtn.innerHTML = icon(reading ? 'pencil' : 'book');
-    this.modeBtn.title = reading ? 'Passer en édition (Ctrl+E)' : 'Passer en lecture (Ctrl+E)';
+    this.modeBtn.title = keys(reading ? 'Passer en édition (Ctrl+E)' : 'Passer en lecture (Ctrl+E)');
     this.el.dataset.mode = this.mode;
     if (document.activeElement !== this.titleEl) this.titleEl.textContent = Meta.stem(this.path);
   }
@@ -144,7 +145,7 @@ export class NoteView {
   }
 
   renderReading() {
-    this.body.replaceChildren(h('div.markdown.reading', { html: Markdown.render(this.content, store.renderContext(this.path)) || '<p class="note-empty">Note vide — passez en édition avec Ctrl+E.</p>' }));
+    this.body.replaceChildren(h('div.markdown.reading', { html: Markdown.render(this.content, store.renderContext(this.path)) || `<p class="note-empty">${keys('Note vide — passez en édition avec Ctrl+E.')}</p>` }));
     decorate(this.body);
   }
 
@@ -358,9 +359,6 @@ export class NoteView {
   // The textarea the user is typing in, if any (used by formatting commands).
   activeTextarea() { return this.mode === 'source' ? this.sourceArea : this.active ? this.active.textarea : null; }
 
-  // Used for a file dropped anywhere over the application, not only over the
-  // textarea. The normal editor path is retained when there is a caret; in a
-  // rendered note we append embeds without forcing the user into source mode.
   insertAttachments(paths) {
     const text = paths.map((path) => `![[${Meta.baseName(path)}]]`).join('\n');
     if (!text) return;
@@ -397,7 +395,7 @@ export class NoteView {
   }
 
   undoKeys(event) {
-    if (!(event.ctrlKey || event.metaKey) || event.altKey) return false;
+    if (!primary(event) || event.altKey) return false;
     const key = event.key.toLowerCase();
     if (key === 'z' && !event.shiftKey) { event.preventDefault(); this.travel(-1); return true; }
     if (key === 'y' || (key === 'z' && event.shiftKey)) { event.preventDefault(); this.travel(1); return true; }
@@ -577,7 +575,7 @@ export class NoteView {
       'separator',
       { label: 'Copier le lien [[…]]', icon: 'link', run: () => navigator.clipboard.writeText(`[[${store.linkText(this.path)}]]`).then(() => toast('Lien copié')) },
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(this.path).then(() => toast('Chemin copié')) },
-      { label: 'Afficher dans l’Explorateur Windows', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: this.path } }).catch(reportError) },
+      { label: TEXT.revealItem, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: this.path } }).catch(reportError) },
       'separator',
       { label: 'Supprimer la note', icon: 'trash', danger: true, run: () => this.deleteNote() },
     ]);
@@ -597,7 +595,7 @@ export class NoteView {
           textarea.focus();
           textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
           textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        } catch { toast('Collez avec Ctrl+V : l’accès au presse-papiers a été refusé.'); }
+        } catch { toast(keys('Collez avec Ctrl+V : l’accès au presse-papiers a été refusé.')); }
       };
       const command = (name) => () => { textarea.focus(); document.execCommand(name); };
       return showMenu(event.clientX, event.clientY, [
