@@ -19,34 +19,7 @@ n'importe où.
 
 ## Construire l’application
 
-Les trois cibles partagent le serveur, le stockage et l’interface. `interface/js/platform.js` adapte seulement les conventions locales : raccourcis et vocabulaire macOS, polices et gestionnaire de fichiers Linux, et conventions Windows.
-
-### Windows
-
-Prérequis : Node.js et Visual Studio avec « Développement Desktop en C++ ». Les
-fichiers du SDK WebView2 nécessaires sont fournis dans `native/webview2`.
-
-```powershell
-npm run build        # dist\Opale.exe + opale-server.exe + pickfolder.exe
-npm run installer    # produit aussi dist\Opale-Setup.exe et Uninstall Opale.exe
-npm run shortcut     # raccourcis Bureau et menu Démarrer, et enregistrement pour zaalis IDE
-```
-
-`Opale.exe` démarre `opale-server.exe` placé à côté de lui ; sans lui, il lance
-`..\server.js` avec Node. Le serveur s'arrête quand la fenêtre se ferme.
-
-### Linux
-
-Prérequis : Node.js, `build-essential`, `pkg-config`, GTK3 et WebKitGTK.
-
-```bash
-npm ci
-npm run build:linux      # dist/linux/Opale + opale-server + pickfolder
-npm run package:linux    # .deb et .tar.gz dans dist/
-npm run install-local:linux
-```
-
-Voir [native/linux/README.md](native/linux/README.md) pour les dépendances et l’installation locale.
+Cette branche est la cible macOS. Elle contient le serveur et l’interface communs, ainsi que le shell Cocoa/WKWebView universel pour Mac Intel et Apple Silicon.
 
 ### macOS
 

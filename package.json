@@ -10,14 +10,8 @@
     "start": "node server.js --window",
     "serve": "node server.js",
     "test": "node --test \"test/*.test.js\"",
-    "build": "cmd /c native\\build.bat --with-server",
-    "build:windows": "cmd /c native\\build.bat --with-server",
-    "installer": "cmd /c native\\build.bat --with-server --installer",
-    "build:linux": "bash native/linux/build.sh",
-    "package:linux": "bash native/linux/package.sh",
-    "install-local:linux": "bash native/linux/install.sh",
     "build:macos": "bash native/macos/build.sh",
-    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File native\\create-shortcut.ps1"
+    "build": "bash native/macos/build.sh"
   },
   "pkg": {
     "assets": [
