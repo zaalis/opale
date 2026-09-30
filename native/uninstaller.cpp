@@ -43,4 +43,3 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     ShellExecuteW(nullptr, L"open", L"cmd.exe", command.c_str(), nullptr, SW_HIDE);
     return 0;
 }
-

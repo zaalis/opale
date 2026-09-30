@@ -358,4 +358,3 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     delete uiFamily; delete strongFamily;
     GdiplusShutdown(gdiplusToken); CoUninitialize(); return 0;
 }
-
