@@ -92,8 +92,17 @@ body.hide-properties .properties { display: none; }
 .property-empty { color: var(--text-3); }
 .pill { padding: 0 .6em; border-radius: 1em; background: var(--bg-3); line-height: 1.7; }
 
-.embed-image { max-width: 100%; height: auto; border-radius: 6px; vertical-align: middle; }
+.embed-image { max-width: 100%; height: auto; border-radius: 6px; vertical-align: text-bottom; }
 .embed-image.is-broken { min-width: 120px; min-height: 60px; border: 1px dashed var(--border-strong); opacity: .6; }
+/* Placement written after the image name: ![[photo.png|left|320]]. Left and
+   right let the following text flow around the picture, as in a word processor. */
+.embed-image.align-left { float: left; clear: left; margin: .25em 1.25em .6em 0; }
+.embed-image.align-right { float: right; clear: right; margin: .25em 0 .6em 1.25em; }
+.embed-image.align-center { display: block; margin: .5em auto; }
+/* A floated picture often reaches into the next blocks, which are positioned:
+   keep it above them so it can still be clicked. */
+.embed-image.align-left, .embed-image.align-right { position: relative; z-index: 1; }
+.markdown.reading::after, .embed-content::after { content: ""; display: block; clear: both; }
 .embed-audio, .embed-video { max-width: 100%; display: block; margin: .3em 0; border-radius: 6px; }
 .embed { display: block; }
 .embed-missing { display: inline; color: var(--text-3); }
@@ -122,6 +131,8 @@ body.hide-properties .properties { display: none; }
 .lp-block[data-type="list"] { margin-bottom: .12em; }
 .lp-block[data-type="list"] + .lp-block:not([data-type="list"]) { margin-top: .78em; }
 .lp-block[data-type="comment"] { opacity: .45; font-size: .85em; font-family: var(--font-mono); }
+/* A block being typed in stays beside a floated picture instead of jumping below it. */
+.lp-block.is-editing { display: flow-root; }
 .lp-block.is-editing::before { content: ""; position: absolute; left: -14px; top: 3px; bottom: 3px; width: 2px; border-radius: 2px; background: var(--accent); opacity: .7; }
 .lp-input {
   display: block; width: 100%; margin: 0; padding: 0; border: 0; outline: none; resize: none; overflow: hidden; background: transparent;
@@ -134,7 +145,34 @@ body.hide-properties .properties { display: none; }
 .lp-input.lp-h4 { font-size: 1.1em; font-weight: 700; line-height: 1.28; }
 .lp-input.lp-h5, .lp-input.lp-h6 { font-weight: 700; line-height: 1.28; }
 .lp-input.lp-mono { font-family: var(--font-mono); font-size: .86em; line-height: 1.5; padding: 12px 14px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; tab-size: 2; }
-.lp-tail { min-height: 120px; cursor: text; }
+.lp-tail { min-height: 120px; cursor: text; clear: both; }
+
+/* ---------------------------------------------------------- image layout */
+.markdown.live { position: relative; }
+/* The page takes the focus while an image is selected, for Suppr and Échap. */
+.note-scroll:focus-visible { outline: none; }
+.markdown.live img.embed-image:not(.is-broken) { cursor: grab; }
+.markdown.live [data-embed-path] img.embed-image { cursor: default; }
+img.embed-image.is-selected { outline: none; }
+img.embed-image.is-dragging { opacity: .35; }
+.img-frame { position: absolute; z-index: 5; pointer-events: none; border: 2px solid var(--accent); border-radius: 7px; margin: -2px 0 0 -2px; box-sizing: content-box; }
+.img-handle { position: absolute; width: 11px; height: 11px; pointer-events: auto; background: var(--bg-2); border: 2px solid var(--accent); border-radius: 3px; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); touch-action: none; }
+.img-handle[data-corner="nw"] { left: -7px; top: -7px; cursor: nwse-resize; }
+.img-handle[data-corner="ne"] { right: -7px; top: -7px; cursor: nesw-resize; }
+.img-handle[data-corner="sw"] { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.img-handle[data-corner="se"] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.img-toolbar { position: absolute; z-index: 6; display: flex; align-items: center; gap: 2px; padding: 3px; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 9px; box-shadow: var(--shadow); font-family: var(--font-ui); font-size: 12px; line-height: 1; white-space: nowrap; cursor: default; user-select: none; }
+.img-tool { min-width: 28px; height: 28px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-1); font: inherit; font-weight: 650; cursor: pointer; }
+.img-tool:hover { background: var(--bg-4); color: var(--text-0); }
+.img-tool.active { background: var(--accent-soft); color: var(--link); }
+.img-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.img-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--border-strong); }
+.img-size { min-width: 52px; padding: 0 6px; text-align: center; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.img-ghost { position: fixed; z-index: 1000; pointer-events: none; opacity: .8; border-radius: 6px; box-shadow: var(--shadow); }
+.img-drop-caret { position: fixed; z-index: 1000; width: 2px; pointer-events: none; background: var(--accent); border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.img-drop-caret.is-line { height: 3px; }
+body.is-dragging-image, body.is-dragging-image * { cursor: grabbing !important; user-select: none !important; }
+body.is-resizing-image, body.is-resizing-image * { user-select: none !important; }
 
 /* ------------------------------------------------------------ source editor */
 .source-editor { position: relative; font-family: var(--font-text); font-size: var(--font-size); line-height: 1.62; }

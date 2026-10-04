@@ -65,10 +65,28 @@ function connectEvents() {
 function installFileDrop() {
   let depth = 0;
   const hasFiles = (event) => event.dataTransfer && [...event.dataTransfer.types].includes('Files');
-  const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); };
-  document.addEventListener('dragenter', (event) => { if (hasFiles(event)) { depth++; document.body.classList.add('is-dropping'); } });
-  document.addEventListener('dragover', (event) => { if (hasFiles(event)) event.preventDefault(); });
-  document.addEventListener('dragleave', (event) => { if (hasFiles(event) && !--depth) clear(); });
+  // While a picture is dragged over the live view, show where it will land.
+  let preview = 0;
+  const clearPreview = () => { cancelAnimationFrame(preview); preview = 0; document.body.classList.remove('is-dropping-note'); const note = workspace.activeNote; if (note) note.clearDropPreview(); };
+  const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); clearPreview(); };
+  document.addEventListener('dragenter', (event) => {
+    if (!hasFiles(event)) return;
+    depth++;
+    document.body.classList.add('is-dropping');
+  });
+  document.addEventListener('dragover', (event) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    const note = workspace.activeNote;
+    if (!note || preview || event.target.closest('.tree, textarea')) { if (note && event.target.closest('.tree, textarea')) { note.clearDropPreview(); document.body.classList.remove('is-dropping-note'); } return; }
+    const { clientX: x, clientY: y } = event;
+    preview = requestAnimationFrame(() => { preview = 0; document.body.classList.toggle('is-dropping-note', note.previewDrop(x, y)); });
+  });
+  document.addEventListener('dragleave', (event) => {
+    if (!hasFiles(event)) return;
+    depth = Math.max(0, depth - 1);
+    if (!depth) { document.body.classList.remove('is-dropping'); clearPreview(); }
+  });
   document.addEventListener('drop', async (event) => {
     if (!hasFiles(event)) return;
     clear();
@@ -78,11 +96,13 @@ function installFileDrop() {
     if (!files.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
     const note = workspace.activeNote;
     if (!note) return explorer.importImages(files, explorer.targetFolder() || '');
+    // Decided now, before the upload: the page may move in the meantime.
+    const target = note.dropTargetAt(event.clientX, event.clientY);
     try {
       const paths = [];
       for (const file of files) paths.push(await uploadFile(file, note.path));
       await Promise.all(paths.map((path) => workspace.waitFor(path)));
-      note.insertAttachments(paths);
+      await note.insertAttachments(paths, { files, target });
       toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'} à la note.`);
     } catch (error) { console.error(error); toast(error.message || String(error), { kind: 'error' }); }
   });

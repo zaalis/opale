@@ -21,6 +21,10 @@ function select(key, label, options) {
   const input = h('select.select', { 'aria-label': label, onChange: () => settingsUi.change({ [key]: input.value }) }, options.map(([value, text]) => h('option', { value, selected: app.settings[key] === value }, text)));
   return input;
 }
+function numberSelect(key, label, options) {
+  const input = h('select.select', { 'aria-label': label, onChange: () => settingsUi.change({ [key]: Number(input.value) }) }, options.map(([value, text]) => h('option', { value: String(value), selected: Number(app.settings[key]) === value }, text)));
+  return input;
+}
 function text(key, label, placeholder) {
   const input = h('input.text-input', { type: 'text', value: app.settings[key] || '', placeholder: placeholder || '', spellcheck: false, 'aria-label': label, onChange: () => settingsUi.change({ [key]: input.value.trim() }) });
   return input;
@@ -42,6 +46,7 @@ const PANES = {
     row('Dossier des nouvelles notes', 'Utilisé avec « Dossier indiqué ».', text('newNoteFolder', 'Dossier des nouvelles notes', 'Boîte de réception')),
     row('Emplacement des pièces jointes', 'Où vont les images collées ou déposées.', select('attachmentLocation', 'Emplacement des pièces jointes', [['folder', 'Dossier indiqué ci-dessous'], ['current', 'Même dossier que la note'], ['root', 'Racine du coffre']])),
     row('Dossier des pièces jointes', '', text('attachmentFolder', 'Dossier des pièces jointes', 'Pièces jointes')),
+    row('Taille des images insérées', 'Largeur donnée à une image collée ou déposée dans une note. Une image plus petite garde sa taille.', numberSelect('imageWidth', 'Taille des images insérées', [[240, 'Petite (240 px)'], [400, 'Moyenne (400 px)'], [640, 'Grande (640 px)'], [0, 'Taille d’origine']])),
     row('Fichiers supprimés', 'Ce que devient un fichier supprimé.', select('trash', 'Fichiers supprimés', [['local', 'Corbeille du coffre (.trash)'], ['system', TEXT.trashOption], ['permanent', 'Suppression définitive']])),
     row('Mettre à jour les liens', 'Réécrit les liens quand une note est renommée ou déplacée.', toggle('autoUpdateLinks', 'Mettre à jour les liens')),
   ],
