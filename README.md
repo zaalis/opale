@@ -49,6 +49,10 @@ préservés lors de la désinstallation.
 - Graphe global et graphe local, sélecteur rapide (`Ctrl+O`), palette de commandes (`Ctrl+P`)
 - Propriétés (frontmatter), encadrés, tâches, tableaux, notes de bas de page, code coloré
 - Notes quotidiennes, modèles, pièces jointes collées ou déposées, thèmes clair/sombre, extraits CSS
+- Images mises en page comme dans un traitement de texte : déposées à l'endroit voulu avec une taille
+  prédéfinie, sélection au clic, poignées de redimensionnement, déplacement par glisser, placement
+  dans le texte, à gauche, centré ou à droite (texte autour). Tout est écrit dans le Markdown :
+  `![[photo.png|left|320]]`
 
 Non repris d'Obsidian : extensions communautaires, Sync/Publish, Canvas, rendu LaTeX,
 volets côte à côte.

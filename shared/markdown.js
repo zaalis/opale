@@ -133,12 +133,110 @@
     return match ? { width: match[1], height: match[2] } : null;
   }
 
+  // What follows the target of an image: "![[photo.png|Légende|left|300]]" or
+  // "![Légende|center|300](photo.png)". A size and a placement may come in any
+  // order; anything else is the alternative text. Obsidian reads the last part
+  // as the size, so writing the size last keeps notes compatible.
+  const IMAGE_ALIGNS = { left: 'left', gauche: 'left', right: 'right', droite: 'right', center: 'center', centre: 'center', inline: '' };
+  function imageOptions(label) {
+    const options = { alt: '', align: '', width: '', height: '' };
+    const rest = []; let sized = false; let placed = false;
+    for (const part of String(label || '').split(/\\?\|/)) {
+      const value = part.trim();
+      const size = !sized && sizeFrom(value);
+      if (size) { options.width = size.width; options.height = size.height || ''; sized = true; continue; }
+      const align = placed ? undefined : IMAGE_ALIGNS[value.toLowerCase()];
+      if (align !== undefined) { options.align = align; placed = true; continue; }
+      if (value) rest.push(value);
+    }
+    options.alt = rest.join('|');
+    return options;
+  }
+  function imageLabel(options, separator = '|') {
+    const parts = [];
+    if (options.alt) parts.push(options.alt);
+    if (options.align) parts.push(options.align);
+    if (options.width) parts.push(options.height ? `${options.width}x${options.height}` : String(options.width));
+    return parts.join(separator);
+  }
+  // Rewrite the placement and size of one image written in Markdown, keeping
+  // its target and its text. `change.width` null removes the size.
+  function rewriteImage(raw, change) {
+    const separator = raw.includes('\\|') ? '\\|' : '|';
+    const apply = (label) => {
+      const options = imageOptions(label);
+      if ('align' in change) options.align = change.align || '';
+      if ('width' in change) { options.width = change.width ? String(Math.round(change.width)) : ''; options.height = ''; }
+      return imageLabel(options, separator);
+    };
+    const wiki = /^!\[\[([^]*)\]\]$/.exec(raw);
+    if (wiki) {
+      const pipe = wiki[1].search(/\\?\|/);
+      const target = pipe < 0 ? wiki[1] : wiki[1].slice(0, pipe);
+      const label = apply(pipe < 0 ? '' : wiki[1].slice(pipe).replace(/^\\?\|/, ''));
+      return `![[${target}${label ? separator + label : ''}]]`;
+    }
+    const md = /^!\[([^\]]*)\](\([^]*\))$/.exec(raw);
+    if (md) return `![${apply(md[1])}]${md[2]}`;
+    return raw;
+  }
+  // Take the text [from, to) out of a note, tidying what is left: a line that
+  // held only the image disappears, and an image inside a sentence takes one of
+  // its surrounding spaces with it.
+  function removeSpan(text, from, to) {
+    const lineStart = text.lastIndexOf('\n', from - 1) + 1;
+    let lineEnd = text.indexOf('\n', to);
+    if (lineEnd < 0) lineEnd = text.length;
+    if (!text.slice(lineStart, from).trim() && !text.slice(to, lineEnd).trim()) {
+      let cut = lineStart; const after = lineEnd < text.length ? lineEnd + 1 : lineEnd;
+      if (after === text.length && cut > 0) cut--;
+      let out = text.slice(0, cut) + text.slice(after);
+      // Never leave more than one blank line where the image was.
+      let i = cut; let j = cut;
+      while (i > 0 && out[i - 1] === '\n') i--;
+      while (j < out.length && out[j] === '\n') j++;
+      if (j - i > 2 || i === 0) out = out.slice(0, i) + (i === 0 ? '' : j === out.length ? '\n' : '\n\n') + out.slice(j);
+      return out;
+    }
+    let a = from; let b = to;
+    if (/[ \t]/.test(text[a - 1] || '') && (/[ \t]/.test(text[b] || '') || b === lineEnd)) a--;
+    else if (a === lineStart && /[ \t]/.test(text[b] || '')) b++;
+    return text.slice(0, a) + text.slice(b);
+  }
+
+  // Put `embed` at `offset`: inside the sentence (with spaces as needed), or as a
+  // paragraph of its own. Returns the new text and where the embed starts.
+  function insertAt(text, offset, embed, paragraph) {
+    let before = text.slice(0, offset); let after = text.slice(offset);
+    if (paragraph) {
+      before = before.replace(/\s+$/, ''); after = after.replace(/^(?:[ \t]*\n)+/, '');
+      const head = before ? `${before}\n\n` : '';
+      return { text: `${head}${embed}${after ? `\n\n${after}` : '\n'}`, at: head.length };
+    }
+    const left = before && !/\s$/.test(before) ? ' ' : '';
+    const right = after && !/^\s/.test(after) ? ' ' : '';
+    return { text: before + left + embed + right + after, at: before.length + left.length };
+  }
+
+  // Move the image at [from, to) so that it lands at `offset` of the same text.
+  function moveSpan(text, from, to, offset, paragraph) {
+    const raw = text.slice(from, to);
+    // A marker keeps track of the destination while the source is removed.
+    const marked = `${text.slice(0, offset)}\u0000${text.slice(offset)}`;
+    const shift = offset <= from ? 1 : 0;
+    const removed = removeSpan(marked, from + shift, to + shift);
+    const at = removed.indexOf('\u0000');
+    return insertAt(removed.slice(0, at) + removed.slice(at + 1), at, raw, paragraph);
+  }
+
+  function imageTag(url, options, fallbackAlt, extra) {
+    return `<img class="embed-image${options.align ? ` align-${options.align}` : ''}" src="${escapeHtml(url)}" alt="${escapeHtml(options.alt || fallbackAlt || '')}"${attr('width', options.width)}${attr('height', options.height)}${extra}>`;
+  }
+
+
   function mediaHtml(path, label, ctx) {
     const kind = Meta.kindOf(path); const url = ctx.fileUrl ? ctx.fileUrl(path) : path;
-    if (kind === 'image') {
-      const size = sizeFrom(label);
-      return `<img class="embed-image" src="${escapeHtml(url)}" alt="${escapeHtml(size ? Meta.baseName(path) : (label || Meta.baseName(path)))}"${size ? attr('width', size.width) + attr('height', size.height) : ''} loading="lazy"${attr('data-path', path)}>`;
-    }
+    if (kind === 'image') return imageTag(url, imageOptions(label), Meta.baseName(path), ` loading="lazy"${attr('data-path', path)}`);
     if (kind === 'audio') return `<audio class="embed-audio" controls preload="none" src="${escapeHtml(url)}"></audio>`;
     if (kind === 'video') return `<video class="embed-video" controls preload="metadata" src="${escapeHtml(url)}"></video>`;
     return null;
@@ -158,16 +256,15 @@
   }
 
   function imageHtml(alt, url, title, ctx) {
-    const size = sizeFrom(alt.includes('|') ? alt.slice(alt.lastIndexOf('|') + 1) : '');
-    const label = size ? alt.slice(0, alt.lastIndexOf('|')) : alt;
-    const sized = size ? attr('width', size.width) + attr('height', size.height) : '';
+    const options = imageOptions(alt);
+    const label = options.alt;
     if (/^(https?:|data:image\/(png|jpe?g|gif|webp|avif);)/i.test(url)) {
-      return `<img class="embed-image" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${attr('title', title)}${sized} loading="lazy" referrerpolicy="no-referrer">`;
+      return imageTag(url, options, '', `${attr('title', title)} loading="lazy" referrerpolicy="no-referrer"`);
     }
     if (SCHEME_RE.test(url)) return escapeHtml(label);
     const path = ctx.resolve ? ctx.resolve(safeDecode(url.split('#')[0])) : null;
     if (!path) return `<span class="embed embed-missing">${escapeHtml(label || url)}</span>`;
-    return mediaHtml(path, size ? `${size.width}${size.height ? 'x' + size.height : ''}` : label, ctx) || `<a class="internal-link" data-path="${escapeHtml(path)}" data-href="${escapeHtml(url)}">${escapeHtml(label || Meta.baseName(path))}</a>`;
+    return mediaHtml(path, alt, ctx) || `<a class="internal-link" data-path="${escapeHtml(path)}" data-href="${escapeHtml(url)}">${escapeHtml(label || Meta.baseName(path))}</a>`;
   }
 
   function linkHtml(label, url, title, ctx) {
@@ -546,5 +643,5 @@
     return renderTokens(tokens, context) + footnotesHtml(context);
   }
 
-  return { escapeHtml, highlight, renderInline, plainText, tokenize, liveBlocks, renderToken, renderTokens, render };
+  return { escapeHtml, highlight, renderInline, plainText, tokenize, liveBlocks, renderToken, renderTokens, render, imageOptions, imageLabel, rewriteImage, removeSpan, insertAt, moveSpan };
 });

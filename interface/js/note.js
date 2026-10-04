@@ -6,7 +6,8 @@
 // is saved shortly after each change.
 import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
-import { attachEditing, caretPoint, closeSuggest } from './editing.js';
+import { attachEditing, caretPoint, closeSuggest, embedFor, uploadFile } from './editing.js';
+import { ImageLayer, isImageFile, pickImageFiles } from './images.js';
 import { bindNoteInteractions, decorate } from './renderer.js';
 
 const EDITABLE_JOIN = new Set(['paragraph', 'heading', 'list', 'blockquote']);
@@ -64,6 +65,7 @@ export class NoteView {
     this.blocks = []; this.active = null; this._lines = null;
     this.saving = false; this.pendingMtime = null; this.conflict = false;
     this.saveSoon = debounce(() => this.save(), 650);
+    this.images = new ImageLayer(this);
     this.build();
     this.ready = this.load(options);
   }
@@ -88,7 +90,27 @@ export class NoteView {
     this.scroller = h('div.note-scroll', { tabIndex: -1 }, this.sizer);
     this.el = h('div.view.note-view', this.header, this.banner, this.scroller);
     bindNoteInteractions(this.body, this);
-    this.body.addEventListener('mousedown', (event) => { if (this.mode === 'live') this.onLiveMouseDown(event); });
+    this.body.addEventListener('mousedown', (event) => {
+      if (this.mode !== 'live') return;
+      if (this.images.onMouseDown(event)) return;
+      this.onLiveMouseDown(event);
+    });
+    this.body.addEventListener('dblclick', (event) => { if (this.mode === 'live') this.images.onDoubleClick(event); });
+    // Keys and pastes that reach the page itself rather than a block being
+    // typed in: a selected image, undo after moving one, a pasted picture.
+    this.scroller.addEventListener('keydown', (event) => {
+      if (event.defaultPrevented || event.target.closest('textarea, input') || event.target.isContentEditable) return;
+      if (this.images.onKey(event)) return;
+      if (this.mode !== 'reading') this.undoKeys(event, false);
+    });
+    this.scroller.addEventListener('paste', (event) => {
+      if (this.mode !== 'live' || event.target.closest('textarea, input') || event.target.isContentEditable) return;
+      const files = [...((event.clipboardData && event.clipboardData.files) || [])].filter(isImageFile);
+      if (!files.length) return;
+      event.preventDefault();
+      const selected = this.images.selected && this.images.entryAt(this.images.selected.start);
+      this.images.insertFiles(files, selected ? { offset: selected.end, paragraph: false } : null);
+    });
     this.body.addEventListener('contextmenu', (event) => this.contextMenu(event));
     this.scroller.addEventListener('mousedown', (event) => {
       // Clicking the empty page under the note continues it.
@@ -132,6 +154,7 @@ export class NoteView {
   lines() { if (!this._lines) this._lines = this.content.split('\n'); return this._lines; }
 
   render() {
+    this.images.reset();
     this.active = null; this.sourceArea = null;
     closeSuggest();
     this.updateHeader();
@@ -164,6 +187,7 @@ export class NoteView {
 
   // ------------------------------------------------------------------- live
   renderLive() {
+    this.images.reset();
     this.blocks = Markdown.liveBlocks(this.content);
     const ctx = store.renderContext(this.path, { live: true, footnotes: { order: [], defs: {} } });
     const container = h('div.markdown.live');
@@ -359,20 +383,55 @@ export class NoteView {
   activeTextarea() { return this.mode === 'source' ? this.sourceArea : this.active ? this.active.textarea : null; }
 
   // Used for a file dropped anywhere over the application, not only over the
-  // textarea. The normal editor path is retained when there is a caret; in a
-  // rendered note we append embeds without forcing the user into source mode.
-  insertAttachments(paths) {
-    const text = paths.map((path) => `![[${Meta.baseName(path)}]]`).join('\n');
-    if (!text) return;
+  // textarea. In the live view the files land where they were dropped
+  // (`options.target`, from dropTargetAt); otherwise at the caret if there is
+  // one, or at the end of the note.
+  async insertAttachments(paths, options = {}) {
+    const files = options.files || [];
+    const embeds = await Promise.all(paths.map((path, index) => embedFor(path, files[index])));
+    if (!embeds.length) return;
+    if (this.mode === 'live' && (options.target || !this.active)) { this.images.insertEmbeds(embeds, options.target || null); return; }
+    this.insertText(embeds.join(' '));
+  }
+
+  // At the caret when there is one, otherwise as a new paragraph at the end.
+  insertText(text) {
     const textarea = this.activeTextarea();
     if (textarea) {
+      const { selectionStart: from, selectionEnd: to, value } = textarea;
+      const left = from > 0 && !/\s/.test(value[from - 1]) ? ' ' : '';
+      const right = to < value.length && !/\s/.test(value[to]) ? ' ' : '';
       textarea.focus();
-      textarea.setRangeText(`${text}\n`, textarea.selectionStart, textarea.selectionEnd, 'end');
+      textarea.setRangeText(left + text + right, from, to, 'end');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
     this.setContent(this.content.trimEnd() ? `${this.content.trimEnd()}\n\n${text}\n` : `${text}\n`);
     if (this.mode !== 'source') this.render();
+  }
+
+  // Where files dropped at (x, y) would go in the live view, or null.
+  dropTargetAt(x, y) {
+    if (this.mode !== 'live' || !this.loaded) return null;
+    const box = this.scroller.getBoundingClientRect();
+    if (x < box.left || x > box.right || y < box.top || y > box.bottom) return null;
+    return this.images.dropTarget(x, y);
+  }
+  previewDrop(x, y) { const target = this.dropTargetAt(x, y); this.images.showCaret(target); return !!target; }
+  clearDropPreview() { this.images.hideCaret(); }
+
+  // "Insert an image": at `target` when given (right-click in the live view),
+  // otherwise at the caret while typing, or at the end of the note.
+  async chooseImages(target = null) {
+    if (this.mode === 'reading') this.setMode(this.editMode);
+    const files = (await pickImageFiles()).filter(isImageFile);
+    if (!files.length) return;
+    if (this.mode === 'live' && (target || !this.active)) { this.images.insertFiles(files, target); return; }
+    try {
+      const embeds = [];
+      for (const file of files) { const path = await uploadFile(file, this.path); embeds.push(await embedFor(path, file)); }
+      this.insertText(embeds.join(' '));
+    } catch (error) { reportError(error); }
   }
 
   // ----------------------------------------------------------- content flow
@@ -396,15 +455,17 @@ export class NoteView {
     this.lastPush = now;
   }
 
-  undoKeys(event) {
+  // `caret` false: undo from the page itself (after moving an image, say)
+  // redraws it instead of opening the changed block for typing.
+  undoKeys(event, caret = true) {
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return false;
     const key = event.key.toLowerCase();
-    if (key === 'z' && !event.shiftKey) { event.preventDefault(); this.travel(-1); return true; }
-    if (key === 'y' || (key === 'z' && event.shiftKey)) { event.preventDefault(); this.travel(1); return true; }
+    if (key === 'z' && !event.shiftKey) { event.preventDefault(); this.travel(-1, caret); return true; }
+    if (key === 'y' || (key === 'z' && event.shiftKey)) { event.preventDefault(); this.travel(1, caret); return true; }
     return false;
   }
 
-  travel(step) {
+  travel(step, caret = true) {
     const target = this.history[this.historyIndex + step];
     if (!target) return;
     const before = this.content;
@@ -419,6 +480,12 @@ export class NoteView {
     if (this.mode === 'source' && this.sourceArea) {
       this.renderSource();
       this.sourceArea.focus(); this.sourceArea.setSelectionRange(at, at);
+    } else if (this.mode === 'live' && !caret) {
+      this.active = null;
+      const top = this.scroller.scrollTop;
+      this.renderLive();
+      this.scroller.scrollTop = top;
+      this.scroller.focus({ preventScroll: true });
     } else if (this.mode === 'live') {
       this.active = null;
       this.renderLive();
@@ -585,6 +652,7 @@ export class NoteView {
 
   // Right-click in the note: clipboard actions while typing, link actions on a link.
   contextMenu(event) {
+    if (this.mode === 'live' && this.images.contextMenu(event)) return undefined;
     event.preventDefault();
     const textarea = event.target.closest('textarea');
     const link = event.target.closest('a.internal-link');
@@ -622,6 +690,10 @@ export class NoteView {
       ]);
     }
     if (selected) return showMenu(event.clientX, event.clientY, [{ label: 'Copier', icon: 'copy', run: () => navigator.clipboard.writeText(selected).then(() => toast('Copié')), hint: 'Ctrl+C' }]);
+    if (this.mode === 'live') {
+      const target = this.images.dropTarget(event.clientX, event.clientY);
+      return showMenu(event.clientX, event.clientY, [{ label: 'Insérer une image ici…', icon: 'image', run: () => this.chooseImages(target) }]);
+    }
     return undefined;
   }
 

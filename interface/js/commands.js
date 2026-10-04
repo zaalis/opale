@@ -177,6 +177,7 @@ export const commands = {
     register('graph:open', 'Ouvrir le graphe', () => ws.openGraph(), { hotkey: 'Ctrl+G' });
     register('daily:open', 'Ouvrir la note du jour', openDaily);
     register('template:insert', 'Insérer un modèle', insertTemplate);
+    register('note:insert-image', 'Insérer une image…', () => note().chooseImages(), { when: hasNote });
     register('note:random', 'Ouvrir une note au hasard', () => {
       const current = note() && note().path;
       const pool = store.notes().filter((entry) => entry.path !== current);
