@@ -158,6 +158,8 @@ function onKeydown(event) {
   // Undo and redo reach the open note wherever the focus is, except in a
   // field that has its own (search box, title, dialog).
   const key = event.key.toLowerCase();
+  const board = app.workspace.activeView;
+  if (board && board.type === 'board' && board.input.ownsKeys() && (event.ctrlKey || event.metaKey) && ['g', 'l', 'd', 'z', 'y', '[', ']', '0', '1'].includes(key)) return;
   if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y') && !isTextInput(document.activeElement) && !topModal()) {
     const open = note();
     if (open && open.mode !== 'reading' && open.undoKeys(event, false)) return;
@@ -179,6 +181,7 @@ export const commands = {
   init() {
     const ws = app.workspace;
     register('note:new', 'Nouvelle note', () => app.explorer.newNote(undefined), { hotkey: 'Ctrl+N' });
+    register('board:new', 'Nouveau moodboard', () => app.explorer.newBoard());
     register('switcher:open', 'Ouvrir une note (sélecteur rapide)', openSwitcher, { hotkey: 'Ctrl+O' });
     register('palette:open', 'Palette de commandes', openPalette, { hotkey: 'Ctrl+P', hidden: true });
     register('search:open', 'Rechercher dans toutes les notes', () => app.panels.searchFor(''), { hotkey: 'Ctrl+Maj+F' });

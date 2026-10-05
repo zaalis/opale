@@ -5,6 +5,7 @@ import { store } from './store.js';
 import { keyLabel, TEXT } from './platform.js';
 import { NoteView } from './note.js';
 import { GraphView } from './graph.js';
+import { BoardView } from './board/view.js';
 
 let nextId = 1;
 
@@ -44,6 +45,7 @@ class EmptyView {
       h('div.empty-logo', { html: '<svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true"><defs><linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset=".5" stop-color="#f59e0b"/><stop offset="1" stop-color="#c2410c"/></linearGradient></defs><path d="M32 4 54 20 46 52 18 52 10 20Z" fill="url(#og)" opacity=".92"/><path d="M32 4 38 24 54 20M38 24 46 52M38 24 24 30 10 20M24 30 18 52M24 30 32 4" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.4" stroke-linejoin="round"/></svg>' }),
       h('div.empty-actions',
         action('Créer une note', 'Ctrl+N', () => app.commands.run('note:new')),
+        action('Créer un moodboard', '', () => app.commands.run('board:new')),
         action('Ouvrir une note', 'Ctrl+O', () => app.commands.run('switcher:open')),
         action('Note du jour', '', () => app.commands.run('daily:open')),
         action('Voir le graphe', 'Ctrl+G', () => app.commands.run('graph:open')),
@@ -53,7 +55,7 @@ class EmptyView {
   destroy() {}
 }
 
-function entryFor(path) { return { type: Meta.kindOf(path) === 'note' ? 'note' : 'file', path }; }
+function entryFor(path) { const kind = Meta.kindOf(path); return { type: ['note', 'board'].includes(kind) ? kind : 'file', path }; }
 function titleOf(entry) {
   if (entry.type === 'graph') return 'Graphe';
   if (entry.type === 'empty') return 'Nouvel onglet';
@@ -83,6 +85,7 @@ export const workspace = {
 
   makeView(entry, options) {
     if (entry.type === 'note') return new NoteView(entry.path, options);
+    if (entry.type === 'board') return new BoardView(entry.path, options);
     if (entry.type === 'graph') return new GraphView();
     if (entry.type === 'file') return new FileView(entry.path);
     return new EmptyView();
@@ -112,6 +115,7 @@ export const workspace = {
     const tab = this.tabs.find((item) => item.id === id);
     if (!tab) return;
     const previous = this.activeNote;
+    if (this.activeView && this.activeView !== tab.view && this.activeView.onHide) this.activeView.onHide();
     if (previous && previous.active && tab.view !== previous) previous.commitActive();
     this.activeId = id;
     for (const item of this.tabs) item.view.el.hidden = item.id !== id;
@@ -135,12 +139,13 @@ export const workspace = {
     if (!tab) return;
     const entry = this.current(tab);
     document.title = `${titleOf(entry)} — ${app.vault ? app.vault.name : ''} — Opale`;
-    api('/api/active', { method: 'POST', body: { path: entry.type === 'note' ? entry.path : '' } }).catch(() => {});
+    api('/api/active', { method: 'POST', body: { path: ['note', 'board'].includes(entry.type) ? entry.path : '' } }).catch(() => {});
   },
 
   openPath(path, options = {}) {
     if (!store.has(path)) return reportError(new Error(`« ${path} » est introuvable.`));
     const entry = entryFor(path);
+    if (options.asText) entry.type = 'note';
     const viewOptions = { mode: options.mode, subpath: options.subpath, line: options.line, focusTitle: options.focusTitle };
     const active = this.active;
     const jump = (view) => {
@@ -402,10 +407,11 @@ export const workspace = {
       if (renamed.has(view.path)) view.setPath(renamed.get(view.path));
       if (removed.has(view.path)) {
         if (view.type === 'note') { view.saveSoon.cancel(); view.saved = view.content; }
+        if (view.type === 'board') { clearTimeout(view.saveTimer); view.unsaved = false; view.readOnly = true; }
         this.closeTab(tab.id);
         continue;
       }
-      if (view.type === 'note' && upserts.has(view.path)) view.onFileChanged(upserts.get(view.path));
+      if (['note', 'board'].includes(view.type) && upserts.has(view.path)) view.onFileChanged(upserts.get(view.path));
     }
     this.renderTabs();
     if (this.activeView && this.activeView.updateHeader) this.activeView.updateHeader();
@@ -414,7 +420,7 @@ export const workspace = {
 
   persistNow() {
     if (!app.vault) return;
-    const tabs = this.tabs.map((tab) => { const entry = this.current(tab); return { type: entry.type, path: entry.path, mode: tab.view.type === 'note' ? tab.view.mode : undefined }; });
+    const tabs = this.tabs.map((tab) => { const entry = this.current(tab); return { type: entry.type, path: entry.path, mode: tab.view.type === 'note' ? tab.view.mode : undefined, camera: tab.view.type === 'board' ? tab.view.camera : undefined }; });
     const state = { tabs, active: this.tabs.findIndex((tab) => tab.id === this.activeId), layout: app.layout.state(), explorer: app.explorer.state() };
     api('/api/workspace', { method: 'PUT', body: state }).catch(() => {});
   },
@@ -426,7 +432,7 @@ export const workspace = {
     for (const item of tabs) {
       if (item.type === 'graph') this.createTab({ type: 'graph' }, {}, false);
       else if (item.type === 'empty') this.createTab({ type: 'empty' }, {}, false);
-      else if (item.path && store.has(item.path)) this.createTab(entryFor(item.path), { mode: item.mode }, false);
+      else if (item.path && store.has(item.path)) this.createTab(item.type === 'note' ? { type: 'note', path: item.path } : entryFor(item.path), { mode: item.mode, camera: item.camera }, false);
     }
     if (pendingOpen && store.has(pendingOpen)) { this.openPath(pendingOpen, { newTab: this.tabs.length > 0 }); return; }
     if (!this.tabs.length) {
@@ -439,7 +445,7 @@ export const workspace = {
     this.activate(wanted.id);
   },
 
-  async flushAll() { await Promise.all(this.tabs.map((tab) => (tab.view.type === 'note' ? tab.view.flush() : null))); },
+  async flushAll() { await Promise.all(this.tabs.map((tab) => (tab.view.flush ? tab.view.flush() : null))); },
 };
 
 app.workspace = workspace;

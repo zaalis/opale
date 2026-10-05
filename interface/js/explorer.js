@@ -22,6 +22,7 @@ export const explorer = {
     this.el = h('div.panel.explorer',
       h('div.panel-toolbar',
         iconButton('file-plus', 'Nouvelle note (Ctrl+N)', () => this.newNote(this.targetFolder())),
+        iconButton('template', 'Nouveau moodboard', () => this.newBoard(this.targetFolder())),
         iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder() || '')),
         iconButton('folder-plus', 'Nouveau dossier', () => this.newFolder(this.targetFolder())),
         iconButton('sort', 'Ordre de tri', (event) => this.sortMenu(event)),
@@ -207,6 +208,7 @@ export const explorer = {
   menu(x, y, path, isFolder) {
     if (!path) {
       return showMenu(x, y, [
+        { label: 'Nouveau moodboard', icon: 'template', run: () => this.newBoard('') },
         { label: 'Nouvelle note', icon: 'file-plus', run: () => this.newNote('') },
         { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages('') },
         { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder('') },
@@ -216,6 +218,7 @@ export const explorer = {
     }
     const bookmarked = app.bookmarks.includes(path);
     return showMenu(x, y, [
+      isFolder ? { label: 'Nouveau moodboard', icon: 'template', run: () => this.newBoard(path) } : null,
       isFolder ? { label: 'Nouvelle note', icon: 'file-plus', run: () => this.newNote(path) } : { label: 'Ouvrir dans un nouvel onglet', icon: 'plus', run: () => app.workspace.openPath(path, { newTab: true }) },
       isFolder ? { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages(path) } : null,
       isFolder ? { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder(path) } : { label: 'Dupliquer', icon: 'copy', run: () => this.duplicate(path), disabled: Meta.kindOf(path) !== 'note' },
@@ -256,6 +259,16 @@ export const explorer = {
       this.selected = paths[paths.length - 1]; this.reveal(this.selected);
       app.workspace.openPath(paths[0], { newTab: paths.length > 1 });
       toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'}${folder ? ` dans « ${folder} »` : ' à la racine du coffre'}.`);
+    } catch (error) { reportError(error); }
+  },
+
+  async newBoard(folder = this.targetFolder()) {
+    try {
+      const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas' } });
+      await app.workspace.waitFor(created.path);
+      this.selected = created.path;
+      this.reveal(created.path);
+      app.workspace.openPath(created.path);
     } catch (error) { reportError(error); }
   },
 
