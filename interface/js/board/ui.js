@@ -129,7 +129,15 @@ export class BoardUi {
       { label: 'Tout afficher', run: () => v.zoomToFit() },
     ]);
   }
-  addElements(elements) { const v = this.view; if (v.readOnly) return; v.change(() => { for (const el of elements) v.add(el, el.kind === 'frame' ? 0 : v.doc.elements.length); }); v.select(elements.map((el) => el.id)); v.stage.focus(); }
+  addElements(elements, options = {}) {
+    const v = this.view;
+    if (v.readOnly || !elements.length) return [];
+    v.change(() => { for (const el of elements) v.add(el, el.kind === 'frame' ? 0 : v.doc.elements.length); });
+    if (options.select !== false) v.select(elements.map((el) => el.id));
+    else v.clearSelection();
+    v.stage.focus();
+    return elements;
+  }
   placeItem(item, at = this.view.viewCenter()) {
     if (this.view.readOnly) return;
     if (item.kind === 'shape' && this.view.selected.length === 1 && this.view.selected[0].kind === 'shape') { this.view.mutate(this.view.selected[0], (d) => { d.shape = item.data.shape; }); return; }
@@ -189,20 +197,20 @@ export class BoardUi {
     if (el.data.file) app.workspace.openPath(el.data.file, { newTab: true });
     else if (/^https?:\/\//i.test(el.data.url)) window.open(el.data.url, '_blank', 'noopener,noreferrer');
   }
-  async addVaultFiles(paths, at) {
+  async addVaultFiles(paths, at, options = {}) {
     const elements = paths.filter((path) => store.has(path)).map((path, i) => { const kind = Meta.kindOf(path); return Board.create(['image', 'note', 'video'].includes(kind) ? kind : 'file', { x: at.x + i * 36, y: at.y + i * 36, data: { file: path } }); });
-    this.addElements(elements);
+    return this.addElements(elements, options);
   }
   async dropFiles(files, at) {
     if (this.view.readOnly) return;
     try {
       const paths = [];
       for (const file of files) {
-        if (/\.(drawio|xml)$/i.test(file.name)) { const result = await window.OpaleBoardDrawio.importText(await file.text(), at); this.importResult(result); }
-        else if (/\.(mmd|mermaid)$/i.test(file.name)) this.importMermaid(await file.text(), at);
+        if (/\.(drawio|xml)$/i.test(file.name)) { const result = await window.OpaleBoardDrawio.importText(await file.text(), at); this.importResult(result, { select: false }); }
+        else if (/\.(mmd|mermaid)$/i.test(file.name)) this.importMermaid(await file.text(), at, { select: false });
         else { const path = await uploadFile(file, this.view.path); await app.workspace.waitFor(path); paths.push(path); }
       }
-      await this.addVaultFiles(paths, at);
+      await this.addVaultFiles(paths, at, { select: false });
     } catch (error) { reportError(error); }
   }
   pasteText(text, at) {
@@ -210,8 +218,8 @@ export class BoardUi {
     if (/^https?:\/\/\S+$/i.test(text.trim())) this.placeItem({ kind: 'link', data: { url: text.trim() } }, at);
     else this.placeItem({ kind: 'mdcard', data: { text } }, at);
   }
-  importResult(result) { if (result.error) return toast(result.error, { kind: 'error' }); this.addElements(result.elements || []); if (result.warnings && result.warnings.length) toast(result.warnings.join(' · '), { duration: 9000 }); }
-  importMermaid(text, at = this.view.viewCenter()) { this.importResult(window.OpaleBoardMermaid.toElements(text, at)); }
+  importResult(result, options = {}) { if (result.error) return toast(result.error, { kind: 'error' }); this.addElements(result.elements || [], options); if (result.warnings && result.warnings.length) toast(result.warnings.join(' · '), { duration: 9000 }); }
+  importMermaid(text, at = this.view.viewCenter(), options = {}) { this.importResult(window.OpaleBoardMermaid.toElements(text, at), options); }
   importDialog() {
     if (this.view.readOnly) return;
     const text = h('textarea.text-input.board-source', { 'aria-label': 'Source Mermaid ou draw.io', placeholder: 'flowchart LR\n  A[Idée] --> B[Projet]' });
@@ -296,7 +304,12 @@ export class BoardUi {
   showAnchors(el, side) { const g = this.effect('anchors'); g.replaceChildren(); if (el) for (const dir of Board.SIDES) { const p = Board.sidePoint(el, dir); g.append(svg('circle', { cx: p.x, cy: p.y, r: 5 / this.view.camera.k, class: dir === side ? 'board-anchor active' : 'board-anchor' })); } }
   showEraser(event) { const g = this.effect('eraser'); g.replaceChildren(); if (event) { const p = this.view.toWorld(event.clientX, event.clientY); g.append(svg('circle', { cx: p.x, cy: p.y, r: this.view.input.options.eraserSize / this.view.camera.k, class: 'board-eraser' })); } }
   showDropLine(line) { const g = this.effect('dropLine'); g.replaceChildren(); if (line) { const r = this.view.stageRect(); const a = this.view.toWorld(line.x ?? line.left, line.y ?? line.top); g.append(svg('line', { x1: a.x, y1: a.y, x2: a.x + (line.w ?? line.width ?? 120) / this.view.camera.k, y2: a.y, class: 'board-guide' })); } }
+  clearTransient() {
+    this.preview.replaceChildren();
+    this.guides = this.marquee = this.lasso = this.anchors = this.eraser = this.dropLine = null;
+    if (this.angle) this.angle.hidden = true;
+  }
   liveStroke(color, width, highlighter) { const path = svg('path', { fill: Board.color(color, '#1f2937'), opacity: highlighter ? 0.38 : 1 }); this.preview.append(path); return { update: (d) => path.setAttribute('d', d), remove: () => path.remove() }; }
   revealIfNeeded(box) { const r = this.view.stageRect(); const p = this.view.toScreen(box.x, box.y); if (p.x < r.left || p.y < r.top || p.x > r.right || p.y > r.bottom) this.view.zoomToBox(box); }
-  destroy() { for (const modal of [...this.modals]) modal.close(); }
+  destroy() { this.clearTransient(); for (const modal of [...this.modals]) modal.close(); }
 }

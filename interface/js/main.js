@@ -68,7 +68,11 @@ function installFileDrop() {
   // While a picture is dragged over the live view, show where it will land.
   let preview = 0;
   const clearPreview = () => { cancelAnimationFrame(preview); preview = 0; document.body.classList.remove('is-dropping-note'); const note = workspace.activeNote; if (note) note.clearDropPreview(); };
-  const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); clearPreview(); };
+  const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); clearPreview(); for (const target of document.querySelectorAll('.tree.drop-target, .tree .drop-target')) target.classList.remove('drop-target'); };
+  // Child views handle their own drops and may stop propagation.
+  document.addEventListener('drop', clear, true);
+  document.addEventListener('dragend', clear, true);
+  window.addEventListener('blur', clear);
   document.addEventListener('dragenter', (event) => {
     if (!hasFiles(event)) return;
     depth++;

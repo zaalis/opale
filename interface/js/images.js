@@ -167,7 +167,7 @@ export class ImageLayer {
   }
 
   // The live view is about to be redrawn: what we hold points at old nodes.
-  reset() { this.clear(); this.hideCaret(); }
+  reset() { if (this.cancelMove) this.cancelMove(); this.clear(); this.hideCaret(); }
 
   place() {
     const selected = this.selected; const live = this.view.liveEl;
@@ -354,9 +354,10 @@ export class ImageLayer {
   }
 
   startMove(event, entry) {
+    if (this.cancelMove) this.cancelMove();
     const startX = event.clientX; const startY = event.clientY;
     const img = entry.img;
-    let moving = false; let target = null; let pointer = null; let frame = 0;
+    let moving = false; let target = null; let pointer = null; let frame = 0; let finished = false;
     const scroller = this.view.scroller;
     // Holding the picture near the top or bottom edge scrolls the note.
     const scroll = () => {
@@ -383,9 +384,13 @@ export class ImageLayer {
       if (!frame) frame = requestAnimationFrame(scroll);
     };
     const finish = (apply) => {
+      if (finished) return;
+      finished = true;
+      this.cancelMove = null;
       document.removeEventListener('mousemove', move);
       document.removeEventListener('mouseup', up);
       document.removeEventListener('keydown', key, true);
+      window.removeEventListener('blur', cancel);
       if (frame) cancelAnimationFrame(frame);
       if (!moving) return;
       const from = this.ghost ? this.ghost.getBoundingClientRect() : null;
@@ -397,10 +402,13 @@ export class ImageLayer {
       else if (from) this.land(entry.start, from);
     };
     const up = () => finish(true);
+    const cancel = () => finish(false);
     const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); } };
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
     document.addEventListener('keydown', key, true);
+    window.addEventListener('blur', cancel);
+    this.cancelMove = cancel;
   }
 
   beginGhost(img) {

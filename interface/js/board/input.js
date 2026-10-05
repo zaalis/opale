@@ -26,6 +26,7 @@ export class Input {
     this.handlers = [
       [stage, 'pointerdown', (e) => this.down(e)],
       [stage, 'pointermove', (e) => this.hover(e)],
+      [stage, 'pointerleave', () => { if (!this.stop) view.ui.clearTransient(); }],
       [stage, 'wheel', (e) => this.wheel(e), { passive: false }],
       [stage, 'dblclick', (e) => this.dblclick(e)],
       [stage, 'contextmenu', (e) => this.contextmenu(e)],
@@ -36,11 +37,11 @@ export class Input {
       [document, 'paste', (e) => this.paste(e)],
       [document, 'copy', (e) => this.copy(e, false)],
       [document, 'cut', (e) => this.copy(e, true)],
-      [window, 'blur', () => { this.space = false; }],
+      [window, 'blur', () => { this.space = false; this.stop && this.stop(); view.ui.clearTransient(); }],
     ];
     for (const [target, type, fn, options] of this.handlers) target.addEventListener(type, fn, options);
   }
-  destroy() { for (const [target, type, fn, options] of this.handlers) target.removeEventListener(type, fn, options); if (this.stop) this.stop(); }
+  destroy() { for (const [target, type, fn, options] of this.handlers) target.removeEventListener(type, fn, options); if (this.stop) this.stop(); this.view.ui.clearTransient(); }
 
   get active() { return app.workspace.activeView === this.view && this.view.loaded && !this.view.el.hidden; }
   // Keys and clipboard belong to the board unless something else has the focus.
@@ -104,7 +105,7 @@ export class Input {
         return;
       }
       if (!view.selection.has(el.id)) view.select([el.id]);
-      this.move(event, el);
+      if (!view.readOnly) this.move(event, el);
       return;
     }
     event.preventDefault();
@@ -113,9 +114,11 @@ export class Input {
 
   // Follow the pointer until it is released. `move(e)` and `up(e, moved)`.
   track(event, move, up, options = {}) {
+    if (this.stop) this.stop();
     const view = this.view;
     const startX = event.clientX; const startY = event.clientY;
-    let moved = false; let last = event;
+    let moved = false; let last = event; let finished = false;
+    this.edgePointer = event.pointerId;
     const target = view.stage;
     try { target.setPointerCapture(event.pointerId); } catch {}
     const onMove = (e) => {
@@ -127,14 +130,19 @@ export class Input {
       if (options.edgePan) this.edgePan(e);
     };
     const finish = (e, cancelled) => {
+      if (finished) return;
+      finished = true;
       target.removeEventListener('pointermove', onMove);
       target.removeEventListener('pointerup', onUp);
       target.removeEventListener('pointercancel', onCancel);
+      target.removeEventListener('lostpointercapture', onCancel);
+      window.removeEventListener('pointerup', onUp);
       document.removeEventListener('keydown', onKey, true);
       cancelAnimationFrame(this.edgeFrame); this.edgeFrame = 0;
       try { target.releasePointerCapture(event.pointerId); } catch {}
       this.stop = null;
-      up(e || last, moved, cancelled);
+      try { up(e || last, moved, cancelled); }
+      finally { view.ui.clearTransient(); }
     };
     const onUp = (e) => { if (e.pointerId === event.pointerId) finish(e, false); };
     const onCancel = (e) => { if (e.pointerId === event.pointerId) finish(e, true); };
@@ -142,6 +150,8 @@ export class Input {
     target.addEventListener('pointermove', onMove);
     target.addEventListener('pointerup', onUp);
     target.addEventListener('pointercancel', onCancel);
+    target.addEventListener('lostpointercapture', onCancel);
+    window.addEventListener('pointerup', onUp);
     document.addEventListener('keydown', onKey, true);
     this.stop = () => finish(last, true);
   }
@@ -222,6 +232,7 @@ export class Input {
       }
       if (cancelled) { view.history.cancel(); view.reindex(); view.sync(); return; }
       if (view.history.commit()) { view.markDirty(); view.ui.updateHistory(); }
+      view.clearSelection();
     }, { edgePan: true });
   }
 
@@ -610,7 +621,7 @@ export class Input {
       view.ui.showDropLine(null);
       if (ghost) ghost.remove();
       source.classList.remove('is-dragged');
-      if (!moved) { const el = view.byId.get(source.closest('.b-el').dataset.id); if (el && source.dataset.edit && view.selection.has(el.id)) view.editField(el, source.dataset.edit); return; }
+      if (!moved && !cancelled) { const node = source.closest('.b-el'); const el = node && view.byId.get(node.dataset.id); if (el && source.dataset.edit && view.selection.has(el.id)) view.editField(el, source.dataset.edit); return; }
       if (!cancelled && target) handlers.drop(target);
     });
     return true;
@@ -879,14 +890,18 @@ export class Input {
     const at = view.toWorld(event.clientX, event.clientY);
     const transfer = event.dataTransfer;
     if (!transfer || view.readOnly) return;
+    // A native drop is complete when the new item lands. Do not leave its
+    // selection frame and resize handles floating on the board afterwards.
+    view.clearSelection();
+    view.ui.clearTransient();
     const item = transfer.getData(MARK);
     if (item) {
       event.preventDefault(); event.stopPropagation();
-      try { const parsed = JSON.parse(item); if (parsed.opaleBoard && Array.isArray(parsed.elements)) { const elements = view.change(() => this.instantiate(parsed.elements, at.x, at.y)); view.select(elements.map((el) => el.id)); } else if (Board.KINDS[parsed.kind]) view.ui.placeItem(parsed, at); } catch { toast('Élément déposé illisible.'); }
+      try { const parsed = JSON.parse(item); if (parsed.opaleBoard && Array.isArray(parsed.elements)) { view.change(() => this.instantiate(parsed.elements, at.x, at.y)); view.clearSelection(); } else if (Board.KINDS[parsed.kind]) { view.ui.placeItem(parsed, at); view.clearSelection(); } } catch { toast('Élément déposé illisible.'); }
       return;
     }
     const path = transfer.getData('text/x-opale-path') || transfer.getData('application/x-opale-path');
-    if (path) { event.preventDefault(); event.stopPropagation(); view.ui.addVaultFiles(path.split('\n').filter(Boolean), at); return; }
+    if (path) { event.preventDefault(); event.stopPropagation(); view.ui.addVaultFiles(path.split('\n').filter(Boolean), at, { select: false }); return; }
     const files = [...transfer.files];
     if (files.length) { event.preventDefault(); event.stopPropagation(); view.ui.dropFiles(files, at); }
   }
