@@ -31,8 +31,10 @@ et Node.js 18 ou plus récent.
 ```sh
 npm install
 npm run build             # dist/Opale.app pour l'architecture de ce Mac
-npm run dmg               # idem + dist/Opale-<version>.dmg
-npm run build:universal   # Apple silicon + Intel dans une seule app, avec le .dmg
+npm run dmg               # idem + dist/Opale-Setup.dmg
+npm run installer         # dist/Opale-Setup.dmg, Apple Silicon + Intel
+npm run build:universal   # même installateur universel
+bash native/build.sh --arch x86_64 --dmg  # dist/Opale-Setup-x64.dmg
 ```
 
 `Opale.app` contient la fenêtre (Swift, macOS 12 minimum) et le serveur empaqueté

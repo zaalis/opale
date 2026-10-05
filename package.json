@@ -12,6 +12,7 @@
     "test": "node --test \"test/*.test.js\"",
     "build": "bash native/build.sh",
     "dmg": "bash native/build.sh --dmg",
+    "installer": "bash native/build.sh --universal --dmg",
     "build:universal": "bash native/build.sh --universal --dmg"
   },
   "pkg": {
