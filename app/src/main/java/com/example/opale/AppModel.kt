@@ -201,6 +201,32 @@ class AppModel(application: Application) : AndroidViewModel(application) {
             if(renamed) open(newPath)
         }
     }
+    /** Moves an explorer entry into a folder while preserving file links. */
+    fun moveToFolder(path: String, folder: String) {
+        val leaf = path.substringAfterLast('/')
+        val target = if (folder.isBlank()) leaf else "$folder/$leaf"
+        if (path == target || path.substringBeforeLast('/', "") == folder) return
+        viewModelScope.launch {
+            var moved = false
+            val wasOpen = document?.path == path
+            gate.withLock {
+                try {
+                    saveLocked()
+                    if (conflict) return@withLock
+                    withContext(Dispatchers.IO) { repository.rename(path, target) }
+                    if (wasOpen) document = null
+                    recent = recent.map { if (it == path) target else it }
+                    if (path in bookmarks) {
+                        bookmarks = bookmarks - path + target
+                        prefs.edit().putStringSet("bookmarks:" + vaultIdentity, bookmarks).apply()
+                    }
+                    index()
+                    moved = true
+                } catch (e: Exception) { fail(e) }
+            }
+            if (moved && wasOpen) open(target)
+        }
+    }
     fun trash() {
         val path = document?.path ?: return
         viewModelScope.launch { gate.withLock {

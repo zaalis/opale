@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,12 +25,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
@@ -128,6 +133,7 @@ fun OpaleApp(model: AppModel) {
             expanded = expandedProjects,
             onFolder = { path -> page = 0; folder = path; attachment = null },
             onOpen = { path -> page = 0; openPath(path) },
+            onMove = model::moveToFolder,
             onCreate = { kind -> input = ""; dialog = kind },
             onGraph = { page = 3; attachment = null }
         )
@@ -302,6 +308,7 @@ private fun OpaleRail(page:Int,onPage:(Int)->Unit) {
 }
 
 private data class ProjectTreeItem(val entry:com.example.opale.data.VaultEntry,val depth:Int)
+private data class SidebarDrag(val path:String,val pointer:Offset)
 
 private fun projectTree(entries:List<com.example.opale.data.VaultEntry>, expanded:Map<String,Boolean>):List<ProjectTreeItem> {
     val byParent=entries.groupBy { it.path.substringBeforeLast('/', "") }
@@ -325,10 +332,13 @@ private fun ProjectSidebar(
     expanded:MutableMap<String,Boolean>,
     onFolder:(String)->Unit,
     onOpen:(String)->Unit,
+    onMove:(String,String)->Unit,
     onCreate:(String)->Unit,
     onGraph:()->Unit,
 ) {
     var createMenu by remember { mutableStateOf(false) }
+    var drag by remember { mutableStateOf<SidebarDrag?>(null) }
+    val dropBounds = remember { mutableStateMapOf<String, Rect>() }
     val rows=projectTree(entries,expanded)
     Column(Modifier.widthIn(min=208.dp,max=272.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         Row(Modifier.fillMaxWidth().heightIn(min=56.dp).padding(start=16.dp,end=4.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -347,7 +357,8 @@ private fun ProjectSidebar(
         HorizontalDivider()
         Row(
             Modifier.fillMaxWidth().heightIn(min=48.dp).padding(horizontal=8.dp).clip(RoundedCornerShape(10.dp))
-                .background(if(selectedFolder.isEmpty() && selectedDocument==null) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                .background(if(drag?.let { current -> dropBounds[""]?.contains(current.pointer) == true } == true) MaterialTheme.colorScheme.primaryContainer else if(selectedFolder.isEmpty() && selectedDocument==null) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                .onGloballyPositioned { dropBounds[""] = it.boundsInRoot() }
                 .clickable { onFolder("") },verticalAlignment=Alignment.CenterVertically
         ) { Box(Modifier.size(40.dp),contentAlignment=Alignment.Center) { AppGlyph(9) }; Text("Toutes les notes",maxLines=1,overflow=TextOverflow.Ellipsis) }
         if(rows.isEmpty()) Text("Créez un projet pour organiser vos notes.",style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(16.dp))
@@ -356,10 +367,40 @@ private fun ProjectSidebar(
                 val item=row.entry
                 val opened=expanded[item.path] ?: row.depth == 0
                 val selected=if(item.isDirectory) selectedFolder==item.path else selectedDocument==item.path
+                var coordinates by remember(item.path) { mutableStateOf<LayoutCoordinates?>(null) }
+                val dragTarget = drag?.let { current -> dropBounds.entries.firstOrNull { (path,bounds) -> path != current.path.substringBeforeLast('/', "") && bounds.contains(current.pointer) }?.key }
+                val isDropTarget = item.isDirectory && dragTarget == item.path
+                val folderDropHint = if(item.isDirectory) Modifier.semantics { contentDescription = "Déposer dans ${item.name}" } else Modifier
+                val noteDrag = if(item.isDirectory) Modifier else Modifier
+                    .semantics { contentDescription = "Maintenir puis glisser ${item.name} vers un projet" }
+                    .pointerInput(item.path) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { local -> coordinates?.localToRoot(local)?.let { drag = SidebarDrag(item.path, it) } },
+                            onDrag = { change, delta ->
+                                change.consume()
+                                val current = drag
+                                if(current != null) drag = current.copy(pointer = current.pointer + delta)
+                            },
+                            onDragEnd = {
+                                val destination = drag?.let { current ->
+                                    dropBounds.entries.firstOrNull { (path,bounds) -> path != current.path.substringBeforeLast('/', "") && bounds.contains(current.pointer) }?.key
+                                }
+                                val source = drag?.path
+                                drag = null
+                                if(source != null && destination != null) onMove(source, destination)
+                            },
+                            onDragCancel = { drag = null },
+                        )
+                    }
                 Row(
                     Modifier.fillMaxWidth().heightIn(min=48.dp).padding(start=(8+row.depth*16).dp,end=6.dp).clip(RoundedCornerShape(10.dp))
-                        .background(if(selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                        .clickable { if(item.isDirectory) onFolder(item.path) else onOpen(item.path) },verticalAlignment=Alignment.CenterVertically
+                        .background(if(isDropTarget) MaterialTheme.colorScheme.primaryContainer else if(selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                        .onGloballyPositioned { layout ->
+                            coordinates = layout
+                            if(item.isDirectory) dropBounds[item.path] = layout.boundsInRoot()
+                        }
+                        .clickable { if(item.isDirectory) onFolder(item.path) else onOpen(item.path) }
+                        .then(noteDrag).then(folderDropHint),verticalAlignment=Alignment.CenterVertically
                 ) {
                     if(item.isDirectory) IconButton(onClick={expanded[item.path]=!opened},modifier=Modifier.size(40.dp).semantics { contentDescription=if(opened) "Replier ${item.name}" else "Déplier ${item.name}" }) { AppGlyph(if(opened) 7 else 10) }
                     else Box(Modifier.size(40.dp),contentAlignment=Alignment.Center) { AppGlyph(if(item.path.endsWith(".canvas",true)) 2 else 0) }
