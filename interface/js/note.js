@@ -960,5 +960,6 @@ export class NoteView {
     return { words: meta.words, chars: meta.chars, backlinks: store.backlinkCount(this.path) };
   }
 
-  destroy() { closeSuggest(); if (this.dirty) this.flush(); }
+  onHide() { this.images.reset(); }
+  destroy() { this.images.reset(); closeSuggest(); if (this.dirty) this.flush(); }
 }

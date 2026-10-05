@@ -93,8 +93,10 @@ export class BoardView {
     requestAnimationFrame(() => { this.applyCamera(); this.ui.update(); });
   }
   onHide() {
+    if (this.input.stop) this.input.stop();
     if (this.focusLayout) { this.focusLayout(); this.focusLayout = null; }
     if (this.editing) this.finishEdit(true);
+    this.ui.clearTransient();
     this.flush();
   }
 
@@ -565,6 +567,7 @@ export class BoardView {
   stats() { return { elements: this.doc.elements.length }; }
 
   destroy() {
+    this.input.destroy();
     if (this.editing) this.finishEdit(true);
     this.flush();
     if (this.focusLayout) { this.focusLayout(); this.focusLayout = null; }
@@ -572,7 +575,6 @@ export class BoardView {
     clearTimeout(this.cameraTimer);
     this.resize.disconnect();
     this.off.forEach((off) => off());
-    this.input.destroy();
     this.ui.destroy();
   }
 }

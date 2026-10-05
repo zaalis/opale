@@ -60,9 +60,43 @@ function packagedServer(executable) {
     assert.ok(await page.locator('.board-library-item').count() > 10);
     await page.locator('.board-library-item').first().click();
     await page.waitForSelector('.k-shape');
+    await page.locator('.b-editor').fill('Forme');
+    await page.keyboard.press('Control+Enter');
+    await page.getByRole('button', { name: 'Sélection (V)', exact: true }).click();
     const shape = await page.locator('.k-shape').boundingBox();
     await page.mouse.move(shape.x + shape.width / 2, shape.y + shape.height / 2);
     await page.mouse.down(); await page.mouse.move(shape.x + shape.width / 2 + 120, shape.y + shape.height / 2 + 80, { steps: 8 }); await page.mouse.up();
+    await page.waitForFunction(() => window.__testApp.workspace.activeView.ui.selection.hidden);
+    assert.equal(await page.locator('.board-guide, .board-marquee, .b-drag-ghost').count(), 0);
+    // Cancelling a move rolls back geometry and removes every temporary aid.
+    const cancelBox = await page.locator('.k-shape').boundingBox();
+    const beforeMove = await page.evaluate(() => { const el = window.__testApp.workspace.activeView.doc.elements.find((el) => el.kind === 'shape'); return { x: el.x, y: el.y }; });
+    await page.mouse.move(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
+    await page.mouse.down(); await page.mouse.move(cancelBox.x + cancelBox.width / 2 + 70, cancelBox.y + cancelBox.height / 2 + 40, { steps: 4 });
+    await page.keyboard.press('Escape'); await page.mouse.up();
+    assert.deepEqual(await page.evaluate(() => { const el = window.__testApp.workspace.activeView.doc.elements.find((el) => el.kind === 'shape'); return { x: el.x, y: el.y }; }), beforeMove);
+    assert.equal(await page.locator('.board-guide, .board-marquee, .b-drag-ghost, .is-moving').count(), 0);
+    // Native file/path/library drops must finish without selection handles.
+    await page.evaluate(() => {
+      const v = window.__testApp.workspace.activeView; const r = v.stage.getBoundingClientRect();
+      const data = new DataTransfer(); data.setData('text/x-opale-path', 'Idée.md');
+      v.stage.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data, clientX: r.left + 70, clientY: r.top + 100 }));
+      const module = new DataTransfer(); module.setData('application/x-opale-board', JSON.stringify({ kind: 'emoji', data: { char: '🎯' } }));
+      v.stage.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: module, clientX: r.left + 200, clientY: r.top + 100 }));
+      const file = new DataTransfer(); file.items.add(new File(['flowchart LR\n X-->Y'], 'drop.mmd', { type: 'text/plain' }));
+      v.stage.dispatchEvent(new DragEvent('dragenter', { bubbles: true, dataTransfer: file }));
+      v.stage.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: file, clientX: r.left + 400, clientY: r.top + 100 }));
+    });
+    await page.waitForFunction(() => { const v = window.__testApp.workspace.activeView; return v.doc.elements.some((el) => el.kind === 'note') && v.doc.elements.some((el) => el.kind === 'emoji') && v.doc.elements.filter((el) => el.kind === 'shape').length >= 3 && v.ui.selection.hidden; });
+    assert.equal(await page.locator('.board-selection:visible, .board-guide, .board-marquee, .b-drag-ghost, .is-dropping').count(), 0);
+    // Page cleanup also runs when another view consumes the drop or on dragend.
+    await page.evaluate(() => {
+      const data = new DataTransfer(); data.items.add(new File(['x'], 'test.png', { type: 'image/png' }));
+      document.body.dispatchEvent(new DragEvent('dragenter', { bubbles: true, dataTransfer: data }));
+      document.body.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: data }));
+    });
+    assert.equal(await page.locator('.is-dropping, .is-dropping-note').count(), 0);
+    console.log('PASS completed drag has no handles; Escape, native drops and global dragend clean up');
     await page.evaluate(async () => { const { app } = await import('/js/core.js'); const v = app.workspace.activeView; v.ui.importMermaid('flowchart LR\n A[Idée] --> B[Prototype]', { x: -300, y: 300 }); v.zoomToFit(false); });
     await page.waitForSelector('.k-connector');
     console.log('PASS shape library, pointer drag, Mermaid import and connectors');
@@ -114,6 +148,49 @@ function packagedServer(executable) {
     await page.evaluate(() => { const v = window.__testApp.workspace.activeView; v.ui.placeItem({ kind: 'sticky' }); v.undo(); return v.flush(); });
     assert.equal(fs.readFileSync(path.join(vault, 'Endommagé.canvas'), 'utf8'), '{cassé');
     console.log('PASS damaged canvas stays read-only and byte-for-byte intact');
+    // Test MCP against both the source server and the packaged executable.
+    const mcpCheck = await page.evaluate(async () => {
+      const { api } = await import('/js/core.js'); const connection = await api('/api/connection');
+      const call = async (name, args) => {
+        const response = await fetch('/mcp', { method: 'POST', headers: { Authorization: `Bearer ${connection.token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) });
+        const reply = await response.json(); if (reply.result.isError) throw new Error(reply.result.content[0].text); return JSON.parse(reply.result.content[0].text);
+      };
+      const icons = await call('board_catalog', { library: 'icon' });
+      const added = await call('add_to_board', { path: 'Assistant', items: [{ kind: 'poll', x: 100, y: 200, data: { question: 'Choix', options: [{ text: 'A' }] } }, { kind: 'icon', data: icons.entries[0].data }] });
+      const read = await call('read_board', { path: added.path });
+      await call('edit_board', { path: added.path, base_mtime: read.mtime, updates: [{ id: added.ids[0], x: 450, data: { question: 'Modifiée' } }] });
+      const imported = await call('import_to_board', { path: added.path, format: 'mermaid', source: 'flowchart LR\n A-->B' });
+      return { icons: icons.count, imported: imported.ids.length, read: await call('read_board', { path: added.path }) };
+    });
+    assert.ok(mcpCheck.icons >= 240 && mcpCheck.imported >= 3);
+    assert.equal(mcpCheck.read.elements.find((el) => el.kind === 'poll').data.question, 'Modifiée');
+    assert.equal(mcpCheck.read.elements.find((el) => el.kind === 'poll').x, 450);
+    console.log('PASS MCP libraries, module placement, editing and Mermaid import in running server');
+    await page.evaluate(() => window.__testApp.workspace.openPath('Idée.md'));
+    await page.waitForFunction(() => window.__testApp.workspace.activeNote && window.__testApp.workspace.activeNote.loaded);
+    await page.evaluate(() => {
+      const note = window.__testApp.workspace.activeNote; const r = note.body.getBoundingClientRect();
+      const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII='), (c) => c.charCodeAt(0));
+      const transfer = new DataTransfer(); transfer.items.add(new File([png], 'dropped.png', { type: 'image/png' }));
+      note.body.dispatchEvent(new DragEvent('dragenter', { bubbles: true, dataTransfer: transfer }));
+      note.body.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer, clientX: r.left + 80, clientY: r.top + 80 }));
+      note.body.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer, clientX: r.left + 80, clientY: r.top + 80 }));
+    });
+    await page.waitForFunction(() => window.__testApp.workspace.activeNote.content.includes('dropped.png'));
+    assert.equal(await page.locator('.is-dropping, .is-dropping-note, .img-drop-caret').count(), 0);
+    const image = page.locator('.note-view:visible .markdown img').first();
+    await image.waitFor(); const imageBox = await image.boundingBox();
+    await page.mouse.move(imageBox.x + imageBox.width / 2, imageBox.y + imageBox.height / 2);
+    await page.mouse.down(); await page.mouse.move(imageBox.x + imageBox.width / 2 + 80, imageBox.y + imageBox.height / 2 + 60, { steps: 4 });
+    await page.evaluate(() => window.dispatchEvent(new Event('blur'))); await page.mouse.up();
+    assert.equal(await page.locator('.img-ghost, .img-drop-caret, .is-dragging-image').count(), 0);
+    await page.evaluate(() => {
+      const tree = document.querySelector('.tree'); const data = new DataTransfer(); data.setData('application/x-opale-path', 'Idée.md');
+      tree.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data }));
+      tree.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: data }));
+    });
+    assert.equal(await page.locator('.drop-target').count(), 0);
+    console.log('PASS note image drop/move cancellation and explorer dragend leave no ghost or marker');
     assert.deepEqual(errors, []);
     console.log('PASS tab switching, workspace restore, no JavaScript errors');
   } finally {

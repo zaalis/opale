@@ -92,13 +92,15 @@ flowchart TD
 
 ## Vérifications
 
-`npm test` : 69 tests du modèle, des imports, du serveur, du coffre, de Markdown et des outils MCP passent.
+`npm test` : 71 tests du modèle, des imports, du serveur, du coffre, de Markdown et des outils MCP passent. Ils couvrent aussi la création et la modification de tous les modules par l'assistant, les opérations atomiques, les conflits, les bibliothèques et les imports MCP.
 
 `scripts/verify-board-browser.cjs` : test Chrome sans fenêtre, avec un coffre temporaire indépendant. Vérifie création et édition d'un pense-bête, contenu réellement enregistré sur disque, annulation/rétablissement, catalogue de formes et geste de déplacement, imports Mermaid/draw.io, rendu de tous les types, restauration des onglets, conflit avec une modification externe, reprise après erreur HTTP et intégrité d'un fichier endommagé ouvert en lecture seule. Aucune erreur JavaScript non gérée dans ce parcours.
 
+Le parcours couvre aussi la disparition du cadre et des poignées après un déplacement ou un dépôt, l'annulation par Échap, le dépôt de notes/modules/Mermaid, le nettoyage global malgré l'arrêt de propagation, l'import d'image dans une note, l'annulation de son déplacement à la perte de focus et le nettoyage de l'explorateur à la fin du glisser-déposer. Les outils MCP sont exercés contre le serveur du parcours, y compris son exécutable empaqueté.
+
 Le script requiert Playwright (localement ou via `NODE_PATH`) et Chrome installé ; `OPALE_TEST_BROWSER` permet de choisir un autre canal disponible.
 
-`npm run build` : compilation de `dist/Opale.exe`, `dist/pickfolder.exe` et empaquetage de `dist/opale-server.exe`.
+`npm run installer` : compilation de `dist/Opale.exe`, `dist/pickfolder.exe`, empaquetage de `dist/opale-server.exe` et création de `dist/Opale-Setup.exe`.
 
 Le parcours navigateur a aussi été exécuté avec `OPALE_TEST_SERVER=dist/opale-server.exe` : tous les contrôles ci-dessus passent avec les ressources empaquetées. La fenêtre WebView2 native n'a pas fait l'objet d'une interaction automatisée.
 
@@ -108,5 +110,18 @@ Le parcours navigateur a aussi été exécuté avec `OPALE_TEST_SERVER=dist/opal
 - Les widgets sont rendus, mais tous leurs scénarios détaillés n'ont pas été parcourus manuellement.
 - Pas de photomaton, collaboration réseau multi-utilisateur ou export image/PDF livré dans cette reprise.
 - Les compteurs et réponses des activités restent locaux au fichier du moodboard.
-- La session de vote global et certains réglages avancés des widgets restent à exposer ; le moteur possède déjà une partie de ces données.
-- Les ajouts sont locaux. Aucun push Git ni remplacement de l'application installée n'a été effectué.
+- La session de vote global est configurable par MCP ; son lancement depuis un bouton de l'interface reste à exposer.
+- L'installateur reconstruit est livré dans `dist/Opale-Setup.exe`. La recompilation ne remplace pas automatiquement l'application installée.
+
+## Contrôle du moodboard par l'assistant
+
+| Outil MCP | Actions |
+| --- | --- |
+| `board_catalog` | Modèle complet des 32 types de modules ; ids des formes, autocollants et icônes, caractères des émojis, recherche dans les bibliothèques. |
+| `read_board` | Données et styles complets, géométrie, connexions, calques, réglages, votes et version `mtime`. |
+| `add_to_board` | Création de modules de tout type à une position précise ou avec placement automatique ; liens entre modules. |
+| `edit_board` | Modification par id, déplacement, taille, rotation, styles, contenu des widgets, groupes/verrouillage, ajout/suppression, liens, ordre, calques, réglages et votes. Un lot invalide n'écrit rien ; `base_mtime` protège des conflits. |
+| `import_to_board` | Mermaid et draw.io convertis en éléments éditables. |
+| `write_board` / `open_note` | Création/remplacement d'un document Canvas complet et affichage dans Opale. |
+
+Les tableaux imbriqués des widgets sont remplacés lors d'une modification ; les champs de `data` et `style` sont fusionnés. Les références de fichiers sont résolues dans le coffre et les connexions attachées suivent la suppression d'un élément.
