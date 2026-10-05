@@ -9,6 +9,7 @@
 .board-ui { position:absolute; pointer-events:auto; border:1px solid var(--border-strong); background:var(--bg-2); border-radius:12px; box-shadow:0 4px 18px #0003; display:flex; align-items:center; gap:4px; padding:6px; }
 .board-tools { left:50%; bottom:18px; transform:translateX(-50%); max-width:calc(100% - 24px); overflow-x:auto; }
 .board-tools .icon-btn { flex-shrink:0; width:36px; height:36px; }
+.board-tools .icon { width:20px; height:20px; }
 .board-tools .active,.board-library-tabs .active { background:var(--accent-soft); color:var(--accent); }
 .board-tools .btn { white-space:nowrap; }
 .board-zoom { left:16px; top:16px; }
