@@ -1,5 +1,6 @@
 // Local visual exports. Capture the whole visible board, independent of its camera.
 import { Meta } from '../core.js';
+import { hasShell, tellShell } from '../platform.js';
 const Board = window.OpaleBoard;
 const encoder = new TextEncoder();
 
@@ -51,7 +52,9 @@ async function copyVisual(source) {
   return clone;
 }
 
-export async function captureBoard(view) {
+// The whole board as self-contained markup (computed styles inline, pictures as
+// data URLs), with its size in CSS pixels and the resolution to render it at.
+export async function snapshotBoard(view) {
   if (view.editing) view.finishEdit(true);
   if (view.frame) { cancelAnimationFrame(view.frame); view.paint(); }
   await document.fonts.ready;
@@ -67,8 +70,6 @@ export async function captureBoard(view) {
   const width = Math.ceil(box.w + margin * 2); const height = Math.ceil(box.h + margin * 2);
   // Bound memory usage for very large infinite boards while preserving proportions.
   const scale = Math.min(2, 8192 / width, 8192 / height, Math.sqrt(24000000 / (width * height)));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
   const root = document.createElement('div');
   const background = getComputedStyle(view.stage).backgroundColor;
   root.style.cssText = `position:relative;width:${width}px;height:${height}px;overflow:hidden;background:${background};`;
@@ -84,7 +85,13 @@ export async function captureBoard(view) {
     if (view.doc.settings.privateMode) clone.querySelectorAll('.b-sticky-text').forEach((node) => { node.style.filter = 'blur(7px)'; });
     world.append(clone);
   }
-  const markup = new XMLSerializer().serializeToString(root);
+  return { markup: new XMLSerializer().serializeToString(root), width, height, scale, background };
+}
+
+export async function captureBoard(view) {
+  const { markup, width, height, scale, background } = await snapshotBoard(view);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${markup}</foreignObject></svg>`;
   const image = new Image();
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -119,8 +126,28 @@ export function jpegPdf(jpeg, width, height) {
   return new Blob(chunks, { type: 'application/pdf' });
 }
 
+// macOS: WebKit marks a canvas that drew an SVG <foreignObject> as unreadable, so
+// the native shell renders the snapshot itself (vector PDF, or JPEG) and saves it.
+const pending = new Map();
+let nextExport = 0;
+window.opaleExportDone = (id, error) => {
+  const done = pending.get(id);
+  if (!done) return;
+  pending.delete(id);
+  if (error) done.reject(new Error(error)); else done.resolve();
+};
+
+async function exportNative(view, format) {
+  const snapshot = await snapshotBoard(view);
+  const id = ++nextExport;
+  const finished = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  tellShell({ type: 'exportBoard', id, format, name: `${Meta.stem(view.path)}.${format}`, ...snapshot });
+  return finished;
+}
+
 export async function exportBoard(view, format) {
   if (!['pdf', 'jpg'].includes(format)) throw new Error('Format d’export inconnu.');
+  if (hasShell()) return exportNative(view, format);
   const canvas = await captureBoard(view);
   const jpeg = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
   if (!jpeg) throw new Error('Impossible de générer l’image du moodboard.');

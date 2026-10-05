@@ -8,7 +8,7 @@ Le dossier `Documents\Opale` contient les coffres de notes ; le code de l'applic
 
 ```mermaid
 flowchart LR
-  Native["Fenêtre Windows · native/main.cpp"] --> Web["Interface WebView2 · interface/"]
+  Native["Fenêtre macOS · native/main.swift"] --> Web["Interface WKWebView · interface/"]
   Web --> API["Serveur local · server.js"]
   IDE["Assistant IDE / client MCP"] --> MCP["lib/mcp.js"]
   MCP --> Vault["Coffre et surveillance · lib/vault.js"]
@@ -25,7 +25,8 @@ flowchart LR
 | Zone | Fichiers | Responsabilité |
 | --- | --- | --- |
 | Démarrage et événements | `interface/js/main.js`, `lib/appdata.js` | Ouvrir le coffre, charger l'interface, synchroniser l'index ; configuration locale. |
-| Fenêtre Windows | `native/main.cpp`, `native/build.bat` | WebView2, fenêtre native, compilation et empaquetage du serveur. |
+| Fenêtre macOS | `native/main.swift`, `native/build.sh` | WKWebView, menus et raccourcis ⌘, panneaux d’ouverture et d’enregistrement, export PDF/JPG des moodboards, compilation et empaquetage du serveur. |
+| Système | `lib/platform.js`, `interface/js/platform.js` | Dossiers de l’utilisateur, sélecteur de dossier, Finder, Corbeille ; touche ⌘, libellés et raccourcis du Mac. |
 | API locale | `server.js` | HTTP sur loopback, authentification, création/lecture/écriture, uploads, sessions, MCP. |
 | Données du coffre | `lib/vault.js`, `lib/search.js` | Chemins, index, conflits, renommage/déplacement et références, recherche. |
 | Format et rendu Markdown | `shared/meta.js`, `shared/markdown.js`, `interface/js/renderer.js` | Types de fichiers, liens, métadonnées, rendu et coloration. |
@@ -103,6 +104,27 @@ Le script requiert Playwright (localement ou via `NODE_PATH`) et Chrome install�
 `npm run installer` : compilation de `dist/Opale.exe`, `dist/pickfolder.exe`, empaquetage de `dist/opale-server.exe` et création de `dist/Opale-Setup.exe`.
 
 Le parcours navigateur a aussi été exécuté avec `OPALE_TEST_SERVER=dist/opale-server.exe` : tous les contrôles ci-dessus passent avec les ressources empaquetées. La fenêtre WebView2 native n'a pas fait l'objet d'une interaction automatisée.
+
+## Branche macOS
+
+Cette cartographie vient de `main` (Windows). Sur la branche `macOS`, les sources
+communes sont les mêmes ; seules diffèrent la fenêtre native et les adaptations
+suivantes :
+
+- Raccourcis : ⌘ remplace Ctrl (`primary()` de `interface/js/platform.js`), ⌃-clic reste
+  un clic droit, ⌃+touche reste au système ; libellés affichés en symboles (⇧⌘F, ⌫…).
+- Moodboards : pincement du trackpad (événements `gesture*` de WebKit), ⌘ + molette ;
+  ⌘C ⌘X ⌘V activés hors champ de texte par `beforecopy` / `beforecut` / `beforepaste`.
+- Export PDF/JPG : WebKit interdit de relire un canvas qui a dessiné du HTML
+  (`foreignObject`) ; la page envoie l’instantané à la fenêtre native, qui le met en page
+  hors écran, produit un PDF vectoriel (`createPDF`) ou un JPEG, et l’enregistre via
+  le panneau d’enregistrement.
+- `<input type="file">` et `<a download>` passent par les panneaux natifs (sans cela
+  WKWebView n’affiche rien).
+- Noms de fichiers comparés en NFC (macOS les rend décomposés).
+- La construction se fait avec `npm run build` / `npm run dmg` sur un Mac
+  (voir le README) ; les étapes Windows citées plus haut (`npm run installer`,
+  `Opale-Setup.exe`, WebView2) ne concernent pas cette branche.
 
 ## Limites et prochaines extensions
 

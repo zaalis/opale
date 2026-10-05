@@ -18,7 +18,7 @@ export function inline(view, text) {
   return String(text || '').split('\n').map((line) => Markdown.renderInline(line, ctx) || '&#8203;').join('<br>');
 }
 
-const FONTS = { sans: 'var(--font-text)', serif: 'Georgia, "Times New Roman", serif', mono: 'var(--font-mono)', hand: '"Segoe Print", "Comic Sans MS", cursive' };
+const FONTS = { sans: 'var(--font-text)', serif: 'Georgia, "Times New Roman", serif', mono: 'var(--font-mono)', hand: '"Bradley Hand", "Chalkboard SE", "Marker Felt", "Comic Sans MS", cursive' };
 
 export function shapeOf(id) { return SHAPES[id] || SHAPES.rect; }
 

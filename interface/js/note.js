@@ -128,6 +128,10 @@ export class NoteView {
       if (this.images.onKey(event)) return;
       if (this.mode !== 'reading') this.undoKeys(event, false);
     });
+    // WebKit (the macOS window) offers ⌘V outside a text field only when the page asks for it.
+    this.scroller.addEventListener('beforepaste', (event) => {
+      if (this.mode === 'live' && !event.target.closest('textarea, input') && !event.target.isContentEditable) event.preventDefault();
+    });
     this.scroller.addEventListener('paste', (event) => {
       if (this.mode !== 'live' || event.target.closest('textarea, input') || event.target.isContentEditable) return;
       const files = [...((event.clipboardData && event.clipboardData.files) || [])].filter(isImageFile);

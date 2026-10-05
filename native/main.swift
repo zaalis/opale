@@ -13,6 +13,7 @@
 import Cocoa
 import WebKit
 import Darwin
+import UniformTypeIdentifiers
 
 // ------------------------------------------------------------------ helpers
 let windowBackground = NSColor(srgbRed: 0x13 / 255.0, green: 0x12 / 255.0, blue: 0x18 / 255.0, alpha: 1)
@@ -177,6 +178,153 @@ final class Downloader: NSObject, WKDownloadDelegate {
     }
 }
 
+// ------------------------------------------------------------ board export
+/// A moodboard exported to PDF or JPEG. WebKit does not let a page read back a
+/// canvas that drew HTML, so the page sends a self-contained snapshot of the
+/// board (inline styles, pictures as data URLs) and it is laid out here in an
+/// off-screen web view: PDF straight from WebKit (vector), JPEG rasterised from it.
+struct BoardSnapshot {
+    let id: Int
+    let format: String          // "pdf" | "jpg"
+    let name: String
+    let markup: String
+    let width: CGFloat
+    let height: CGFloat
+    let scale: CGFloat
+    let background: String
+
+    init?(_ body: [String: Any]) {
+        guard let id = (body["id"] as? NSNumber)?.intValue,
+              let format = body["format"] as? String, ["pdf", "jpg"].contains(format),
+              let markup = body["markup"] as? String,
+              let width = (body["width"] as? NSNumber)?.doubleValue, width >= 1, width.isFinite,
+              let height = (body["height"] as? NSNumber)?.doubleValue, height >= 1, height.isFinite else { return nil }
+        self.id = id
+        self.format = format
+        let name = (body["name"] as? String) ?? ""
+        self.name = name.isEmpty ? "Moodboard.\(format)" : name
+        self.markup = markup
+        self.width = CGFloat(width)
+        self.height = CGFloat(height)
+        let scale = (body["scale"] as? NSNumber)?.doubleValue ?? 1
+        self.scale = CGFloat(scale.isFinite && scale > 0 ? min(scale, 2) : 1)
+        // A CSS colour from getComputedStyle ("rgb(…)"): kept only if it looks like one.
+        let background = (body["background"] as? String) ?? ""
+        self.background = background.range(of: "^[a-zA-Z0-9#(),. %]*$", options: .regularExpression) != nil ? background : "transparent"
+    }
+}
+
+final class BoardExporter: NSObject, WKNavigationDelegate {
+    private let snapshot: BoardSnapshot
+    private let destination: URL
+    private let baseURL: URL?
+    private let finish: (String?) -> Void
+    private var holder: NSWindow?
+    private var webView: WKWebView?
+    private var retainSelf: BoardExporter?
+    private var done = false
+
+    init(snapshot: BoardSnapshot, destination: URL, baseURL: URL?, finish: @escaping (String?) -> Void) {
+        self.snapshot = snapshot
+        self.destination = destination
+        self.baseURL = baseURL
+        self.finish = finish
+    }
+
+    func start() {
+        retainSelf = self
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        // The whole board in view (AppKit caps a window at 10 000 points; createPDF is given the full rect anyway).
+        let frame = NSRect(x: 0, y: 0, width: min(snapshot.width, 10000), height: min(snapshot.height, 10000))
+        let view = WKWebView(frame: frame, configuration: configuration)
+        view.navigationDelegate = self
+        // Off screen but in a window, so WebKit lays the page out and paints it normally.
+        let window = NSWindow(contentRect: NSRect(x: -32000, y: -32000, width: frame.width, height: frame.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.ignoresMouseEvents = true
+        window.contentView = view
+        window.orderBack(nil)
+        holder = window
+        webView = view
+        let style = "html,body{margin:0;padding:0;overflow:hidden;background:\(snapshot.background);}"
+        let page = "<!doctype html><html><head><meta charset=\"utf-8\"><style>\(style)</style></head><body>\(snapshot.markup)</body></html>"
+        view.loadHTMLString(page, baseURL: baseURL)
+        // Never wait forever for a page that does not load.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in self?.complete("L’export du moodboard a pris trop de temps.") }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // Wait for the pictures to be decoded and the fonts to be ready before capturing.
+        let ready = "await Promise.all([...document.images].map((image) => image.decode().catch(() => null))); await document.fonts.ready; return true;"
+        webView.callAsyncJavaScript(ready, arguments: [:], in: nil, in: .page) { [weak self] _ in self?.capture() }
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { complete(error.localizedDescription) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { complete(error.localizedDescription) }
+
+    // The snapshot only shows itself: no navigation away from it.
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        decisionHandler(navigationAction.navigationType == .other ? .allow : .cancel)
+    }
+
+    private func capture() {
+        guard let view = webView, !done else { return }
+        let configuration = WKPDFConfiguration()
+        configuration.rect = CGRect(x: 0, y: 0, width: snapshot.width, height: snapshot.height)
+        view.createPDF(configuration: configuration) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.complete(error.localizedDescription)
+            case .success(let pdf):
+                do {
+                    let data = self.snapshot.format == "pdf" ? pdf : try self.jpeg(from: pdf)
+                    try data.write(to: self.destination, options: .atomic)
+                    self.complete(nil)
+                } catch {
+                    self.complete(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func jpeg(from pdf: Data) throws -> Data {
+        let failure = NSError(domain: "Opale", code: 1, userInfo: [NSLocalizedDescriptionKey: "impossible de générer l’image du moodboard."])
+        guard let page = NSPDFImageRep(data: pdf) else { throw failure }
+        let pixelsWide = max(1, Int((snapshot.width * snapshot.scale).rounded()))
+        let pixelsHigh = max(1, Int((snapshot.height * snapshot.scale).rounded()))
+        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixelsWide, pixelsHigh: pixelsHigh,
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let context = NSGraphicsContext(bitmapImageRep: bitmap) else { throw failure }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        context.imageInterpolation = .high
+        let bounds = NSRect(x: 0, y: 0, width: pixelsWide, height: pixelsHigh)
+        NSColor.white.setFill()
+        bounds.fill()
+        page.draw(in: bounds)
+        NSGraphicsContext.restoreGraphicsState()
+        guard let data = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.95]) else { throw failure }
+        return data
+    }
+
+    private func complete(_ error: String?) {
+        if done { return }
+        done = true
+        webView?.navigationDelegate = nil
+        webView?.stopLoading()
+        holder?.orderOut(nil)
+        holder?.contentView = nil
+        holder = nil
+        webView = nil
+        finish(error)
+        retainSelf = nil
+    }
+}
+
 // ------------------------------------------------------------- app delegate
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     let server = ServerProcess()
@@ -270,13 +418,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         window.makeKeyAndOrderFront(nil)
     }
 
-    // The window follows the theme chosen in Opale (light or dark).
+    // Messages from Opale's own page: the theme chosen (light or dark), board exports.
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard let body = message.body as? [String: Any], let theme = body["theme"] as? String else { return }
+        guard message.frameInfo.isMainFrame, isApp(webView.url), let body = message.body as? [String: Any] else { return }
+        if body["type"] as? String == "exportBoard" { exportBoard(body); return }
+        if body["type"] as? String == "pickFolder" { pickFolder(body); return }
+        guard let theme = body["theme"] as? String else { return }
         let light = theme == "light"
         NSApp.appearance = NSAppearance(named: light ? .aqua : .darkAqua)
         window.backgroundColor = light ? lightBackground : windowBackground
         webView.underPageBackgroundColor = light ? lightBackground : pageBackground
+    }
+
+    // ------------------------------------------------------- folder picker
+    /// "Parcourir…" when choosing a vault: the standard panel, as a sheet on Opale's window.
+    private func pickFolder(_ body: [String: Any]) {
+        guard let id = (body["id"] as? NSNumber)?.intValue else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choisir"
+        panel.message = "Choisissez le dossier du coffre"
+        panel.beginSheetModal(for: window) { [weak self] response in
+            let path = response == .OK ? (panel.url?.path ?? "") : ""
+            self?.webView.evaluateJavaScript("window.opaleFolderPicked && window.opaleFolderPicked(\(id), \(javaScriptString(path)))", completionHandler: nil)
+        }
+    }
+
+    // ------------------------------------------------------- board export
+    private func exportBoard(_ body: [String: Any]) {
+        guard let snapshot = BoardSnapshot(body) else {
+            if let id = (body["id"] as? NSNumber)?.intValue { exportFinished(id, "données incomplètes.") }
+            return
+        }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = snapshot.name
+        panel.allowedContentTypes = [snapshot.format == "pdf" ? UTType.pdf : UTType.jpeg]
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self = self else { return }
+            guard response == .OK, let url = panel.url else { self.exportFinished(snapshot.id, nil); return }
+            let exporter = BoardExporter(snapshot: snapshot, destination: url, baseURL: URL(string: self.origin)) { [weak self] error in
+                self?.exportFinished(snapshot.id, error)
+            }
+            exporter.start()
+        }
+    }
+
+    /// Settles the page's pending export (nil: saved, or cancelled by the user).
+    private func exportFinished(_ id: Int, _ error: String?) {
+        let message = error.map { javaScriptString("Export du moodboard impossible : \($0)") } ?? "null"
+        webView.evaluateJavaScript("window.opaleExportDone && window.opaleExportDone(\(id), \(message))", completionHandler: nil)
     }
 
     // --------------------------------------------------------- navigation
@@ -293,6 +488,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // Links to the web open in the default browser, never in this window.
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let url = navigationAction.request.url
+        // <a download> (exported .canvas, task plan…): saved through the save panel, never shown in place of Opale.
+        if navigationAction.shouldPerformDownload {
+            decisionHandler(.download)
+            return
+        }
+        // Moodboard embeds (videos, web pages) load inside their own frame; only the page itself stays on Opale.
+        if let frame = navigationAction.targetFrame, !frame.isMainFrame,
+           let scheme = url?.scheme?.lowercased(), ["https", "about", "blob", "data"].contains(scheme) || isApp(url) {
+            decisionHandler(.allow)
+            return
+        }
         if isApp(url) || url?.scheme == "about" || url?.scheme == "blob" || url?.scheme == "data" {
             decisionHandler(.allow)
         } else {
@@ -332,6 +538,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Annuler")
         alert.beginSheetModal(for: window) { response in completionHandler(response == .alertFirstButtonReturn) }
+    }
+
+    // <input type="file"> (add or insert pictures, import into a moodboard): WKWebView
+    // shows nothing unless the app opens the panel itself.
+    func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = parameters.allowsDirectories
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        panel.resolvesAliases = true
+        panel.beginSheetModal(for: window) { response in completionHandler(response == .OK ? panel.urls : nil) }
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { webView.alphaValue = 1 }
@@ -415,6 +632,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
         main.addItem(submenu("Fichier", [
             item("Nouvelle note", "n", command: "note:new"),
+            item("Nouveau moodboard", command: "board:new"),
             item("Ouvrir une note…", "o", command: "switcher:open"),
             item("Note du jour", command: "daily:open"),
             separator(),
@@ -422,6 +640,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             item("Fermer l’onglet", "w", command: "tab:close"),
             separator(),
             item("Enregistrer", "s", command: "note:save"),
+            item("Insérer une image…", command: "note:insert-image"),
             separator(),
             item("Changer de coffre…", command: "vault:switch"),
             item("Afficher le coffre dans le Finder", command: "vault:reveal"),

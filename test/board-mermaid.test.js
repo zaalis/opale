@@ -340,7 +340,7 @@ test('toSvg: standalone, escaped, themed', () => {
   assert.ok(light.svg.includes('Titre gras'));
   assert.ok(light.svg.includes('<polygon'), 'hexagon and parallelogram are polygons');
   assert.ok(light.svg.includes('marker-end="url(#'));
-  assert.ok(light.svg.includes('#1f2937') && light.svg.includes('#64748b') && light.svg.includes('Segoe UI'));
+  assert.ok(light.svg.includes('#1f2937') && light.svg.includes('#64748b') && light.svg.includes('-apple-system'));
   assert.ok(light.width > 0 && light.height > 0);
   const dark = Mermaid.toSvg(src, { dark: true });
   assert.ok(dark.svg.includes('#c6c3d3') && dark.svg.includes('#1e1d25') && !dark.svg.includes('#1f2937'));

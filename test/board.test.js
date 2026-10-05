@@ -254,6 +254,16 @@ test('MCP: an assistant reads and fills a moodboard', async () => {
   assert.match(written.text, /Moodboard créé : Obsidian\.canvas \(1 éléments\)/);
 });
 
+// macOS hands file names back decomposed (NFD) while a keyboard types them composed (NFC).
+test('MCP: a moodboard is found whatever the accent composition or case', async () => {
+  const created = JSON.parse((await call('add_to_board', { path: 'Réunion'.normalize('NFD'), items: [{ kind: 'text', text: 'Ordre du jour' }] })).text);
+  for (const name of ['Réunion'.normalize('NFC'), 'RÉUNION'.normalize('NFC'), 'réunion.canvas'.normalize('NFD')]) {
+    const read = await call('read_board', { path: name });
+    assert.equal(read.isError, false, `${name}: ${read.text}`);
+    assert.equal(JSON.parse(read.text).path, created.path);
+  }
+});
+
 test('MCP: every module can be placed, read in full and edited atomically', async () => {
   const catalog = JSON.parse((await call('board_catalog', {})).text);
   assert.deepEqual(catalog.modules.map((m) => m.kind), Object.keys(Board.KINDS));

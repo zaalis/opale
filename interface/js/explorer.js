@@ -242,26 +242,6 @@ export const explorer = {
     })));
   },
 
-  chooseImages(folder = '') {
-    const input = h('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true, 'aria-label': 'Choisir une ou plusieurs images' });
-    input.addEventListener('change', () => { const files = [...input.files]; input.remove(); if (files.length) this.importImages(files, folder); }, { once: true });
-    document.body.append(input); input.click();
-  },
-
-  async importImages(files, folder = '') {
-    const images = [...files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
-    if (!images.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
-    try {
-      const paths = [];
-      for (const file of images) paths.push(await uploadFile(file, '', folder));
-      for (const path of paths) await app.workspace.waitFor(path);
-      if (folder) this.expanded.add(folder);
-      this.selected = paths[paths.length - 1]; this.reveal(this.selected);
-      app.workspace.openPath(paths[0], { newTab: paths.length > 1 });
-      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'}${folder ? ` dans « ${folder} »` : ' à la racine du coffre'}.`);
-    } catch (error) { reportError(error); }
-  },
-
   async newBoard(folder = this.targetFolder()) {
     try {
       const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas' } });
@@ -281,6 +261,33 @@ export const explorer = {
       await app.workspace.waitFor(created.path);
       this.selected = created.path;
       app.workspace.openPath(created.path, { focusTitle: true, mode: app.settings.defaultMode === 'reading' ? 'live' : undefined });
+    } catch (error) { reportError(error); }
+  },
+
+  chooseImages(folder = '') {
+    const input = h('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true, 'aria-label': 'Choisir une ou plusieurs images' });
+    input.addEventListener('change', () => {
+      const files = [...input.files];
+      input.remove();
+      if (files.length) this.importImages(files, folder || '');
+    }, { once: true });
+    document.body.append(input);
+    input.click();
+  },
+
+  async importImages(files, folder = '') {
+    const images = [...files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
+    if (!images.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+    if (images.length !== files.length) toast('Les fichiers non image ont été ignorés.');
+    try {
+      const paths = [];
+      for (const file of images) paths.push(await uploadFile(file, '', folder));
+      for (const path of paths) await app.workspace.waitFor(path);
+      if (folder) this.expanded.add(folder);
+      this.selected = paths[paths.length - 1];
+      this.reveal(this.selected);
+      app.workspace.openPath(paths[0], { newTab: paths.length > 1 });
+      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'}${folder ? ` dans « ${folder} »` : ' à la racine du coffre'}.`);
     } catch (error) { reportError(error); }
   },
 

@@ -5,6 +5,7 @@
 // it at the right file.
 import { app, fuzzy, h, highlighted, icon, Markdown, Meta, toast } from './core.js';
 import { store } from './store.js';
+import { keys } from './platform.js';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const REMOTE = /^(https?:|data:)/i;
@@ -305,7 +306,7 @@ export class LinkDoctor {
       this.close();
       view.setContent(Markdown.removeSpan(view.content, start, end), { step: true });
       view.redraw();
-      toast('Image retirée de la note (Ctrl+Z pour annuler).');
+      toast(keys('Image retirée de la note (Ctrl+Z pour annuler).'));
       return;
     }
     const alias = link.kind === 'wikilink' ? Meta.parseWikiInner(link.raw.slice(2, -2)).alias : link.label;

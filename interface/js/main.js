@@ -94,6 +94,8 @@ function installFileDrop() {
   document.addEventListener('drop', async (event) => {
     if (!hasFiles(event)) return;
     clear();
+    // The explorer owns direct imports into its selected folder; a textarea
+    // already owns precise caret insertion.
     if (event.target.closest('.tree, textarea')) return;
     event.preventDefault();
     const files = [...event.dataTransfer.files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');

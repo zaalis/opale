@@ -1,4 +1,4 @@
 node_modules/
-dist/*
-!dist/Opale-Setup.exe
+dist/
 *.log
+.DS_Store

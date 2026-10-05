@@ -209,6 +209,12 @@ test('vault files: inline types only, sandboxed, no traversal', async () => {
   assert.deepEqual(await upload.json(), { path: 'Pièces jointes/photo.png' });
   const again = await api('/api/file?name=photo.png', { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: Buffer.from([4]) });
   assert.deepEqual(await again.json(), { path: 'Pièces jointes/photo 1.png' });
+
+  await api('/api/folder', { method: 'POST', body: JSON.stringify({ path: 'Illustrations' }) });
+  const direct = await api('/api/file?name=opale.webp&folder=Illustrations', { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: Buffer.from([5]) });
+  assert.deepEqual(await direct.json(), { path: 'Illustrations/opale.webp' });
+  assert.equal(fs.readFileSync(path.join(vaultRoot, 'Illustrations', 'opale.webp'))[0], 5);
+  assert.equal((await api('/api/file?name=sortie.png&folder=..', { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: Buffer.from([1]) })).status, 403);
 });
 
 test('watcher picks up files written behind Opale’s back', async () => {

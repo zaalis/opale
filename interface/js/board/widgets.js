@@ -33,7 +33,7 @@ function mindLayout(root) {
   const size = (node, depth) => {
     const font = depth === 0 ? ROOT_FONT : MIND_FONT;
     const lines = (node.text || ' ').split('\n').length;
-    const w = Math.min(320, Math.max(depth === 0 ? 120 : 60, measure(node.text || 'Idée', `${depth === 0 ? 700 : 500} ${font}px Segoe UI`) + (depth === 0 ? 40 : 26)));
+    const w = Math.min(320, Math.max(depth === 0 ? 120 : 60, measure(node.text || 'Idée', `${depth === 0 ? 700 : 500} ${font}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif`) + (depth === 0 ? 40 : 26)));
     const hgt = lines * font * 1.35 + (depth === 0 ? 22 : 14);
     return { w, h: hgt };
   };
@@ -212,9 +212,9 @@ export const WIDGETS = {
       const id = topic.dataset.topic;
       return [
         { label: 'Ajouter une sous-idée', hint: 'Tab', run: () => mindAdd(view, el, id, 'child') },
-        { label: 'Ajouter une idée sœur', hint: 'Entrée', run: () => mindAdd(view, el, id, 'sibling'), disabled: id === el.data.root.id },
+        { label: 'Ajouter une idée sœur', hint: 'Enter', run: () => mindAdd(view, el, id, 'sibling'), disabled: id === el.data.root.id },
         'separator',
-        { label: 'Supprimer l’idée', icon: 'trash', danger: true, run: () => mindRemove(view, el, id), disabled: id === el.data.root.id, hint: 'Suppr' },
+        { label: 'Supprimer l’idée', icon: 'trash', danger: true, run: () => mindRemove(view, el, id), disabled: id === el.data.root.id, hint: 'Backspace' },
       ];
     },
     // Keys while one idea is focused, as in mind-mapping tools.

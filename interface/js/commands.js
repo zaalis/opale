@@ -159,8 +159,8 @@ function onKeydown(event) {
   // field that has its own (search box, title, dialog).
   const key = event.key.toLowerCase();
   const board = app.workspace.activeView;
-  if (board && board.type === 'board' && board.input.ownsKeys() && (event.ctrlKey || event.metaKey) && ['g', 'l', 'd', 'z', 'y', '[', ']', '0', '1'].includes(key)) return;
-  if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y') && !isTextInput(document.activeElement) && !topModal()) {
+  if (board && board.type === 'board' && board.input.ownsKeys() && primary(event) && ['g', 'l', 'd', 'z', 'y', '[', ']', '0', '1'].includes(key)) return;
+  if (primary(event) && (key === 'z' || key === 'y') && !isTextInput(document.activeElement) && !topModal()) {
     const open = note();
     if (open && open.mode !== 'reading' && open.undoKeys(event, false)) return;
   }

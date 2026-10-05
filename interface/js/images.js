@@ -6,6 +6,7 @@
 import { app, bus, h, icon, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
 import { embedFor, uploadFile } from './editing.js';
+import { keyLabel, keys, primary } from './platform.js';
 import { findLinks } from './links.js';
 
 // Blocks whose text an image can be dropped into; any other block (code,
@@ -202,7 +203,7 @@ export class ImageLayer {
       this.sizeLabel,
       h('span.img-sep'),
       tool('image', 'Remplacer l’image… (double-clic)', false, () => this.replaceFile(start())),
-      tool('trash', 'Retirer de la note (Suppr)', false, () => this.remove(start())));
+      tool('trash', `Retirer de la note (${keyLabel('Backspace')})`, false, () => this.remove(start())));
   }
 
   // --------------------------------------------------------------- changes
@@ -259,7 +260,7 @@ export class ImageLayer {
     this.view.setContent(Markdown.removeSpan(this.view.content, entry.start, entry.end), { step: true });
     this.rerender(null);
     this.view.scroller.focus({ preventScroll: true });
-    toast('Image retirée de la note. Le fichier reste dans le coffre (Ctrl+Z pour annuler).');
+    toast(keys('Image retirée de la note. Le fichier reste dans le coffre (Ctrl+Z pour annuler).'));
   }
 
   // Point the picture at another file of the vault, in the same small window
@@ -278,8 +279,8 @@ export class ImageLayer {
     if (event.target.closest('.img-frame, .img-toolbar')) return true;
     const img = event.target.closest('img.embed-image');
     if (!img || event.button !== 0 || !this.isManaged(img)) return false;
-    // Ctrl+click opens the picture in a tab (see renderer.js).
-    if (event.ctrlKey || event.metaKey) { event.preventDefault(); return true; }
+    // ⌘-click (Ctrl+click elsewhere) opens the picture in a tab (see renderer.js).
+    if (primary(event)) { event.preventDefault(); return true; }
     let entry = this.entryFor(img);
     // A picture drawn above or below the text being typed: close the typing
     // and pick the picture up.
@@ -596,11 +597,11 @@ export class ImageLayer {
       { label: 'Grande (toute la largeur)', run: () => this.setFraction(start, 1) },
       { label: 'Taille d’origine', checked: !options.width, run: () => this.update(start, { width: null }) },
       'separator',
-      { label: 'Remplacer l’image…', icon: 'image', run: () => this.replaceFile(start), hint: 'Entrée' },
+      { label: 'Remplacer l’image…', icon: 'image', run: () => this.replaceFile(start), hint: 'Enter' },
       path ? { label: 'Ouvrir l’image dans un onglet', icon: 'image', run: () => app.workspace.openPath(path, { newTab: true }) } : null,
       path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(path) } : null,
       'separator',
-      { label: 'Retirer de la note', icon: 'trash', danger: true, run: () => this.remove(start), hint: 'Suppr' },
+      { label: 'Retirer de la note', icon: 'trash', danger: true, run: () => this.remove(start), hint: 'Backspace' },
     ]);
     return true;
   }

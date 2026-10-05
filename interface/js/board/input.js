@@ -5,6 +5,7 @@
 import { app, isTextInput, toast, topModal } from '../core.js';
 import { WIDGETS } from './widgets.js';
 import { place } from './render.js';
+import { isMac, keys, primary, secondaryCtrl } from '../platform.js';
 
 const Board = window.OpaleBoard;
 const DRAG = 4;
@@ -28,6 +29,10 @@ export class Input {
       [stage, 'pointermove', (e) => this.hover(e)],
       [stage, 'pointerleave', () => { if (!this.stop) view.ui.clearTransient(); }],
       [stage, 'wheel', (e) => this.wheel(e), { passive: false }],
+      // Safari and WKWebView report a touchpad pinch as gesture events, not as Ctrl + wheel.
+      [stage, 'gesturestart', (e) => this.gesture(e), { passive: false }],
+      [stage, 'gesturechange', (e) => this.gesture(e), { passive: false }],
+      [stage, 'gestureend', (e) => this.gesture(e), { passive: false }],
       [stage, 'dblclick', (e) => this.dblclick(e)],
       [stage, 'contextmenu', (e) => this.contextmenu(e)],
       [stage, 'dragover', (e) => this.dragover(e)],
@@ -37,6 +42,11 @@ export class Input {
       [document, 'paste', (e) => this.paste(e)],
       [document, 'copy', (e) => this.copy(e, false)],
       [document, 'cut', (e) => this.copy(e, true)],
+      // WebKit (Safari, the macOS window) enables Edit > Copy / Cut / Paste — and so
+      // ⌘C ⌘X ⌘V — without a text selection only when the page asks for them here.
+      [document, 'beforecopy', (e) => { if (this.ownsKeys() && this.view.selection.size) e.preventDefault(); }],
+      [document, 'beforecut', (e) => { if (this.ownsKeys() && this.view.selection.size && !this.view.readOnly) e.preventDefault(); }],
+      [document, 'beforepaste', (e) => { if (this.ownsKeys() && !this.view.readOnly) e.preventDefault(); }],
       [window, 'blur', () => { this.space = false; this.stop && this.stop(); view.ui.clearTransient(); }],
     ];
     for (const [target, type, fn, options] of this.handlers) target.addEventListener(type, fn, options);
@@ -75,6 +85,8 @@ export class Input {
     const view = this.view;
     if (!view.loaded) return;
     if (event.target.closest('.board-ui, .b-editor, .b-note-editor')) return;
+    // ⌃-click on a Mac is a right-click: the context menu handles it.
+    if (isMac && event.ctrlKey && event.button === 0 && event.pointerType !== 'pen') return;
     view.stage.focus({ preventScroll: true });
     if (view.editing && !event.target.closest('.b-editor')) view.finishEdit(true);
     const handle = event.target.closest('[data-handle]');
@@ -99,7 +111,7 @@ export class Input {
       if (el.kind === 'mindmap' && topic) { view.widgetFocus = { id: el.id, node: topic.dataset.topic }; view.redraw(el); }
       event.preventDefault();
       if (view.doc.vote && view.doc.vote.active && el.kind !== 'connector') { this.vote(el, event); return; }
-      if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      if (event.shiftKey || primary(event)) {
         if (view.selection.has(el.id)) { const next = new Set(view.selection); next.delete(el.id); view.select(next); }
         else view.select([el.id], true);
         return;
@@ -211,7 +223,7 @@ export class Input {
       let dx = p.x - start.x; let dy = p.y - start.y;
       if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
       guides = [];
-      if (this.moveBox && view.doc.settings.snap && !e.ctrlKey) ({ dx, dy, guides } = this.snap(this.moveBox, dx, dy));
+      if (this.moveBox && view.doc.settings.snap && !primary(e)) ({ dx, dy, guides } = this.snap(this.moveBox, dx, dy));
       for (const item of items) {
         const el = item.el;
         if (el.kind === 'connector') {
@@ -668,7 +680,7 @@ export class Input {
       view.setMeta((doc) => { doc.vote.votes[el.id]--; if (!doc.vote.votes[el.id]) delete doc.vote.votes[el.id]; });
       return;
     }
-    if (used >= vote.perPerson) { toast(`Plus de vote disponible (${vote.perPerson} au total). Alt+clic retire un vote.`); return; }
+    if (used >= vote.perPerson) { toast(`Plus de vote disponible (${vote.perPerson} au total). ${isMac ? '⌥-clic' : 'Alt+clic'} retire un vote.`); return; }
     view.setMeta((doc) => { doc.vote.votes[el.id] = (doc.vote.votes[el.id] || 0) + 1; });
   }
 
@@ -687,13 +699,15 @@ export class Input {
     const view = this.view;
     if (event.target.closest('.board-ui')) return;
     const inside = event.target.closest('.b-mdcard-inner, .b-note-content, .b-code-body, .b-kcol-cards, .b-answers, .b-note-editor');
-    if (inside && !event.ctrlKey && inside.scrollHeight > inside.clientHeight + 1 && view.selection.size === 1) return;
+    if (inside && !event.ctrlKey && !event.metaKey && inside.scrollHeight > inside.clientHeight + 1 && view.selection.size === 1) return;
     event.preventDefault();
     const c = view.camera;
     // A pinch on a touchpad, or Ctrl + wheel: zoom where the pointer is.
     // A mouse wheel zooms too (as in Miro); a touchpad's two-finger scroll pans.
     const mouseWheel = event.deltaMode === 1 || (event.deltaX === 0 && Math.abs(event.deltaY) >= 50 && Number.isInteger(event.deltaY));
-    if (event.ctrlKey || (mouseWheel && !event.shiftKey)) {
+    // ⌘ + wheel zooms too on a Mac, as in other design tools.
+    if (this.pinch && event.ctrlKey) return;
+    if (event.ctrlKey || event.metaKey || (mouseWheel && !event.shiftKey)) {
       const unit = event.deltaMode === 1 ? 33 : 1;
       const factor = Math.exp((-event.deltaY * unit) * (event.ctrlKey && !mouseWheel ? 0.01 : 0.0018));
       const goal = Math.max(0.05, Math.min(8, (this.zoomGoal && this.zoomGoal.until > performance.now() ? this.zoomGoal.k : c.k) * factor));
@@ -706,13 +720,25 @@ export class Input {
     view.setCamera(c.x - dx, c.y - dy, c.k);
   }
 
+  // A touchpad pinch in WebKit: `scale` is relative to the start of the gesture.
+  gesture(event) {
+    const view = this.view;
+    if (event.target.closest('.board-ui')) return;
+    event.preventDefault();
+    if (event.type === 'gesturestart') { this.pinch = { k: view.camera.k }; return; }
+    if (event.type === 'gestureend') { this.pinch = null; return; }
+    if (!this.pinch || !event.scale) return;
+    const goal = Math.max(0.05, Math.min(8, this.pinch.k * event.scale));
+    view.zoomAt(event.clientX, event.clientY, goal, false);
+  }
+
   dblclick(event) {
     const view = this.view;
     if (event.target.closest('.board-ui, .b-editor')) return;
     const el = this.elementAt(event.target);
     if (el) {
       if (event.target.closest('[data-action]')) return;
-      if (el.locked) { toast('Élément verrouillé : déverrouillez-le pour le modifier (Ctrl+L).'); return; }
+      if (el.locked) { toast(keys('Élément verrouillé : déverrouillez-le pour le modifier (Ctrl+L).')); return; }
       view.select([el.id]);
       view.editElement(el, event.target);
       return;
@@ -739,7 +765,7 @@ export class Input {
   keydown(event) {
     if (!this.ownsKeys() || event.defaultPrevented || event.isComposing) return;
     const view = this.view;
-    const ctrl = event.ctrlKey || event.metaKey;
+    const ctrl = primary(event);
     const key = event.key.toLowerCase();
     const focus = view.widgetFocus && view.byId.get(view.widgetFocus.id);
     if (focus && WIDGETS[focus.kind] && WIDGETS[focus.kind].key && !ctrl && WIDGETS[focus.kind].key(view, focus, event)) return;
@@ -755,7 +781,7 @@ export class Input {
     if (ctrl && (key === '=' || key === '+')) { handled(); view.zoomBy(1.25); return; }
     if (ctrl && key === '-') { handled(); view.zoomBy(0.8); return; }
     if (ctrl && key === '0') { handled(); view.zoomAt(view.stageRect().left + view.stageRect().width / 2, view.stageRect().top + view.stageRect().height / 2, 1, true); return; }
-    if (ctrl || event.altKey) return;
+    if (ctrl || event.altKey || secondaryCtrl(event)) return;
     if (event.shiftKey && key === '!' || (event.shiftKey && event.code === 'Digit1')) { handled(); view.zoomToFit(); return; }
     if (event.shiftKey && (event.code === 'Digit2')) { handled(); view.zoomToSelection(); return; }
     if (event.key === 'Escape') {

@@ -16,7 +16,7 @@
   const MAX_NODES = 4000;
   const MAX_EDGES = 12000;
   const DIRECTIONS = { TB: 'TB', TD: 'TB', BT: 'BT', LR: 'LR', RL: 'RL' };
-  const FONT = 'Segoe UI, system-ui, sans-serif';
+  const FONT = '-apple-system, BlinkMacSystemFont, Helvetica Neue, system-ui, sans-serif';
   const CHAR = 0.53125; // average glyph width / font size (8.5px at 16px)
   const NODE_FONT = 16;
   const LABEL_FONT = 14;

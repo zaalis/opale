@@ -1,7 +1,7 @@
 // Opale — choosing a vault: shown full-screen on first launch, and as a
 // window when switching from an open vault.
 import { api, app, h, icon, openModal, reportError } from './core.js';
-import { TEXT } from './platform.js';
+import { pickFolderInShell, TEXT } from './platform.js';
 
 async function switchTo(request) {
   try {
@@ -16,7 +16,12 @@ function content(state) {
   const name = h('input.text-input', { type: 'text', placeholder: 'Mon coffre', spellcheck: false, 'aria-label': 'Nom du nouveau coffre' });
   const existing = h('input.text-input', { type: 'text', placeholder: TEXT.pathExample, spellcheck: false, 'aria-label': 'Chemin du dossier à ouvrir' });
   const browse = async (input) => {
-    try { const picked = await api('/api/pick-folder', { method: 'POST', body: {} }); if (picked.path) input.value = picked.path; return picked.path || ''; }
+    try {
+      const native = await pickFolderInShell();
+      const picked = native !== null ? { path: native } : await api('/api/pick-folder', { method: 'POST', body: {} });
+      if (picked.path) input.value = picked.path;
+      return picked.path || '';
+    }
     catch (error) { reportError(error); return ''; }
   };
   const create = () => {

@@ -14,7 +14,7 @@ const button = (label, run) => h('button.btn.small', { type: 'button', onClick: 
 function svg(tag, attrs = {}) { const node = document.createElementNS(svgNS, tag); for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v); return node; }
 function download(name, text, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = h('a', { href: url, download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const a = h('a', { href: url, download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 export class BoardUi {

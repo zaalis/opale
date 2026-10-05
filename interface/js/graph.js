@@ -257,7 +257,7 @@ export class GraphView {
     }
     // Labels appear as you zoom in; the hovered node and its neighbours always show theirs.
     const labelAlpha = this.local ? 1 : Math.max(0, Math.min(1, (this.view.k - 0.45) / 0.45));
-    context.font = `${12 / this.view.k}px "Segoe UI", system-ui, sans-serif`;
+    context.font = `${12 / this.view.k}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif`;
     context.textAlign = 'center'; context.textBaseline = 'top';
     context.fillStyle = this.colours.text;
     for (const node of this.nodes) {

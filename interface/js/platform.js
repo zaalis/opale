@@ -51,11 +51,25 @@ export const DELETE_HINT = isMac ? 'Ctrl+Backspace' : 'Delete';
 // The modifiers of a key event, in the portable spelling used to register shortcuts.
 export const modifierPrefix = (event) => (isMac ? `${event.metaKey ? 'Ctrl+' : ''}${event.ctrlKey ? 'Control+' : ''}` : event.ctrlKey ? 'Ctrl+' : '');
 
-// Messages to the native shell, when there is one (window chrome follows the theme).
+// The native macOS shell (WKWebView) is there: not when Opale is opened in a browser.
+export const hasShell = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.opale);
+
+// Messages to the native shell, when there is one (window chrome follows the theme, board exports).
 export function tellShell(message) {
   try {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.opale) window.webkit.messageHandlers.opale.postMessage(message);
   } catch {}
+}
+
+// A folder chosen in the native macOS panel (a sheet on Opale's window). Resolves
+// to '' when cancelled, or to null when there is no native shell to ask.
+let nextPick = 0;
+const picks = new Map();
+window.opaleFolderPicked = (id, path) => { const done = picks.get(id); if (done) { picks.delete(id); done(path || ''); } };
+export function pickFolderInShell() {
+  if (!hasShell()) return Promise.resolve(null);
+  const id = ++nextPick;
+  return new Promise((resolve) => { picks.set(id, resolve); tellShell({ type: 'pickFolder', id }); });
 }
 
 document.documentElement.classList.add(`os-${PLATFORM}`);

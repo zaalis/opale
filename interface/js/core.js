@@ -172,7 +172,8 @@ export function openModal({ title, body, className = '', onClose, footer }) {
       const at = modalStack.indexOf(handle);
       if (at < 0) return;
       modalStack.splice(at, 1);
-      backdrop.remove();
+      backdrop.classList.remove('is-visible');
+      setTimeout(() => backdrop.remove(), 230);
       if (previous && document.contains(previous)) { try { previous.focus({ preventScroll: true }); } catch {} }
       if (onClose) onClose(result);
     },
@@ -181,6 +182,7 @@ export function openModal({ title, body, className = '', onClose, footer }) {
   dialog.append(h('div.modal-body', body));
   if (footer) dialog.append(h('div.modal-footer', footer));
   document.body.append(backdrop);
+  requestAnimationFrame(() => backdrop.classList.add('is-visible'));
   modalStack.push(handle);
   return handle;
 }
