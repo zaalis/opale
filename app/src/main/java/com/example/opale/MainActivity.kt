@@ -340,7 +340,7 @@ private fun ProjectSidebar(
                         DropdownMenuItem(text={Text(label)},leadingIcon={AppGlyph(when(kind){"board"->2;"note"->0;else->5})},onClick={createMenu=false;onCreate(kind)})
                     }
                     HorizontalDivider()
-                    DropdownMenuItem(text={Text("Ouvrir le graphe")},leadingIcon={AppGlyph(3)},onClick={createMenu=false;onGraph()})
+                    DropdownMenuItem(text={Text("Nouveau graphe")},leadingIcon={AppGlyph(3)},onClick={createMenu=false;onGraph()})
                 }
             }
         }
