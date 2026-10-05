@@ -3,6 +3,7 @@ package com.example.opale
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.geometry.center
+import androidx.compose.ui.semantics.SemanticsProperties
 import org.junit.Rule
 import org.junit.Test
 import org.junit.Assert.assertEquals
@@ -49,6 +50,11 @@ class NativeAppTest {
         compose.onNodeWithContentDescription("Recherche").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("tag:android")
         compose.waitUntil(15000) { compose.onAllNodesWithText("$project/$title.md").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("Graphe").performClick()
+        val graph = compose.onNodeWithContentDescription("Graphe tactile", substring = true)
+        val initialGraphState = graph.fetchSemanticsNode().config[SemanticsProperties.StateDescription]
+        graph.performTouchInput { swipeRight() }
+        compose.waitUntil(15000) { graph.fetchSemanticsNode().config[SemanticsProperties.StateDescription] != initialGraphState }
         compose.onNodeWithContentDescription("Réglages").performClick()
         compose.onNodeWithText("Sombre").performClick()
         compose.onNodeWithText("Sombre").assertIsDisplayed()

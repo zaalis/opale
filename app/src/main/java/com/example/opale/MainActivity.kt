@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,6 +42,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
@@ -502,6 +504,8 @@ private fun AppGlyph(kind:Int) {
 private fun GraphView(texts:Map<String,String>,open:(String)->Unit) {
     val paths=texts.keys.take(100)
     val positions=remember(paths){paths.mapIndexed {index,path->path to Offset(cos(index*2*PI/max(1,paths.size)).toFloat(),sin(index*2*PI/max(1,paths.size)).toFloat())}.toMap()}
+    var pan by remember(paths) { mutableStateOf(Offset.Zero) }
+    var zoom by remember(paths) { mutableFloatStateOf(1f) }
     val color=MaterialTheme.colorScheme.primary
     val ink=MaterialTheme.colorScheme.onSurface
     val edges=remember(texts){texts.flatMap {(from,body)->extractWikiLinks(body).mapNotNull {link->paths.firstOrNull {it.substringAfterLast('/').substringBeforeLast('.').equals(link.substringBefore('#').substringAfterLast('/').removeSuffix(".md"),true)}?.let {from to it}}}}
@@ -511,8 +515,16 @@ private fun GraphView(texts:Map<String,String>,open:(String)->Unit) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val density=LocalDensity.current
             val width=with(density){maxWidth.toPx()};val height=with(density){maxHeight.toPx()}
-            fun pixel(p:Offset)=Offset(width/2+p.x*width*.37f,height/2+p.y*min(height,width)*.37f)
-            Canvas(Modifier.fillMaxSize().pointerInput(paths,width,height){detectTapGestures {tap->positions.entries.minByOrNull {(pixel(it.value)-tap).getDistance()}?.takeIf {(pixel(it.value)-tap).getDistance()<48*density.density}?.let {open(it.key)}}}) {
+            fun pixel(p:Offset)=Offset(width/2+p.x*width*.37f*zoom+pan.x,height/2+p.y*min(height,width)*.37f*zoom+pan.y)
+            Canvas(Modifier.fillMaxSize().semantics {
+                contentDescription="Graphe tactile. Glissez pour vous déplacer, pincez pour zoomer et touchez une note pour l’ouvrir."
+                stateDescription="Position ${pan.x.roundToInt()}, ${pan.y.roundToInt()} · zoom ${(zoom * 100).roundToInt()} %"
+            }
+                .pointerInput(paths) { detectTransformGestures { _, delta, scale, _ ->
+                    pan += delta
+                    zoom = (zoom * scale).coerceIn(.65f,2.4f)
+                } }
+                .pointerInput(paths,width,height,pan,zoom){detectTapGestures {tap->positions.entries.minByOrNull {(pixel(it.value)-tap).getDistance()}?.takeIf {(pixel(it.value)-tap).getDistance()<48*density.density}?.let {open(it.key)}}}) {
                 edges.forEach {(from,to)->val a=positions[from];val b=positions[to];if(a!=null&&b!=null) drawLine(ink.copy(alpha=.25f),pixel(a),pixel(b),2f)}
                 val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {textSize=12*density.density;this.color=android.graphics.Color.rgb((ink.red*255).toInt(),(ink.green*255).toInt(),(ink.blue*255).toInt())}
                 positions.forEach {(path,p)->val at=pixel(p);drawCircle(color,7*density.density,at);drawContext.canvas.nativeCanvas.drawText(path.substringAfterLast('/').substringBeforeLast('.').take(18),at.x+10*density.density,at.y,paint)}
