@@ -1,4 +1,12 @@
-node_modules/
-dist/*
-!dist/Opale-Setup.exe
+.gradle/
+.kotlin/
+.idea/
+**/build/
+local.properties
+.legacy-windows/
+*.jks
+*.keystore
+signing.properties
+captures/
+.DS_Store
 *.log

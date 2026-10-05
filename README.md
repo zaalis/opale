@@ -1,102 +1,46 @@
-# Opale
+# Opale Android
 
-Carnet de notes Markdown local, dans l'esprit d'Obsidian : un **coffre** est un simple
-dossier de fichiers `.md`, reliés par des liens `[[…]]`. Code entièrement original,
-sans dépendance : un serveur Node, une interface web, une fenêtre native WebView2.
+Application Android native, écrite en Kotlin avec Jetpack Compose. Cette branche remplace le lanceur Windows, le serveur Node et le rendu HTML par des écrans et un stockage Android.
 
-Un coffre Obsidian existant s'ouvre tel quel (Opale range ses réglages dans `.opale/`
-et ne touche pas à `.obsidian/`).
+## Utilisation
 
-## Lancer
+- Notes Markdown : écrire par blocs, lire, modifier la source, cocher les tâches, suivre les liens `[[Note]]`.
+- Images : sélection Android, copie dans le coffre, tailles et alignements, déplacement entre les emplacements du document avec le doigt ou les boutons.
+- Moodboards : glisser avec un doigt pour déplacer la vue ; toucher une fois pour sélectionner ; utiliser **Modifier** pour éditer et **Déplacer** pour déplacer l’objet. Pincer pour zoomer.
+- Coffre : stockage privé prêt au démarrage, ou dossier choisi avec le sélecteur Android. Les autorisations de dossier sont conservées.
+- Recherche, étiquettes, rétroliens, graphe, signets, note du jour, dossiers, renommage, export et partage natifs.
+- Sauvegarde automatique, brouillons persistants et détection des fichiers modifiés depuis leur ouverture. La corbeille conserve les fichiers dans `.trash`.
 
-```powershell
-npm start            # fenêtre de l'application
-npm run serve        # serveur seul, puis http://127.0.0.1:27184
-```
+Les fichiers sont des `.md`, `.canvas` et pièces jointes ordinaires. L’application fonctionne hors connexion. Elle ne fournit pas son propre service de synchronisation ; un dossier synchronisé dépend de son fournisseur Android.
 
-Opale est un projet autonome : il ne dépend d'aucun autre dossier et peut être placé
-n'importe où.
+## Ouvrir le projet
 
-## Construire l'application Windows
-
-Prérequis : Node.js et Visual Studio avec « Développement Desktop en C++ ». Les
-fichiers du SDK WebView2 nécessaires sont fournis dans `native/webview2`.
+Ouvrir ce dossier dans Android Studio et laisser Gradle synchroniser. Le projet initial créé dans `AndroidStudioProjects/opale` a servi de base. Identifiant Android : `fr.zaalis.opale`, minimum Android 7.0 / API 24.
 
 ```powershell
-npm run build        # dist\Opale.exe + opale-server.exe + pickfolder.exe
-npm run installer    # dist\Opale-Setup.exe, installateur Windows autonome
-npm run shortcut     # raccourcis Bureau et menu Démarrer, et enregistrement pour zaalis IDE
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat :app:assembleDebug
 ```
 
-`Opale.exe` démarre `opale-server.exe` placé à côté de lui ; sans lui, il lance
-`..\server.js` avec Node. Le serveur s'arrête quand la fenêtre se ferme.
+Pour une compilation release, définir `OPALE_SIGNING_PROPERTIES` vers un fichier privé contenant `storeFile`, `storePassword`, `keyAlias` et `keyPassword`. Aucune clé privée ni mot de passe n’est publié.
 
-Pour distribuer l'application, utilisez `Opale-Setup.exe`. Il installe Opale dans
-le profil Windows de l'utilisateur, crée le raccourci du menu Démarrer (et, au
-choix, celui du Bureau), l'enregistre dans la liste des applications installées et
-ajoute **Opale — Désinstallation**. Les coffres de notes et les réglages sont
-préservés lors de la désinstallation.
+## Architecture
 
-## Ce qu'Opale fait
+| Dossier | Rôle |
+| --- | --- |
+| `app/.../AppModel.kt` | Navigation des documents, sauvegarde, brouillons, recherche, préférences |
+| `app/.../MainActivity.kt` | Écrans Compose et sélecteurs/partage Android |
+| `app/.../data` | Coffre local et Storage Access Framework, révisions, liens, corbeille |
+| `app/.../notes` | Markdown et interactions tactiles d’images |
+| `app/.../board` | Modèle Canvas conservant les extensions, rendu natif et gestes |
+| `docs/CARTOGRAPHIE_ANDROID.md` | Étude préalable de la version Windows |
+| `docs/VALIDATION_ANDROID.md` | État de l’implémentation et preuves de compilation/exécution |
+| `artifacts` | APK release installable et somme SHA-256 |
 
-- Explorateur de fichiers (créer, renommer, déplacer par glisser-déposer, dupliquer, corbeille)
-- Onglets, historique précédent/suivant, note ouverte restaurée au lancement
-- Trois modes : aperçu en direct (le bloc cliqué redevient du Markdown), source, lecture
-- Liens `[[Note]]`, `[[Note|texte]]`, `[[Note#Titre]]`, intégrations `![[…]]`, complétion en tapant `[[` ou `#`
-- Renommer ou déplacer une note réécrit les liens qui y mènent
-- Rétroliens et mentions non liées, liens sortants, plan, étiquettes, signets
-- Recherche : `"phrase"`, `-exclu`, `a OR b`, `/regex/`, `tag:`, `file:`, `path:`, `content:`
-- Graphe global et graphe local, sélecteur rapide (`Ctrl+O`), palette de commandes (`Ctrl+P`)
-- Propriétés (frontmatter), encadrés, tâches, tableaux, notes de bas de page, code coloré
-- Notes quotidiennes, modèles, pièces jointes collées ou déposées, thèmes clair/sombre, extraits CSS
-- Images mises en page comme dans un traitement de texte : déposées à l'endroit voulu avec une taille
-  prédéfinie, sélection au clic, poignées de redimensionnement, déplacement par glisser, placement
-  dans le texte, à gauche, centré ou à droite (texte autour). Tout est écrit dans le Markdown :
-  `![[photo.png|left|320]]`
+La copie Windows déplacée dans `.legacy-windows` reste disponible localement et est ignorée par Git. La branche `main` du dépôt conserve la version Windows.
 
-Non repris d'Obsidian : extensions communautaires, Sync/Publish, Canvas, rendu LaTeX,
-volets côte à côte.
+## Compatibilité et limites
 
-## Connexion à zaalis IDE
+Les extensions JSON Canvas inconnues sont conservées. Les widgets complexes ne doivent pas être confondus avec leurs équivalents Windows : le document de validation décrit leur niveau de prise en charge. Les blocs Markdown non reconnus restent éditables en source. Les intégrations de bureau Node/MCP, les exports spécifiques Windows et les moteurs web Mermaid/draw.io ne sont pas transportés dans l’APK.
 
-Tant qu'Opale tourne, il publie son adresse dans `%APPDATA%\Opale\instance.json`
-(port, jeton, coffre ouvert). zaalis IDE lit ce fichier :
-
-Les deux projets sont séparés, et reliés par défaut : dès qu'Opale est présent sur le
-PC et lancé, l'assistant de l'IDE a accès au coffre ouvert, sans réglage. Dans l'IDE,
-**Paramètres → MCP → Opale** montre l'état et permet de lancer Opale ou de couper le
-lien. L'agent reçoit le serveur MCP `opale` et une Skill qui
-décrit ses outils : `vault_info`, `list_files`, `read_note`, `write_note`,
-`append_to_note`, `edit_note`, `set_properties`, `create_folder`, `move`, `move_many`,
-`delete`, `search`, `get_backlinks`, `get_links`, `list_tags`, `find_by_tag`,
-`daily_note`, `open_note`, `get_active_note`.
-
-Tout autre client MCP (Streamable HTTP) peut s'y relier : adresse et jeton dans
-**Paramètres → Connexion à zaalis IDE**.
-
-## Sécurité
-
-- Écoute sur `127.0.0.1` uniquement ; en-tête `Host` vérifié (pas de DNS rebinding).
-- L'interface s'authentifie par un cookie `SameSite=Strict` + un en-tête dédié ; les
-  programmes par un jeton Bearer, régénérable dans les paramètres.
-- Tous les chemins sont relatifs au coffre : pas de `..`, pas de lien symbolique
-  sortant, pas d'accès aux dossiers cachés (`.git`, `.opale`, `.trash`).
-- Le HTML d'une note est échappé ; les fichiers du coffre ne sont jamais servis comme pages.
-- La suppression va dans `.trash` par défaut, y compris pour l'assistant.
-
-## Organisation
-
-```
-server.js            serveur HTTP : interface, API du coffre, /mcp
-lib/vault.js         lecture/écriture, index des liens, renommage, surveillance du dossier
-lib/search.js        langage de recherche
-lib/mcp.js           outils proposés à l'assistant
-shared/              métadonnées et rendu Markdown (serveur + interface)
-interface/           l'application (modules ES, sans bibliothèque)
-native/              fenêtre WebView2, icône, scripts de construction
-test/                node --test
-```
-
-```powershell
-npm test
-```
+Le coffre privé est supprimé par Android lors d’une désinstallation : exporter ses fichiers ou choisir un dossier externe pour les conserver indépendamment de l’application. Les dossiers externes cloud peuvent avoir des garanties d’écriture plus faibles que les fichiers locaux ; le fournisseur Android ne donne pas d’opération portable de comparaison et remplacement atomique.
