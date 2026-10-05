@@ -5,6 +5,7 @@ import { uploadFile } from '../editing.js';
 import { SHAPES, search as searchShapes, shapeSvg } from './shapes.js';
 import { searchEmoji, searchIcons, searchStickers, iconSvg, stickerSvg } from './stickers.js';
 import { WIDGETS } from './widgets.js';
+import { exportBoard } from './export.js';
 
 const Board = window.OpaleBoard;
 const NAMES = { text: 'Texte', sticky: 'Pense-bête', mdcard: 'Carte Markdown', shape: 'Forme', connector: 'Flèche', stroke: 'Dessin', image: 'Image', note: 'Note du coffre', file: 'Fichier', link: 'Lien', embed: 'Page intégrée', video: 'Vidéo', frame: 'Cadre', grid: 'Grille', code: 'Code', table: 'Tableau', kanban: 'Kanban', mindmap: 'Carte mentale', card: 'Tâche', flipcard: 'Carte recto-verso', usercard: 'Profil', timeline: 'Planning', comment: 'Commentaire', mermaid: 'Mermaid', poll: 'Sondage', wheel: 'Roue', scale: 'Échelle', activity: 'Activité', ui: 'Maquette' };
@@ -290,9 +291,19 @@ export class BoardUi {
       { label: 'Masquer le texte des pense-bêtes', checked: v.doc.settings.privateMode, run: () => v.setMeta((doc) => { doc.settings.privateMode = !doc.settings.privateMode; }) },
       'separator',
       { label: 'Exporter le moodboard (.canvas)', run: () => download(Meta.baseName(v.path), Board.serialize(v.doc), 'application/json') },
+      { label: 'Exporter en PDF (.pdf)', run: () => this.exportVisual('pdf') },
+      { label: 'Exporter en JPG (.jpg)', run: () => this.exportVisual('jpg') },
       { label: 'Exporter le plan de tâches (.md)', run: () => download(`${Meta.stem(v.path)}-plan.md`, Board.planMarkdown(v.doc), 'text/markdown') },
       { label: 'Ouvrir comme texte', run: () => v.openAsText() },
     ]);
+  }
+
+  async exportVisual(format) {
+    if (this.exporting) return;
+    this.exporting = true;
+    try { await exportBoard(this.view, format); }
+    catch (error) { reportError(error); }
+    finally { this.exporting = false; }
   }
 
   // Transient drawing aids share the camera transform and never enter the file.
