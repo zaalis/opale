@@ -108,6 +108,13 @@ export function bindNoteInteractions(container, view) {
       navigator.clipboard.writeText(code ? code.textContent : '').then(() => toast('Code copié'), () => toast('Copie impossible', { kind: 'error' }));
       return;
     }
+    // A missing picture is not a note to create: offer to repair it instead.
+    const missing = event.target.closest('.embed-missing');
+    if (missing) {
+      event.preventDefault();
+      if (!missing.closest('[data-embed-path]') && view.repairLink) view.repairLink(missing);
+      return;
+    }
     const link = event.target.closest('a.internal-link');
     if (link) return follow(event, link);
     const tag = event.target.closest('a.tag');

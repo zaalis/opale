@@ -53,12 +53,20 @@ export const layout = {
       event.preventDefault();
       const start = event.clientX; const width = this.sides[side].width;
       document.body.classList.add('resizing');
-      const move = (moveEvent) => {
-        const delta = (moveEvent.clientX - start) * (side === 'left' ? 1 : -1);
+      // One width per frame, applied straight away (no easing while held).
+      let frame = 0; let x = start;
+      const paint = () => {
+        frame = 0;
+        const delta = (x - start) * (side === 'left' ? 1 : -1);
         this.sides[side].width = Math.max(190, Math.min(640, width + delta));
-        this.apply();
+        this.sides[side].el.style.width = `${this.sides[side].width}px`;
       };
-      const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.classList.remove('resizing'); app.workspace.persist(); bus.emit('layout'); };
+      const move = (moveEvent) => { x = moveEvent.clientX; if (!frame) frame = requestAnimationFrame(paint); };
+      const up = () => {
+        window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+        if (frame) { cancelAnimationFrame(frame); paint(); }
+        document.body.classList.remove('resizing'); app.workspace.persist(); bus.emit('layout');
+      };
       window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
     });
     return handle;

@@ -155,6 +155,13 @@ function onKeydown(event) {
   if (event.key === 'Escape') { const modal = topModal(); if (modal) { event.preventDefault(); modal.close(); } return; }
   // AltGr can show up as Ctrl+Alt on some keyboards: never a shortcut.
   if (event.ctrlKey && event.altKey) return;
+  // Undo and redo reach the open note wherever the focus is, except in a
+  // field that has its own (search box, title, dialog).
+  const key = event.key.toLowerCase();
+  if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y') && !isTextInput(document.activeElement) && !topModal()) {
+    const open = note();
+    if (open && open.mode !== 'reading' && open.undoKeys(event, false)) return;
+  }
   const pressed = combo(event);
   const command = list.find((item) => item.hotkey === pressed);
   if (!command) return;

@@ -81,6 +81,8 @@ test('inline: emphasis, code, links, tags, embeds', () => {
   assert.equal(Markdown.renderInline('[[Existe|ici]] [[Absente#S]]', ctx), '<a class="internal-link" data-href="Existe" data-path="Existe.md">ici</a> <a class="internal-link is-unresolved" data-href="Absente" data-subpath="S">Absente &gt; S</a>');
   assert.match(Markdown.renderInline('![[image.png|120]]', ctx), /<img class="embed-image" src="\/api\/file\?path=img%2Fimage\.png" alt="image\.png" width="120"/);
   assert.match(Markdown.renderInline('![[Existe]]', ctx), /class="embed embed-note" data-embed-path="Existe\.md" data-embed-depth="1"/);
+  // A missing picture names its target, so the interface can offer to repair it.
+  assert.equal(Markdown.renderInline('![photo](absente%20ici.png)', ctx), '<span class="embed embed-missing" data-href="absente ici.png">photo</span>');
   assert.equal(Markdown.renderInline('un #tag/sous et 2 * 3 * 4', ctx), 'un <a class="tag" data-tag="tag/sous">#tag/sous</a> et 2 * 3 * 4');
   assert.equal(Markdown.renderInline('snake_case_name et _ital_', ctx), 'snake_case_name et <em>ital</em>');
   assert.match(Markdown.renderInline('https://exemple.fr/a.', ctx), /^<a class="external-link" href="https:\/\/exemple\.fr\/a" target="_blank" rel="noopener noreferrer">https:\/\/exemple\.fr\/a<\/a>\.$/);

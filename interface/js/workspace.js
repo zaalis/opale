@@ -221,40 +221,174 @@ export const workspace = {
   back() { this.go(-1); },
   forward() { this.go(1); },
 
+  // Tab elements are kept from one render to the next, so a tab that becomes
+  // active, opens, closes or moves does so with a transition, not a jump.
   renderTabs() {
-    this.tabsEl.replaceChildren(...this.tabs.map((tab) => {
-      const entry = this.current(tab);
-      const el = h(`div.tab${tab.id === this.activeId ? '.active' : ''}`, {
-        role: 'tab', 'aria-selected': tab.id === this.activeId ? 'true' : 'false', draggable: true, title: entry.path || titleOf(entry), dataset: { id: String(tab.id) },
-        onMousedown: (event) => { if (event.button === 0 && !event.target.closest('.tab-close')) this.activate(tab.id); },
-        onAuxclick: (event) => { if (event.button === 1) { event.preventDefault(); this.closeTab(tab.id); } },
-        onContextmenu: (event) => {
-          event.preventDefault();
-          showMenu(event.clientX, event.clientY, [
-            { label: 'Fermer', icon: 'x', run: () => this.closeTab(tab.id), hint: 'Ctrl+W' },
-            { label: 'Fermer les autres onglets', run: () => this.closeOthers(tab.id), disabled: this.tabs.length < 2 },
-            entry.path ? 'separator' : null,
-            entry.path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(entry.path) } : null,
-          ]);
-        },
-        onDragstart: (event) => { event.dataTransfer.setData('application/x-opale-tab', String(tab.id)); event.dataTransfer.effectAllowed = 'move'; },
-        onDragover: (event) => { if ([...event.dataTransfer.types].includes('application/x-opale-tab')) event.preventDefault(); },
-        onDrop: (event) => {
-          const moved = Number(event.dataTransfer.getData('application/x-opale-tab'));
-          const from = this.tabs.findIndex((item) => item.id === moved); const to = this.tabs.findIndex((item) => item.id === tab.id);
-          if (from < 0 || to < 0 || from === to) return;
-          event.preventDefault();
-          this.tabs.splice(to, 0, this.tabs.splice(from, 1)[0]);
-          this.renderTabs(); this.persist();
-        },
-      },
-      h('span.tab-icon', { html: icon(entry.type === 'graph' ? 'graph' : entry.type === 'empty' ? 'plus' : entry.type === 'file' ? 'image' : 'file', 14) }),
-      h('span.tab-title', titleOf(entry)),
-      h('button.tab-close', { type: 'button', title: 'Fermer l’onglet', 'aria-label': 'Fermer l’onglet', html: icon('x', 13), onClick: (event) => { event.stopPropagation(); this.closeTab(tab.id); } }));
+    if (!this.tabEls) this.tabEls = new Map();
+    const order = this.tabs.map((tab) => {
+      let el = this.tabEls.get(tab.id);
+      if (!el) {
+        el = this.tabElement(tab);
+        this.tabEls.set(tab.id, el);
+        if (this.ready && this.tabsEl.offsetParent !== null) {
+          el.classList.add('is-opening');
+          el.addEventListener('animationend', () => el.classList.remove('is-opening'), { once: true });
+        }
+      }
+      this.updateTab(tab, el);
       return el;
-    }));
-    const activeEl = this.tabsEl.querySelector('.tab.active');
-    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+    const alive = new Set(this.tabs.map((tab) => tab.id));
+    for (const [id, el] of this.tabEls) {
+      if (alive.has(id)) continue;
+      this.tabEls.delete(id);
+      this.closeAnimation(el);
+    }
+    // Put the elements in order, stepping over those still closing.
+    let cursor = this.tabsEl.firstChild;
+    for (const el of order) {
+      while (cursor && cursor.classList.contains('is-closing')) cursor = cursor.nextSibling;
+      if (cursor === el) cursor = cursor.nextSibling;
+      else this.tabsEl.insertBefore(el, cursor);
+    }
+    const activeEl = this.tabEls.get(this.activeId);
+    if (activeEl && !this.dragging) activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  },
+
+  tabElement(tab) {
+    const el = h('div.tab', {
+      role: 'tab', dataset: { id: String(tab.id) },
+      onPointerdown: (event) => {
+        if (event.button !== 0 || event.target.closest('.tab-close')) return;
+        this.activate(tab.id);
+        this.dragTab(event, tab.id);
+      },
+      onAuxclick: (event) => { if (event.button === 1) { event.preventDefault(); this.closeTab(tab.id); } },
+      onContextmenu: (event) => {
+        event.preventDefault();
+        const entry = this.current(tab);
+        showMenu(event.clientX, event.clientY, [
+          { label: 'Fermer', icon: 'x', run: () => this.closeTab(tab.id), hint: 'Ctrl+W' },
+          { label: 'Fermer les autres onglets', run: () => this.closeOthers(tab.id), disabled: this.tabs.length < 2 },
+          entry.path ? 'separator' : null,
+          entry.path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(entry.path) } : null,
+        ]);
+      },
+    },
+    h('span.tab-icon'),
+    h('span.tab-title'),
+    h('button.tab-close', { type: 'button', title: 'Fermer l’onglet', 'aria-label': 'Fermer l’onglet', html: icon('x', 13), onClick: (event) => { event.stopPropagation(); this.closeTab(tab.id); } }));
+    return el;
+  },
+
+  updateTab(tab, el) {
+    const entry = this.current(tab);
+    const active = tab.id === this.activeId;
+    el.classList.toggle('active', active);
+    el.setAttribute('aria-selected', active ? 'true' : 'false');
+    el.title = entry.path || titleOf(entry);
+    const kind = entry.type === 'graph' ? 'graph' : entry.type === 'empty' ? 'plus' : entry.type === 'file' ? 'image' : 'file';
+    const iconEl = el.querySelector('.tab-icon');
+    if (iconEl.dataset.kind !== kind) { iconEl.dataset.kind = kind; iconEl.innerHTML = icon(kind, 14); }
+    const title = titleOf(entry);
+    const titleEl = el.querySelector('.tab-title');
+    if (titleEl.textContent !== title) titleEl.textContent = title;
+  },
+
+  // A closed tab folds away instead of vanishing; its neighbours slide in.
+  closeAnimation(el) {
+    if (!el.isConnected || el.offsetParent === null || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.remove(); return; }
+    el.classList.add('is-closing');
+    const width = el.getBoundingClientRect().width;
+    const animation = el.animate([
+      { maxWidth: `${width}px`, minWidth: `${width}px`, opacity: 1 },
+      { maxWidth: '0px', minWidth: '0px', opacity: 0, paddingLeft: '0px', paddingRight: '0px' },
+    ], { duration: 190, easing: 'cubic-bezier(.4, 0, .2, 1)' });
+    animation.onfinish = () => el.remove();
+    animation.oncancel = () => el.remove();
+  },
+
+  // Drag a tab along the bar, as in a web browser: it lifts off as a small
+  // floating card, the others slide aside as it passes their middle, and on
+  // release it glides into its new place.
+  dragTab(event, id) {
+    const el = this.tabEls.get(id);
+    if (!el || this.tabs.length < 2) return;
+    const startX = event.clientX; const startY = event.clientY; const pointer = event.pointerId;
+    const ease = 'cubic-bezier(.2, .8, .2, 1)';
+    let dragging = false; let elements = []; let rects = []; let from = -1; let to = -1; let offset = 0; let frame = 0; let lastX = startX;
+    const begin = () => {
+      dragging = true; this.dragging = true;
+      elements = this.tabs.map((tab) => this.tabEls.get(tab.id));
+      rects = elements.map((item) => item.getBoundingClientRect());
+      from = elements.indexOf(el); to = from;
+      try { el.setPointerCapture(pointer); } catch {}
+      this.tabsEl.classList.add('is-sorting');
+      el.classList.add('is-dragging');
+      document.body.classList.add('is-dragging-tab');
+    };
+    const shiftOthers = () => {
+      const width = rects[from].width + (rects.length > 1 ? Math.max(0, rects[1].left - rects[0].right) : 0);
+      elements.forEach((item, i) => {
+        if (i === from) return;
+        const shift = from < i && i <= to ? -width : to <= i && i < from ? width : 0;
+        item.style.transform = shift ? `translateX(${shift}px)` : '';
+      });
+    };
+    const paint = () => {
+      frame = 0;
+      const min = rects[0].left - rects[from].left - 6;
+      const max = rects[rects.length - 1].right - rects[from].right + 6;
+      offset = Math.max(min, Math.min(max, lastX - startX));
+      el.style.transform = `translate(${offset}px, -2px) scale(1.035)`;
+      const center = rects[from].left + rects[from].width / 2 + offset;
+      let target = 0;
+      rects.forEach((rect, i) => { if (i !== from && rect.left + rect.width / 2 < center) target++; });
+      if (target !== to) { to = target; shiftOthers(); }
+    };
+    const move = (e) => {
+      if (e.pointerId !== pointer) return;
+      lastX = e.clientX;
+      if (!dragging) {
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) < 5) return;
+        begin();
+      }
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      if (frame) cancelAnimationFrame(frame);
+      if (!dragging) return;
+      try { el.releasePointerCapture(pointer); } catch {}
+      const landing = to > from ? rects[to].right - rects[from].right : rects[to].left - rects[from].left;
+      el.classList.add('is-landing');
+      el.style.transform = `translate(${landing}px, 0) scale(1)`;
+      let done = false;
+      const ended = (e) => { if (e.target === el && e.propertyName === 'transform') settle(); };
+      const settle = () => {
+        if (done) return;
+        done = true;
+        el.removeEventListener('transitionend', ended);
+        // Commit the new order with every tab already standing in its place.
+        for (const item of elements) { item.style.transition = 'none'; item.style.transform = ''; }
+        if (to !== from) this.tabs.splice(to, 0, this.tabs.splice(from, 1)[0]);
+        this.dragging = false;
+        this.renderTabs();
+        void this.tabsEl.offsetWidth;
+        for (const item of elements) item.style.transition = '';
+        this.tabsEl.classList.remove('is-sorting');
+        el.classList.remove('is-dragging', 'is-landing');
+        document.body.classList.remove('is-dragging-tab');
+        if (to !== from) this.persist();
+      };
+      el.addEventListener('transitionend', ended);
+      setTimeout(settle, 340);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
   },
 
   onIndex(change) {
@@ -286,6 +420,8 @@ export const workspace = {
   },
 
   restore(saved, pendingOpen) {
+    // Tabs restored at start-up appear at once; later ones open with a motion.
+    setTimeout(() => { this.ready = true; }, 0);
     const tabs = Array.isArray(saved && saved.tabs) ? saved.tabs : [];
     for (const item of tabs) {
       if (item.type === 'graph') this.createTab({ type: 'graph' }, {}, false);

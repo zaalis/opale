@@ -262,8 +262,9 @@
       return imageTag(url, options, '', `${attr('title', title)} loading="lazy" referrerpolicy="no-referrer"`);
     }
     if (SCHEME_RE.test(url)) return escapeHtml(label);
-    const path = ctx.resolve ? ctx.resolve(safeDecode(url.split('#')[0])) : null;
-    if (!path) return `<span class="embed embed-missing">${escapeHtml(label || url)}</span>`;
+    const target = safeDecode(url.split('#')[0]);
+    const path = ctx.resolve ? ctx.resolve(target) : null;
+    if (!path) return `<span class="embed embed-missing" data-href="${escapeHtml(target)}">${escapeHtml(label || url)}</span>`;
     return mediaHtml(path, alt, ctx) || `<a class="internal-link" data-path="${escapeHtml(path)}" data-href="${escapeHtml(url)}">${escapeHtml(label || Meta.baseName(path))}</a>`;
   }
 

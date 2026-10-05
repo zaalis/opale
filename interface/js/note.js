@@ -8,10 +8,29 @@ import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, 
 import { store } from './store.js';
 import { keys, primary, TEXT } from './platform.js';
 import { attachEditing, caretPoint, closeSuggest, embedFor, uploadFile } from './editing.js';
-import { ImageLayer, isImageFile, pickImageFiles } from './images.js';
+import { findImages, ImageLayer, isImageFile, pickImageFiles } from './images.js';
+import { displayOf, findEmbeds, followEdit, LinkDoctor, sourceOf, toShown, toSource } from './links.js';
 import { bindNoteInteractions, decorate } from './renderer.js';
 
 const EDITABLE_JOIN = new Set(['paragraph', 'heading', 'list', 'blockquote']);
+// Blocks typed exactly as written: an embed there is only text.
+const LITERAL = new Set(['code', 'frontmatter', 'math', 'comment']);
+
+// Text of a rendered block before a point, without what embeds display
+// (their content is not typed, so it must not steer the caret).
+function textBefore(blockEl, container, offset) {
+  const range = document.createRange();
+  range.selectNodeContents(blockEl);
+  range.setEnd(container, offset);
+  const fragment = range.cloneContents();
+  for (const node of fragment.querySelectorAll('.embed, .broken-dot, .code-tools')) node.remove();
+  return fragment.textContent;
+}
+
+// Does an embed of `text` overlap the stretch [from, to)?
+function embedIn(text, from, to) {
+  return findEmbeds(text).filter((embed) => (from === to ? embed.start < from && embed.end > from : embed.start < to && embed.end > from));
+}
 
 // Colour the source without changing a single character, so the transparent
 // textarea laid over it lines up exactly.
@@ -67,6 +86,7 @@ export class NoteView {
     this.saving = false; this.pendingMtime = null; this.conflict = false;
     this.saveSoon = debounce(() => this.save(), 650);
     this.images = new ImageLayer(this);
+    this.links = new LinkDoctor(this);
     this.build();
     this.ready = this.load(options);
   }
@@ -97,6 +117,10 @@ export class NoteView {
       this.onLiveMouseDown(event);
     });
     this.body.addEventListener('dblclick', (event) => { if (this.mode === 'live') this.images.onDoubleClick(event); });
+    // A picture that fails to load gets its red dot once the failure is known.
+    this.body.addEventListener('error', (event) => {
+      if (event.target.matches && event.target.matches('img.embed-image')) setTimeout(() => this.links.decorate(this.body), 0);
+    }, true);
     // Keys and pastes that reach the page itself rather than a block being
     // typed in: a selected image, undo after moving one, a pasted picture.
     this.scroller.addEventListener('keydown', (event) => {
@@ -116,7 +140,7 @@ export class NoteView {
     this.scroller.addEventListener('mousedown', (event) => {
       // Clicking the empty page under the note continues it.
       if (event.target !== this.scroller && event.target !== this.sizer) return;
-      if (this.mode === 'live') { event.preventDefault(); this.appendParagraph(); }
+      if (this.mode === 'live') { event.preventDefault(); this.marginClick(event); }
       else if (this.mode === 'source' && this.sourceArea) { event.preventDefault(); this.sourceArea.focus(); this.sourceArea.setSelectionRange(this.sourceArea.value.length, this.sourceArea.value.length); }
     });
   }
@@ -156,6 +180,7 @@ export class NoteView {
 
   render() {
     this.images.reset();
+    this.links.close();
     this.active = null; this.sourceArea = null;
     closeSuggest();
     this.updateHeader();
@@ -170,7 +195,14 @@ export class NoteView {
   renderReading() {
     this.body.replaceChildren(h('div.markdown.reading', { html: Markdown.render(this.content, store.renderContext(this.path)) || `<p class="note-empty">${keys('Note vide — passez en édition avec Ctrl+E.')}</p>` }));
     decorate(this.body);
+    this.links.decorate(this.body);
   }
+
+  // Draw the note again after a change made outside the typing, keeping the place.
+  redraw() { this.active = null; this.render(); }
+
+  // A broken embed was clicked: open the window that repairs it.
+  repairLink(el) { this.links.open(el, el.querySelector('.broken-dot') || el); }
 
   // ----------------------------------------------------------------- source
   renderSource() {
@@ -198,6 +230,7 @@ export class NoteView {
     this.liveEl = container;
     this.body.replaceChildren(container);
     decorate(container);
+    this.links.decorate(container);
   }
 
   blockElement(block, index, ctx) {
@@ -210,9 +243,31 @@ export class NoteView {
     if (event.button !== 0 || !this.loaded) return;
     const target = event.target;
     if (target.closest('textarea')) return;
-    if (target.closest('a, button, input, summary, audio, video, .code-tools')) return;
+    if (target.closest('a, button, input, summary, audio, video, .code-tools, .embed-missing')) return;
     event.preventDefault();
+    this.liveClick(target, event.clientX, event.clientY);
+  }
+
+  // A click in the side margins of the page acts on the line at that height,
+  // as in a word processor; below the note it starts a new paragraph.
+  marginClick(event) {
+    const blocks = this.liveEl ? [...this.liveEl.querySelectorAll(':scope > .lp-block')] : [];
+    const last = blocks[blocks.length - 1];
+    if (last && event.clientY <= last.getBoundingClientRect().bottom) {
+      const box = this.liveEl.getBoundingClientRect();
+      const x = Math.min(Math.max(event.clientX, box.left + 2), box.right - 2);
+      let target = document.elementFromPoint(x, event.clientY);
+      // Never pick up a picture from the margin: aim at its block instead.
+      if (target && target.closest('img, .embed, .broken-dot')) target = target.closest('.lp-block') || target;
+      if (target && this.liveEl.contains(target)) return this.liveClick(target, x, event.clientY, event.clientX);
+    }
+    return this.appendParagraph();
+  }
+
+  liveClick(target, x, y, pointerX = x) {
+    const event = { clientX: pointerX, clientY: y };
     let blockEl = target.closest('.lp-block');
+    if (blockEl && this.active && blockEl === this.active.el) return;
     if (!blockEl) {
       if (target.closest('.lp-tail') || !this.blocks.length) return this.appendParagraph();
       // A click in the margin between two blocks edits the nearest one.
@@ -224,57 +279,128 @@ export class NoteView {
         const distance = Math.min(Math.abs(event.clientY - rect.top), Math.abs(event.clientY - rect.bottom));
         return !best || distance < best.distance ? { element, distance } : best;
       }, null).element;
-      return this.activate(Number(blockEl.dataset.index), { at: 'end' });
+      const index = Number(blockEl.dataset.index);
+      if (!this.partsOf(this.blocks[index])) return this.besideEmbeds(index, event);
+      return this.activate(index, { at: 'end' });
     }
+    const index = Number(blockEl.dataset.index);
+    // Only pictures in this block: there is no text to show, ever.
+    if (!this.partsOf(this.blocks[index])) return this.besideEmbeds(index, event);
     let prefix = null;
-    const range = document.caretRangeFromPoint ? document.caretRangeFromPoint(event.clientX, event.clientY) : null;
-    if (range && blockEl.contains(range.startContainer)) {
-      const before = document.createRange();
-      before.selectNodeContents(blockEl);
-      before.setEnd(range.startContainer, range.startOffset);
-      prefix = before.toString();
-    }
-    this.activate(Number(blockEl.dataset.index), prefix === null ? { at: 'end' } : { prefix });
+    const range = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+    if (range && blockEl.contains(range.startContainer)) prefix = textBefore(blockEl, range.startContainer, range.startOffset);
+    this.activate(index, prefix === null ? { at: 'end' } : { prefix });
   }
 
-  // Turn block `index` into its Markdown source, ready to type in.
+  // Beside a block that holds only pictures, a click starts a new paragraph
+  // on that side of them, the way a word processor puts the caret there.
+  besideEmbeds(index, event) {
+    const el = this.liveEl.children[index];
+    const media = el ? [...el.querySelectorAll('img, .embed, video, audio')].map((item) => item.getBoundingClientRect()) : [];
+    const first = media[0];
+    const before = !!first && (event.clientY < first.top || (event.clientX < first.left && event.clientY <= first.bottom));
+    this.insertParagraph(index, before ? 'before' : 'after');
+  }
+
+  // How a block is typed in: `head` and `tail` are lines made only of
+  // embeds, which stay drawn above and below the text; `middle` is the text,
+  // where each remaining embed shows as one symbol. Null when the block holds
+  // nothing but embeds.
+  partsOf(block) {
+    if (!block) return null;
+    const lines = this.lines().slice(block.start, block.end + 1);
+    const type = block.token.type;
+    const objects = !LITERAL.has(type);
+    if (!objects || type !== 'paragraph') return { head: '', middle: lines.join('\n'), tail: '', objects };
+    const only = lines.map((line) => {
+      const embeds = findEmbeds(line);
+      if (!embeds.length) return false;
+      let rest = line;
+      for (const embed of embeds.reverse()) rest = rest.slice(0, embed.start) + rest.slice(embed.end);
+      return !rest.trim();
+    });
+    if (only.every(Boolean)) return null;
+    let first = 0; while (only[first]) first++;
+    let last = lines.length - 1; while (only[last]) last--;
+    return {
+      head: lines.slice(0, first).map((line) => `${line}\n`).join(''),
+      middle: lines.slice(first, last + 1).join('\n'),
+      tail: lines.slice(last + 1).map((line) => `\n${line}`).join(''),
+      objects,
+    };
+  }
+
+  // Embed lines drawn around the text being typed. Each picture remembers
+  // where it is written, so clicking it still selects it.
+  staticPart(source, offset) {
+    const part = h('div.lp-static', { html: Markdown.render(source, store.renderContext(this.path, { live: true })) });
+    decorate(part);
+    const images = [...part.querySelectorAll('img.embed-image')].filter((img) => !img.closest('[data-embed-path]'));
+    const refs = findImages(source, this.path);
+    if (refs.length === images.length) images.forEach((img, i) => { img.dataset.offset = String(offset + refs[i].start); });
+    this.links.decorate(part);
+    return part;
+  }
+
+  nearestEditable(from, step) {
+    for (let i = from; i >= 0 && i < this.blocks.length; i += step) if (this.partsOf(this.blocks[i])) return i;
+    return -1;
+  }
+
+  // Turn block `index` into text to type in. Returns false when it has none.
   activate(index, caret = { at: 'end' }) {
     if (this.active) {
-      if (this.active.index === index) return;
+      if (this.active.index === index) return true;
       const line = this.blocks[index] ? this.blocks[index].start : 0;
       this.commitActive();
       index = this.blockAtLine(line);
     }
     const block = this.blocks[index]; const el = this.liveEl && this.liveEl.children[index];
-    if (!block || !el) return;
-    const source = this.lines().slice(block.start, block.end + 1).join('\n');
+    const parts = this.partsOf(block);
+    if (!block || !el || !parts) return false;
+    const source = parts.head + parts.middle + parts.tail;
     const token = block.token;
     const kind = token.type === 'heading' ? `.lp-h${token.level}` : token.type === 'code' || token.type === 'frontmatter' || token.type === 'table' || token.type === 'math' ? '.lp-mono' : '';
     const textarea = h(`textarea.lp-input${kind}`, { rows: 1, spellcheck: !!app.settings.spellcheck, 'aria-label': 'Bloc en cours d’édition', autocapitalize: 'off' });
-    textarea.value = source;
+    const shown = parts.objects ? displayOf(parts.middle, this.path) : { text: parts.middle, spans: [] };
+    textarea.value = shown.text;
     attachEditing(textarea, this.path);
+    let base = 0;
+    const lines = this.lines();
+    for (let i = 0; i < block.start; i++) base += lines[i].length + 1;
     el.classList.add('is-editing');
-    el.replaceChildren(textarea);
-    this.active = { index, textarea, el };
+    el.replaceChildren(...[
+      parts.head ? this.staticPart(parts.head, base) : null,
+      h('div.lp-input-wrap', textarea),
+      parts.tail ? this.staticPart(parts.tail, base + parts.head.length + parts.middle.length) : null,
+    ].filter(Boolean));
+    this.active = { index, textarea, el, head: parts.head, tail: parts.tail, objects: parts.objects, spans: shown.spans, shown: shown.text };
     const resize = () => { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; };
     textarea.addEventListener('input', () => { this.onBlockInput(); resize(); });
     textarea.addEventListener('keydown', (event) => this.onBlockKey(event));
+    textarea.addEventListener('copy', (event) => this.copyShown(event, false));
+    textarea.addEventListener('cut', (event) => this.copyShown(event, true));
     textarea.addEventListener('blur', () => {
       const active = this.active;
       // Switching window keeps the block open; clicking elsewhere closes it.
       setTimeout(() => { if (active && this.active === active && document.activeElement !== textarea) this.commitActive(); }, 0);
     });
     resize();
+    // Where the caret goes, first as an offset in the block's Markdown.
     let offset = source.length;
     if (caret.at === 'start') offset = 0;
     else if (typeof caret.offset === 'number') offset = Math.max(0, Math.min(caret.offset, source.length));
     else if (typeof caret.prefix === 'string') {
       if (token.type === 'code') offset = Math.min(source.length, source.indexOf('\n') + 1 + caret.prefix.length);
       else if (token.type === 'frontmatter' || token.type === 'table') offset = source.length;
+      else if (parts.objects) { const full = displayOf(source, this.path); offset = toSource(full.spans, mapPrefix(full.text, caret.prefix)); }
       else offset = mapPrefix(source, caret.prefix);
     }
+    const inText = Math.max(0, Math.min(offset - parts.head.length, parts.middle.length));
+    const at = toShown(shown.spans, inText);
     textarea.focus({ preventScroll: true });
-    textarea.setSelectionRange(offset, offset);
+    textarea.setSelectionRange(at, at);
+    return true;
   }
 
   blockAtLine(line) {
@@ -293,24 +419,68 @@ export class NoteView {
     const lines = this.lines();
     let offset = 0;
     for (let i = block.start; i < Math.min(line, block.end + 1); i++) offset += lines[i].length + 1;
-    this.activate(index, { offset: line > block.end ? Infinity : offset + column });
+    return this.activate(index, { offset: line > block.end ? Infinity : offset + column });
   }
 
   onBlockInput() {
-    const { index, textarea } = this.active; const block = this.blocks[index];
+    const active = this.active;
+    const { index, textarea } = active; const block = this.blocks[index];
+    let middle = textarea.value;
+    const pictures = active.spans.length;
+    if (active.objects) {
+      // Follow the symbols through the edit, then let any embed just
+      // finished (pasted, completed, typed) become a symbol too.
+      const spans = followEdit(active.shown, textarea.value, active.spans);
+      middle = sourceOf(textarea.value, spans);
+      const caret = toSource(spans, textarea.selectionStart);
+      const shown = displayOf(middle, this.path, caret);
+      if (shown.text !== textarea.value) {
+        const at = toShown(shown.spans, caret);
+        textarea.value = shown.text;
+        textarea.setSelectionRange(at, at);
+      }
+      active.spans = shown.spans; active.shown = shown.text;
+    }
     const lines = this.lines().slice();
-    const fresh = textarea.value.split('\n');
+    const fresh = (active.head + middle + active.tail).split('\n');
     const delta = fresh.length - (block.end - block.start + 1);
     lines.splice(block.start, block.end - block.start + 1, ...fresh);
     block.end += delta;
     for (let i = index + 1; i < this.blocks.length; i++) { this.blocks[i].start += delta; this.blocks[i].end += delta; }
-    this.setContent(lines.join('\n'));
+    // A picture deleted or added while typing is an undo step of its own.
+    this.setContent(lines.join('\n'), { step: active.spans.length !== pictures });
+  }
+
+  // Copying text that holds a symbol copies the embed it stands for.
+  copyShown(event, cut) {
+    const active = this.active;
+    if (!active || !active.objects || !event.clipboardData) return;
+    const { textarea } = active;
+    const from = textarea.selectionStart; const to = textarea.selectionEnd;
+    const inside = active.spans.filter((span) => span.at >= from && span.at + span.symbol.length <= to);
+    if (from === to || !inside.length) return;
+    event.preventDefault();
+    event.clipboardData.setData('text/plain', sourceOf(textarea.value.slice(from, to), inside.map((span) => ({ ...span, at: span.at - from }))));
+    if (cut) {
+      textarea.setRangeText('', from, to, 'end');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   commitActive() {
     if (!this.active) return;
+    const { ephemeral, textarea } = this.active;
     this.active = null;
     closeSuggest();
+    // A paragraph opened by a click and left empty leaves no trace in the file.
+    if (ephemeral && !textarea.value.trim() && this.content === ephemeral.after) {
+      this.content = ephemeral.before; this._lines = null;
+      this.history.splice(ephemeral.historyIndex + 1);
+      this.historyIndex = Math.min(ephemeral.historyIndex, this.history.length - 1);
+      this.lastPush = 0;
+      this.saveSoon();
+      bus.emit('note-content', this);
+    }
     const top = this.scroller.scrollTop;
     this.renderLive();
     this.scroller.scrollTop = top;
@@ -324,52 +494,107 @@ export class NoteView {
     if (event.key === 'Escape') { event.preventDefault(); this.commitActive(); this.scroller.focus({ preventScroll: true }); return; }
     const plain = !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && textarea.selectionStart === textarea.selectionEnd;
     if (!plain) return;
-    if (event.key === 'ArrowUp' && index > 0 && caretPoint(textarea, textarea.selectionStart).y === caretPoint(textarea, 0).y) {
-      event.preventDefault(); this.activate(index - 1, { at: 'end' });
-    } else if (event.key === 'ArrowDown' && index < this.blocks.length - 1 && caretPoint(textarea, textarea.selectionStart).y === caretPoint(textarea, textarea.value.length).y) {
-      event.preventDefault(); this.activate(index + 1, { at: 'start' });
-    } else if (event.key === 'Backspace' && textarea.selectionStart === 0 && index > 0) {
+    if (event.key === 'ArrowUp' && caretPoint(textarea, textarea.selectionStart).y === caretPoint(textarea, 0).y) {
+      const target = this.nearestEditable(index - 1, -1);
+      if (target >= 0) { event.preventDefault(); this.activate(target, { at: 'end' }); }
+    } else if (event.key === 'ArrowDown' && caretPoint(textarea, textarea.selectionStart).y === caretPoint(textarea, textarea.value.length).y) {
+      const target = this.nearestEditable(index + 1, 1);
+      if (target >= 0) { event.preventDefault(); this.activate(target, { at: 'start' }); }
+    } else if (event.key === 'Backspace' && textarea.selectionStart === 0 && (index > 0 || this.active.head)) {
       event.preventDefault(); this.mergeWithPrevious();
     }
   }
 
   // Backspace at the very start of a block behaves as it would in plain text:
   // it removes the line break (or the blank line) that separates the blocks.
+  // Right after a picture it selects the picture instead, as a word processor
+  // does; a second Backspace then removes it.
   mergeWithPrevious() {
-    const { index } = this.active;
+    const { index, head } = this.active;
     const block = this.blocks[index]; const previous = this.blocks[index - 1];
-    if (!EDITABLE_JOIN.has(previous.token.type) || !EDITABLE_JOIN.has(block.token.type)) return this.activate(index - 1, { at: 'end' });
-    const lines = this.lines().slice();
+    const lines = this.lines();
+    let base = 0;
+    for (let i = 0; i < block.start; i++) base += lines[i].length + 1;
+    let picture = null;
+    if (head) picture = findEmbeds(head).pop();
+    else if (previous && !this.partsOf(previous)) {
+      let start = 0;
+      for (let i = 0; i < previous.start; i++) start += lines[i].length + 1;
+      const last = findEmbeds(lines.slice(previous.start, previous.end + 1).join('\n')).pop();
+      if (last) picture = { start: last.start + start - base };
+    }
+    if (picture) {
+      this.commitActive();
+      const entry = this.images.entryAt(base + picture.start);
+      if (entry) this.images.select(entry);
+      return;
+    }
+    if (!previous) return;
+    if (!EDITABLE_JOIN.has(previous.token.type) || !EDITABLE_JOIN.has(block.token.type)) { const target = this.nearestEditable(index - 1, -1); if (target >= 0) this.activate(target, { at: 'end' }); return; }
+    const next = lines.slice();
     let line; let column;
-    if (block.start - previous.end > 1) { lines.splice(block.start - 1, 1); line = block.start - 1; column = 0; }
-    else { column = lines[previous.end].length; lines.splice(previous.end, 2, lines[previous.end] + lines[block.start]); line = previous.end; }
+    if (block.start - previous.end > 1) { next.splice(block.start - 1, 1); line = block.start - 1; column = 0; }
+    else { column = next[previous.end].length; next.splice(previous.end, 2, next[previous.end] + next[block.start]); line = previous.end; }
     this.active = null;
-    this.setContent(lines.join('\n'));
+    this.setContent(next.join('\n'));
     this.renderLive();
     this.activateAt(line, column);
   }
 
+  // An empty paragraph to type in, at line `line` of the (already changed)
+  // note. It disappears again if nothing is typed in it.
+  openParagraph(line, before) {
+    const top = this.scroller.scrollTop;
+    this.renderLive();
+    this.scroller.scrollTop = top;
+    const block = { start: line, end: line, token: { type: 'paragraph', text: '', start: line, end: line } };
+    let at = this.blocks.findIndex((item) => item.start > line);
+    if (at < 0) at = this.blocks.length;
+    this.blocks.splice(at, 0, block);
+    const el = this.blockElement(block, at, store.renderContext(this.path, { live: true }));
+    const elements = this.liveEl.querySelectorAll(':scope > .lp-block');
+    this.liveEl.insertBefore(el, elements[at] || this.tail);
+    this.liveEl.querySelectorAll(':scope > .lp-block').forEach((child, i) => { child.dataset.index = String(i); });
+    this.activate(at, { at: 'end' });
+    if (this.active) this.active.ephemeral = { ...before, after: this.content };
+  }
+
+  insertParagraph(index, where) {
+    if (this.active) this.commitActive();
+    const block = this.blocks[index];
+    if (!block) return;
+    const before = { before: this.content, historyIndex: this.historyIndex };
+    const lines = this.lines().slice();
+    let line;
+    if (where === 'before') {
+      const gap = block.start === 0 || !lines[block.start - 1].trim();
+      lines.splice(block.start, 0, ...(gap ? ['', ''] : ['', '', '']));
+      line = gap ? block.start : block.start + 1;
+    } else {
+      const next = lines[block.end + 1];
+      const gap = next === undefined || !next.trim();
+      lines.splice(block.end + 1, 0, ...(gap ? ['', ''] : ['', '', '']));
+      line = block.end + 2;
+    }
+    this.setContent(lines.join('\n'));
+    this.openParagraph(line, before);
+  }
+
   appendParagraph() {
     if (this.active) this.commitActive();
+    const before = { before: this.content, historyIndex: this.historyIndex };
     // Exactly one blank line between the last block and the new one, however
     // many times the end of the page is clicked.
     const kept = this.content.replace(/\s+$/, '');
     this.setContent(kept ? `${kept}\n\n` : '');
-    const line = this.lines().length - 1;
-    const block = { start: line, end: line, token: { type: 'paragraph', text: '', start: line, end: line } };
-    this.blocks.push(block);
-    const el = this.blockElement(block, this.blocks.length - 1, store.renderContext(this.path, { live: true }));
-    this.liveEl.insertBefore(el, this.tail);
-    this.activate(this.blocks.length - 1, { at: 'end' });
+    this.openParagraph(this.lines().length - 1, before);
   }
 
   focusBody() {
     if (this.mode === 'source' && this.sourceArea) { this.sourceArea.focus(); return; }
     if (this.mode !== 'live') return;
-    if (this.blocks.length) {
-      const first = this.blocks.findIndex((block) => block.token.type !== 'frontmatter');
-      if (first >= 0) this.activate(first, { at: 'end' }); else this.appendParagraph();
-    } else this.appendParagraph();
+    const first = this.blocks.findIndex((block) => block.token.type !== 'frontmatter' && this.partsOf(block));
+    if (first >= 0) this.activate(first, { at: 'end' }); else this.appendParagraph();
   }
 
   focusTitle() {
@@ -436,10 +661,14 @@ export class NoteView {
   }
 
   // ----------------------------------------------------------- content flow
-  setContent(text) {
+  // `step`: a change of its own for undo (an image moved, a link repaired),
+  // never merged with the typing just before or after it.
+  setContent(text, options = {}) {
     if (text === this.content) return;
     this.content = text; this._lines = null;
+    if (options.step) this.lastPush = 0;
     this.pushHistory();
+    if (options.step) this.lastPush = 0;
     this.saveSoon();
     bus.emit('note-content', this);
   }
@@ -478,15 +707,30 @@ export class NoteView {
     let at = 0;
     const limit = Math.min(before.length, target.text.length);
     while (at < limit && before[at] === target.text[at]) at++;
+    let same = 0;
+    while (same < limit - at && before[before.length - 1 - same] === target.text[target.text.length - 1 - same]) same++;
+    const changedBefore = before.length - same; const changedAfter = target.text.length - same;
+    // Undoing a picture's move, size or removal brings the picture back where
+    // it was and selects it; its Markdown is never shown.
+    const pictures = embedIn(target.text, at, changedAfter);
+    const picture = pictures.find((embed) => before.slice(embed.start, embed.end) !== embed.raw) || pictures[0];
+    const layout = !!picture || embedIn(before, at, changedBefore).length > 0;
     if (this.mode === 'source' && this.sourceArea) {
       this.renderSource();
       this.sourceArea.focus(); this.sourceArea.setSelectionRange(at, at);
-    } else if (this.mode === 'live' && !caret) {
+    } else if (this.mode === 'live' && (!caret || layout)) {
       this.active = null;
       const top = this.scroller.scrollTop;
       this.renderLive();
       this.scroller.scrollTop = top;
       this.scroller.focus({ preventScroll: true });
+      bus.emit('note-rendered', this);
+      const entry = picture && this.images.entryAt(picture.start);
+      if (entry) {
+        this.images.select(entry);
+        entry.img.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        entry.img.animate([{ transform: 'scale(.97)', opacity: 0.6 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+      }
     } else if (this.mode === 'live') {
       this.active = null;
       this.renderLive();
@@ -577,7 +821,7 @@ export class NoteView {
     if (!match) return;
     lines[line] = `${match[1]}[${match[2] === ' ' ? 'x' : ' '}]${lines[line].slice(match[0].length)}`;
     this.active = null;
-    this.setContent(lines.join('\n'));
+    this.setContent(lines.join('\n'), { step: true });
     this.render();
   }
 
@@ -656,6 +900,8 @@ export class NoteView {
     if (this.mode === 'live' && this.images.contextMenu(event)) return undefined;
     event.preventDefault();
     const textarea = event.target.closest('textarea');
+    const missing = event.target.closest('.embed-missing.is-broken-link');
+    if (missing && !event.target.closest('[data-embed-path]')) return showMenu(event.clientX, event.clientY, [{ label: 'Réparer l’image…', icon: 'image', run: () => this.repairLink(missing) }]);
     const link = event.target.closest('a.internal-link');
     const selected = String(window.getSelection() || '');
     if (textarea) {
@@ -684,7 +930,11 @@ export class NoteView {
     if (link) {
       const source = (link.closest('[data-embed-path]') || {}).dataset ? link.closest('[data-embed-path]').dataset.embedPath : this.path;
       const open = (newTab) => app.workspace.openLink({ target: link.dataset.href || '', subpath: link.dataset.subpath || '', path: link.dataset.path || '', source, newTab, view: this });
+      const broken = link.closest('.is-broken-link');
+      if (broken && broken.matches('.embed-missing')) return showMenu(event.clientX, event.clientY, [{ label: 'Réparer l’image…', icon: 'image', run: () => this.repairLink(broken) }]);
       return showMenu(event.clientX, event.clientY, [
+        broken ? { label: 'Réparer le lien…', icon: 'link', run: () => this.repairLink(broken) } : null,
+        broken ? 'separator' : null,
         { label: link.dataset.path ? 'Ouvrir' : 'Créer la note', icon: 'file', run: () => open(false) },
         { label: 'Ouvrir dans un nouvel onglet', icon: 'plus', run: () => open(true) },
         link.dataset.path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(link.dataset.path) } : null,
