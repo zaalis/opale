@@ -19,6 +19,7 @@
   function kindOf(p) {
     const ext = extOf(p);
     if (ext === 'md' || ext === 'markdown') return 'note';
+    if (ext === 'canvas') return 'board';
     if (IMAGE_EXTS.has(ext)) return 'image';
     if (AUDIO_EXTS.has(ext)) return 'audio';
     if (VIDEO_EXTS.has(ext)) return 'video';

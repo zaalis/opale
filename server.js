@@ -16,6 +16,7 @@ const { search } = require('./lib/search.js');
 const mcp = require('./lib/mcp.js');
 const starter = require('./lib/starter.js');
 const Meta = require('./shared/meta.js');
+const Board = require('./shared/board.js');
 
 const VERSION = require('./package.json').version;
 const DEFAULT_PORT = 27184;
@@ -254,9 +255,11 @@ function createOpale(options = {}) {
     'POST /api/note': async (ctx) => {
       const body = await ctx.json(); const vault = needVault();
       const folder = typeof body.folder === 'string' ? cleanRelative(body.folder, { allowRoot: true }) : vault.newNoteFolder(body.source);
-      const name = String(body.name || 'Sans titre').replace(/\.md$/i, '');
-      const target = body.exact ? Meta.joinPath(folder, `${name}.md`) : vault.uniquePath(folder, name, 'md');
-      const content = typeof body.content === 'string' ? body.content : '';
+      // `ext: 'canvas'` creates a moodboard instead of a note.
+      const ext = body.ext === 'canvas' ? 'canvas' : 'md';
+      const name = String(body.name || (ext === 'canvas' ? 'Moodboard' : 'Sans titre')).replace(/\.(md|canvas)$/i, '');
+      const target = body.exact ? Meta.joinPath(folder, `${name}.${ext}`) : vault.uniquePath(folder, name, ext);
+      const content = typeof body.content === 'string' ? body.content : ext === 'canvas' ? Board.serialize(Board.emptyDoc()) : '';
       const entry = vault.write(target, content, { createOnly: true });
       return { path: entry.path, mtime: entry.mtime };
     },
@@ -411,7 +414,7 @@ function createOpale(options = {}) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Méthode refusée.' });
     res.setHeader('Content-Security-Policy', [
       "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https: http:",
-      "media-src 'self' blob:", "font-src 'self' data:", "connect-src 'self'", "frame-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+      "media-src 'self' blob: https:", "font-src 'self' data:", "connect-src 'self'", "frame-src 'self' https:", "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
     ].join('; '));
     return serveStatic(req, res, pathname);
   }
