@@ -41,6 +41,32 @@ function packagedServer(executable) {
     await page.evaluate(async () => { const { app } = await import('/js/core.js'); window.__testApp = app; await app.explorer.newBoard(''); });
     await page.waitForSelector('.board-stage');
     await page.waitForFunction(() => window.__testApp.workspace.activeView.loaded);
+    const toolButtons = page.locator('.board-tools button[data-tool]');
+    assert.equal(await toolButtons.count(), 11);
+    const glyphs = await toolButtons.locator('svg').evaluateAll((icons) => icons.map((icon) => {
+      if (!icon.children.length || icon.getAttribute('aria-hidden') !== 'true') throw new Error('Missing or unlabelled toolbar glyph');
+      return icon.innerHTML;
+    }));
+    assert.equal(new Set(glyphs).size, 11, 'Every tool has a distinct glyph');
+    for (let i = 0; i < 11; i++) {
+      const control = toolButtons.nth(i); const tool = await control.getAttribute('data-tool');
+      assert.ok(await control.getAttribute('aria-label'));
+      await control.click();
+      assert.equal(await control.getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.evaluate(() => window.__testApp.workspace.activeView.input.tool), tool);
+      assert.equal(await page.locator('.board-tools [aria-pressed="true"]').count(), 1);
+    }
+    await page.locator('.board-tools [data-tool="select"]').click();
+    if (process.env.OPALE_TEST_ARTIFACTS) {
+      fs.mkdirSync(process.env.OPALE_TEST_ARTIFACTS, { recursive: true });
+      const originalTheme = await page.locator('html').getAttribute('data-theme');
+      for (const theme of ['light', 'dark']) {
+        await page.evaluate((value) => document.documentElement.setAttribute('data-theme', value), theme);
+        await page.locator('.board-tools').screenshot({ path: path.join(process.env.OPALE_TEST_ARTIFACTS, `toolbar-${theme}.png`) });
+      }
+      await page.evaluate((value) => { if (value === null) document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', value); }, originalTheme);
+    }
+    console.log('PASS 11 distinct toolbar icons, accessible labels and tool selection');
     const stage = await page.locator('.board-stage').boundingBox();
     await page.getByRole('button', { name: 'Pense-bête (N)', exact: true }).click();
     await page.mouse.click(stage.x + stage.width / 2, stage.y + stage.height / 2);

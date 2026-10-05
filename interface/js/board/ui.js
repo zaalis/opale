@@ -21,10 +21,10 @@ export class BoardUi {
     this.view = view;
     this.modals = new Set();
     this.tools = new Map();
-    const tools = [ ['select', 'Sélection (V)', 'locate'], ['hand', 'Déplacer la vue (H)', 'pin'], ['text', 'Texte (T)', 'pencil'], ['sticky', 'Pense-bête (N)', 'file'], ['shape', 'Forme (S)', 'template'], ['connector', 'Flèche (L)', 'forward'], ['pen', 'Stylo (P)', 'pencil'], ['highlighter', 'Surligneur', 'pencil'], ['eraser', 'Gomme (E)', 'trash'], ['frame', 'Cadre (F)', 'template'], ['comment', 'Commentaire (C)', 'info'] ];
+    const tools = [ ['select', 'Sélection (V)'], ['hand', 'Déplacer la vue (H)'], ['text', 'Texte (T)'], ['sticky', 'Pense-bête (N)'], ['shape', 'Forme (S)'], ['connector', 'Flèche (L)'], ['pen', 'Stylo (P)'], ['highlighter', 'Surligneur'], ['eraser', 'Gomme (E)'], ['frame', 'Cadre (F)'], ['comment', 'Commentaire (C)'] ];
     this.toolbar = h('div.board-ui.board-tools', { role: 'toolbar', 'aria-label': 'Outils du moodboard' });
-    for (const [tool, label, ico] of tools) {
-      const b = iconButton(ico, label, () => { view.input.setTool(tool); view.stage.focus(); });
+    for (const [tool, label] of tools) {
+      const b = iconButton(`board-${tool}`, label, () => { view.input.setTool(tool); view.stage.focus(); });
       b.dataset.tool = tool; this.tools.set(tool, b); this.toolbar.append(b);
     }
     this.toolbar.append(button('Ajouter', () => this.library()));

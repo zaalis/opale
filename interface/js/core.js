@@ -9,6 +9,17 @@ export const app = { settings: {}, vault: null, bookmarks: [], agent: {} };
 
 // ------------------------------------------------------------------- icons
 const ICONS = {
+  'board-select': '<path d="m5 3 14 10-7 1-3 7Z"/>',
+  'board-hand': '<path d="M8 12V6a1.5 1.5 0 0 1 3 0v5V4a1.5 1.5 0 0 1 3 0v7V6a1.5 1.5 0 0 1 3 0v6V9a1.5 1.5 0 0 1 3 0v6c0 4-2.5 6-6 6h-1c-2 0-3.5-1-4.5-2.5L5 14a1.6 1.6 0 0 1 2.5-2Z"/>',
+  'board-text': '<path d="M5 7V4h14v3M12 4v16M8 20h8"/>',
+  'board-sticky': '<path d="M14 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9Z"/><path d="M14 21v-5a2 2 0 0 1 2-2h5M7 8h10M7 12h5"/>',
+  'board-shape': '<rect x="3" y="3" width="9" height="9" rx="2"/><circle cx="16" cy="16" r="5"/>',
+  'board-connector': '<circle cx="5" cy="18" r="2"/><path d="M7 18h3a3 3 0 0 0 3-3V9a3 3 0 0 1 3-3h5m-4-3 4 3-4 3"/>',
+  'board-pen': '<path d="m12 3 7 7-4 9-7 2-5-5 2-7Z"/><path d="m12 3 3-2 7 7-3 2M4 20l6-6"/><circle cx="12" cy="12" r="2"/>',
+  'board-highlighter': '<path d="M8 3h8v8l-2 3h-4l-2-3Z"/><path d="M8 8h8M10 14v4l4-2v-2"/><path d="M5 21h14" stroke-width="3"/>',
+  'board-eraser': '<path d="m4 12 8-8a2 2 0 0 1 3 0l6 6a2 2 0 0 1 0 3l-7 7H9l-5-5a2 2 0 0 1 0-3ZM8 8l10 10M14 20h7"/>',
+  'board-frame': '<path d="M7 3v18M17 3v18M3 7h18M3 17h18"/>',
+  'board-comment': '<path d="M21 11a8 8 0 0 1-8 8H8l-5 3V11a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/><path d="M7 9h10M7 13h7"/>',
   files: '<path d="M4 5a2 2 0 0 1 2-2h4l2 3h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>',
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
   'file-plus': '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M12 12v6M9 15h6"/>',
