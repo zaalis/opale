@@ -14,7 +14,7 @@ class NativeAppTest {
         assertEquals("fr.zaalis.opale", InstrumentationRegistry.getInstrumentation().targetContext.packageName)
         val title = "Android validation " + System.currentTimeMillis()
         compose.waitUntil(15000) { compose.onAllNodesWithText("Actions").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Actions").performClick()
+        compose.onNodeWithContentDescription("Créer dans le coffre").performClick()
         compose.onNodeWithText("Nouvelle note").performClick()
         compose.onNode(hasSetTextAction()).performTextInput(title)
         compose.onNodeWithText("Valider").performClick()
@@ -25,8 +25,8 @@ class NativeAppTest {
         compose.activityRule.scenario.recreate()
         compose.waitUntil(15000) { compose.onAllNodesWithText("Texte tactile sauvegardé.", substring=true).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Retour").performClick()
-        compose.waitUntil(15000) { compose.onAllNodesWithText("Recherche").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Recherche").performClick()
+        compose.waitUntil(15000) { compose.onAllNodesWithContentDescription("Recherche").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("Recherche").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("tag:android")
         compose.waitUntil(15000) { compose.onAllNodesWithText(title + ".md").fetchSemanticsNodes().isNotEmpty() }
     }

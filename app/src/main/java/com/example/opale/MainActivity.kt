@@ -28,11 +28,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
@@ -82,6 +85,7 @@ fun OpaleApp(model: AppModel) {
     var more by remember { mutableStateOf(false) }
     var attachment by remember { mutableStateOf<String?>(null) }
     var exportSnapshot by remember { mutableStateOf<Pair<String,String>?>(null) }
+    val expandedProjects = remember { mutableStateMapOf<String, Boolean>() }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if(uri != null) {
             try {
@@ -107,25 +111,38 @@ fun OpaleApp(model: AppModel) {
         }
     }
     val doc = model.document
-    BackHandler(doc != null || attachment != null || folder.isNotEmpty()) {
-        when { attachment != null -> attachment = null; doc != null -> model.close(); else -> folder = folder.substringBeforeLast('/', "") }
+    BackHandler((page == 0 && doc != null) || attachment != null || folder.isNotEmpty()) {
+        when { attachment != null -> attachment = null; page == 0 && doc != null -> model.close(); else -> folder = folder.substringBeforeLast('/', "") }
     }
     val addPhoto = { imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
     val openPath: (String) -> Unit = { path ->
         if(path.endsWith(".md",true) || path.endsWith(".canvas",true)) model.open(path) else attachment = path
     }
-    Scaffold(
-        topBar = {
+    Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        OpaleRail(page = page, onPage = { page = it; attachment = null })
+        VerticalDivider()
+        ProjectSidebar(
+            entries = model.entries,
+            selectedFolder = folder,
+            selectedDocument = doc?.path,
+            expanded = expandedProjects,
+            onFolder = { path -> page = 0; folder = path; attachment = null },
+            onOpen = { path -> page = 0; openPath(path) },
+            onCreate = { kind -> input = ""; dialog = kind },
+            onGraph = { page = 3; attachment = null }
+        )
+        VerticalDivider()
+        Column(Modifier.weight(1f).fillMaxHeight().imePadding()) {
             if(!compactTyping) TopAppBar(title = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if(doc == null) Image(painterResource(R.drawable.opale_mark),null,Modifier.size(32.dp))
+                    if(doc == null || page != 0) Image(painterResource(R.drawable.opale_mark),null,Modifier.size(32.dp))
                     Column {
-                        Text(doc?.path?.substringAfterLast('/')?.substringBeforeLast('.') ?: "Opale",maxLines=1,overflow=TextOverflow.Ellipsis)
-                        Text(if(doc == null) model.vaultName else if(model.saving) "Enregistrement…" else if(model.conflict) "Conflit à résoudre" else if(doc.dirty) "Modifications en cours" else "Enregistré",style=MaterialTheme.typography.labelSmall)
+                        Text(if(page == 0) doc?.path?.substringAfterLast('/')?.substringBeforeLast('.') ?: "Opale" else listOf("Notes", "Recherche", "Moodboards", "Graphe", "Réglages")[page],maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Text(if(doc == null || page != 0) model.vaultName else if(model.saving) "Enregistrement…" else if(model.conflict) "Conflit à résoudre" else if(doc.dirty) "Modifications en cours" else "Enregistré",style=MaterialTheme.typography.labelSmall)
                     }
                 }
             }, navigationIcon = {
-                if(doc != null || attachment != null) TextButton(onClick={ if(attachment != null) attachment = null else model.close() }) { Text("Retour") }
+                if(page == 0 && (doc != null || attachment != null)) TextButton(onClick={ if(attachment != null) attachment = null else model.close() }) { Text("Retour") }
             }, actions = {
                 Box {
                     TextButton(onClick={ more = true }) { Text("Actions") }
@@ -133,9 +150,10 @@ fun OpaleApp(model: AppModel) {
                         fun action(label:String, run:()->Unit): @Composable ()->Unit = {
                             DropdownMenuItem(text={Text(label)},onClick={more=false;run()})
                         }
-                        if(doc == null) {
+                        if(doc == null || page != 0) {
                             action("Nouvelle note") { input="";dialog="note" }()
                             action("Nouveau moodboard") { input="";dialog="board" }()
+                            action("Nouveau projet") { input="";dialog="project" }()
                             action("Nouveau dossier") { input="";dialog="folder" }()
                             action("Note du jour") { model.daily() }()
                             action("Ouvrir un coffre") { filePicker.launch(null) }()
@@ -161,19 +179,8 @@ fun OpaleApp(model: AppModel) {
                     }
                 }
             })
-        },
-        bottomBar = {
-            if(doc == null && attachment == null) NavigationBar {
-                listOf("Notes","Recherche","Moodboards","Graphe","Réglages").forEachIndexed { index,label ->
-                    NavigationBarItem(selected=page==index,onClick={page=index},icon={AppGlyph(index)},label={Text(label,maxLines=1)},alwaysShowLabel=true)
-                }
-            }
-        },
-        floatingActionButton = {
-            if(doc == null && attachment == null && page in listOf(0,2)) FloatingActionButton(onClick={input="";dialog=if(page==2) "board" else "note"}) { Text("+",fontSize=28.sp) }
-        }
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+            if(page == 0 && doc != null && !compactScreen && model.recent.size > 1) WorkspaceTabs(model.recent, doc.path, { model.open(it) }, { model.close() })
+            Column(Modifier.fillMaxSize()) {
             if(model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if(model.conflict && doc != null) Surface(color=MaterialTheme.colorScheme.errorContainer) {
                 Column(Modifier.fillMaxWidth().padding(12.dp)) {
@@ -187,10 +194,7 @@ fun OpaleApp(model: AppModel) {
             }
             when {
                 attachment != null -> AttachmentView(attachment!!,model)
-                doc != null -> {
-                    if(!compactScreen && model.recent.size > 1) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        model.recent.forEach { path -> FilterChip(selected=doc.path==path,onClick={model.open(path)},label={Text(path.substringAfterLast('/'),maxLines=1)}) }
-                    }
+                doc != null && page == 0 -> {
                     key(doc.path) {
                         if(doc.path.endsWith(".canvas",true)) Box(Modifier.weight(1f)) { BoardEditor(doc.content,doc.path,model.repository,model::change,model::followLink,addPhoto) }
                         else {
@@ -244,11 +248,13 @@ fun OpaleApp(model: AppModel) {
                 }
             }
         }
-    }
-    if(dialog in listOf("note","board","folder","rename","properties")) {
-        val title = when(dialog) {"board"->"Nouveau moodboard";"folder"->"Nouveau dossier";"rename"->"Renommer / déplacer";"properties"->"Propriétés YAML";else->"Nouvelle note"}
+            }
+        }
+    if(dialog in listOf("note","board","folder","project","rename","properties")) {
+        val title = when(dialog) {"board"->"Nouveau moodboard";"project"->"Nouveau projet";"folder"->"Nouveau dossier";"rename"->"Renommer / déplacer";"properties"->"Propriétés YAML";else->"Nouvelle note"}
         AlertDialog(onDismissRequest={dialog=""},title={Text(title)},text={OutlinedTextField(input,{input=it},label={Text(if(dialog=="properties") "Métadonnées" else "Nom ou chemin relatif")},singleLine=dialog!="properties",minLines=if(dialog=="properties") 5 else 1)},confirmButton={TextButton(enabled=input.isNotBlank(),onClick={
             when(dialog) {
+                "project"->model.folder(input)
                 "folder"->model.folder(if(folder.isEmpty()) input else folder+"/"+input)
                 "rename"->model.rename(input)
                 "properties"->{if(doc!=null) {val body=doc.content.replaceFirst(Regex("^---\\r?\\n[\\s\\S]*?\\r?\\n---(?:\\r?\\n|$)"),"");model.change("---\n"+input.trim()+"\n---\n\n"+body)}}
@@ -272,6 +278,112 @@ fun OpaleApp(model: AppModel) {
         }},confirmButton={TextButton(onClick={dialog=""}) {Text("Fermer")}})
     }
     model.error?.let { message -> AlertDialog(onDismissRequest={model.error=null},title={Text("Opale")},text={Text(message)},confirmButton={TextButton(onClick={model.error=null}) {Text("OK")}}) }
+}
+
+@Composable
+private fun OpaleRail(page:Int,onPage:(Int)->Unit) {
+    val items = listOf("Notes", "Recherche", "Moodboards", "Graphe", "Réglages")
+    Column(
+        Modifier.width(64.dp).fillMaxHeight().padding(vertical=8.dp),
+        horizontalAlignment=Alignment.CenterHorizontally,
+        verticalArrangement=Arrangement.spacedBy(6.dp)
+    ) {
+        Image(painterResource(R.drawable.opale_mark), "Opale", Modifier.size(36.dp).padding(bottom=4.dp))
+        items.forEachIndexed { index, label ->
+            val selected = page == index
+            Surface(
+                modifier=Modifier.size(48.dp).semantics { contentDescription = label }.clickable { onPage(index) },
+                shape=RoundedCornerShape(14.dp),
+                color=if(selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+            ) { Box(contentAlignment=Alignment.Center) { AppGlyph(index) } }
+        }
+        Spacer(Modifier.weight(1f))
+    }
+}
+
+private data class ProjectTreeItem(val entry:com.example.opale.data.VaultEntry,val depth:Int)
+
+private fun projectTree(entries:List<com.example.opale.data.VaultEntry>, expanded:Map<String,Boolean>):List<ProjectTreeItem> {
+    val byParent=entries.groupBy { it.path.substringBeforeLast('/', "") }
+    val result=mutableListOf<ProjectTreeItem>()
+    fun walk(parent:String,depth:Int) {
+        val children=byParent[parent].orEmpty().sortedWith(compareByDescending<com.example.opale.data.VaultEntry>{it.isDirectory}.thenBy {it.name.lowercase()})
+        children.forEach { entry ->
+            result += ProjectTreeItem(entry,depth)
+            if(entry.isDirectory && (expanded[entry.path] ?: depth == 0)) walk(entry.path,depth+1)
+        }
+    }
+    walk("",0)
+    return result
+}
+
+@Composable
+private fun ProjectSidebar(
+    entries:List<com.example.opale.data.VaultEntry>,
+    selectedFolder:String,
+    selectedDocument:String?,
+    expanded:MutableMap<String,Boolean>,
+    onFolder:(String)->Unit,
+    onOpen:(String)->Unit,
+    onCreate:(String)->Unit,
+    onGraph:()->Unit,
+) {
+    var createMenu by remember { mutableStateOf(false) }
+    val rows=projectTree(entries,expanded)
+    Column(Modifier.widthIn(min=208.dp,max=272.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=56.dp).padding(start=16.dp,end=4.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text("Projets",style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
+            Box {
+                IconButton(onClick={createMenu=true},modifier=Modifier.semantics { contentDescription="Créer dans le coffre" }) { AppGlyph(6) }
+                DropdownMenu(expanded=createMenu,onDismissRequest={createMenu=false}) {
+                    listOf("Nouvelle note" to "note", "Nouveau moodboard" to "board", "Nouveau projet" to "project", "Nouveau dossier" to "folder").forEach {(label,kind)->
+                        DropdownMenuItem(text={Text(label)},leadingIcon={AppGlyph(when(kind){"board"->2;"note"->0;else->5})},onClick={createMenu=false;onCreate(kind)})
+                    }
+                    HorizontalDivider()
+                    DropdownMenuItem(text={Text("Ouvrir le graphe")},leadingIcon={AppGlyph(3)},onClick={createMenu=false;onGraph()})
+                }
+            }
+        }
+        HorizontalDivider()
+        Row(
+            Modifier.fillMaxWidth().heightIn(min=48.dp).padding(horizontal=8.dp).clip(RoundedCornerShape(10.dp))
+                .background(if(selectedFolder.isEmpty() && selectedDocument==null) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                .clickable { onFolder("") },verticalAlignment=Alignment.CenterVertically
+        ) { Box(Modifier.size(40.dp),contentAlignment=Alignment.Center) { AppGlyph(9) }; Text("Toutes les notes",maxLines=1,overflow=TextOverflow.Ellipsis) }
+        if(rows.isEmpty()) Text("Créez un projet pour organiser vos notes.",style=MaterialTheme.typography.bodySmall,modifier=Modifier.padding(16.dp))
+        else Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical=4.dp)) {
+            rows.forEach { row ->
+                val item=row.entry
+                val opened=expanded[item.path] ?: row.depth == 0
+                val selected=if(item.isDirectory) selectedFolder==item.path else selectedDocument==item.path
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min=48.dp).padding(start=(8+row.depth*16).dp,end=6.dp).clip(RoundedCornerShape(10.dp))
+                        .background(if(selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                        .clickable { if(item.isDirectory) onFolder(item.path) else onOpen(item.path) },verticalAlignment=Alignment.CenterVertically
+                ) {
+                    if(item.isDirectory) IconButton(onClick={expanded[item.path]=!opened},modifier=Modifier.size(40.dp).semantics { contentDescription=if(opened) "Replier ${item.name}" else "Déplier ${item.name}" }) { AppGlyph(if(opened) 7 else 10) }
+                    else Box(Modifier.size(40.dp),contentAlignment=Alignment.Center) { AppGlyph(if(item.path.endsWith(".canvas",true)) 2 else 0) }
+                    Text(item.name.substringBeforeLast('.',item.name),maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceTabs(paths:List<String>,active:String,onOpen:(String)->Unit,onClose:()->Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min=48.dp).horizontalScroll(rememberScrollState()).padding(horizontal=8.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
+        paths.forEach { path ->
+            val selected=path==active
+            Surface(shape=RoundedCornerShape(10.dp),color=if(selected) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,modifier=Modifier.heightIn(min=40.dp).clickable { onOpen(path) }) {
+                Row(Modifier.padding(start=12.dp,end=4.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Text(path.substringAfterLast('/').substringBeforeLast('.'),maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.widthIn(max=150.dp))
+                    if(selected) IconButton(onClick=onClose,modifier=Modifier.size(36.dp).semantics { contentDescription="Fermer ${path.substringAfterLast('/')}" }) { AppGlyph(8) }
+                }
+            }
+        }
+    }
+    HorizontalDivider()
 }
 
 @Composable
@@ -335,6 +447,11 @@ private fun AppGlyph(kind:Int) {
             2->{drawRect(color,point(3f,3f),androidx.compose.ui.geometry.Size(18*s,18*s),style=Stroke(2*s));line(11f,3f,11f,21f);line(11f,12f,21f,12f)}
             3->{line(6f,6f,18f,8f);line(6f,6f,12f,19f);line(18f,8f,12f,19f);drawCircle(color,3*s,point(6f,6f));drawCircle(color,3*s,point(18f,8f));drawCircle(color,3*s,point(12f,19f))}
             4->{drawCircle(color,8*s,point(12f,12f),style=Stroke(2*s));drawCircle(color,3*s,point(12f,12f),style=Stroke(2*s));for(i in 0..7) {val a=i*PI/4;line((12+8*cos(a)).toFloat(),(12+8*sin(a)).toFloat(),(12+11*cos(a)).toFloat(),(12+11*sin(a)).toFloat())}}
+            6->{line(12f,5f,12f,19f);line(5f,12f,19f,12f)}
+            7->{line(6f,9f,12f,15f);line(12f,15f,18f,9f)}
+            8->{line(6f,6f,18f,18f);line(18f,6f,6f,18f)}
+            10->{line(9f,6f,15f,12f);line(15f,12f,9f,18f)}
+            9->{drawRoundRect(color,point(3f,4f),androidx.compose.ui.geometry.Size(18*s,16*s),androidx.compose.ui.geometry.CornerRadius(2*s),style=Stroke(2*s));drawCircle(color,3.5f*s,point(12f,12f),style=Stroke(2*s));line(12f,8.5f,12f,7f);line(12f,17f,12f,15.5f);line(15.5f,12f,17f,12f);line(7f,12f,8.5f,12f)}
             else->{drawRoundRect(color,point(2f,6f),androidx.compose.ui.geometry.Size(20*s,15*s),androidx.compose.ui.geometry.CornerRadius(2*s),style=Stroke(2*s));line(3f,6f,3f,3f);line(3f,3f,10f,3f);line(10f,3f,13f,6f)}
         }
     }
