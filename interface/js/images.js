@@ -6,6 +6,7 @@
 import { app, bus, h, icon, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
 import { embedFor, uploadFile } from './editing.js';
+import { findLinks } from './links.js';
 
 // Blocks whose text an image can be dropped into; any other block (code,
 // table, rule…) receives it as a new paragraph before or after it.
@@ -200,7 +201,7 @@ export class ImageLayer {
       tool('', 'Taille d’origine', !options.width, () => this.update(start(), { width: null }), '1:1'),
       this.sizeLabel,
       h('span.img-sep'),
-      tool('pencil', 'Modifier le Markdown (double-clic)', false, () => this.editSource(start())),
+      tool('image', 'Remplacer l’image… (double-clic)', false, () => this.replaceFile(start())),
       tool('trash', 'Retirer de la note (Suppr)', false, () => this.remove(start())));
   }
 
@@ -221,8 +222,25 @@ export class ImageLayer {
     const raw = Markdown.rewriteImage(entry.raw, change);
     if (raw === entry.raw) return;
     const content = this.view.content;
-    this.view.setContent(content.slice(0, entry.start) + raw + content.slice(entry.end));
+    const from = entry.img.getBoundingClientRect();
+    this.view.setContent(content.slice(0, entry.start) + raw + content.slice(entry.end), { step: true });
     this.rerender(entry.start);
+    this.land(entry.start, from);
+  }
+
+  // The picture glides from where it was to where it now is.
+  land(start, from) {
+    const entry = from && this.entryAt(start);
+    if (!entry) return;
+    const to = entry.img.getBoundingClientRect();
+    if (!to.width || !from.width) return;
+    const dx = from.left - to.left; const dy = from.top - to.top; const scale = from.width / to.width;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(scale - 1) < 0.01) return;
+    entry.img.style.transformOrigin = '0 0';
+    const animation = entry.img.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${scale})` }, { transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    if (this.frame) { this.frame.animate([{ opacity: 0 }, { opacity: 0 }, { opacity: 1 }], { duration: 340 }); }
+    if (this.toolbar) { this.toolbar.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2, .8, .2, 1)' }); }
+    animation.onfinish = () => { entry.img.style.transformOrigin = ''; };
   }
 
   maxWidth(entry) {
@@ -238,19 +256,20 @@ export class ImageLayer {
   remove(start) {
     const entry = typeof start === 'number' ? this.entryAt(start) : null;
     if (!entry) return;
-    this.view.setContent(Markdown.removeSpan(this.view.content, entry.start, entry.end));
+    this.view.setContent(Markdown.removeSpan(this.view.content, entry.start, entry.end), { step: true });
     this.rerender(null);
     this.view.scroller.focus({ preventScroll: true });
     toast('Image retirée de la note. Le fichier reste dans le coffre (Ctrl+Z pour annuler).');
   }
 
-  editSource(start) {
+  // Point the picture at another file of the vault, in the same small window
+  // that repairs a broken one. The Markdown itself is never shown.
+  replaceFile(start) {
     const entry = typeof start === 'number' ? this.entryAt(start) : null;
     if (!entry) return;
-    this.clear();
-    const head = this.view.content.slice(0, entry.end);
-    const line = head.split('\n').length - 1;
-    this.view.activateAt(line, entry.end - (head.lastIndexOf('\n') + 1));
+    const link = findLinks(entry.raw)[0];
+    if (!link) return;
+    this.view.links.openFor({ ...link, base: entry.start }, this.toolbar || entry.img, { title: 'Remplacer l’image', text: 'Choisissez l’image à afficher à la place :' });
   }
 
   // ----------------------------------------------------------------- mouse
@@ -262,6 +281,18 @@ export class ImageLayer {
     // Ctrl+click opens the picture in a tab (see renderer.js).
     if (event.ctrlKey || event.metaKey) { event.preventDefault(); return true; }
     let entry = this.entryFor(img);
+    // A picture drawn above or below the text being typed: close the typing
+    // and pick the picture up.
+    if (!entry && img.dataset.offset && this.view.active && this.view.active.el.contains(img)) {
+      event.preventDefault();
+      const start = Number(img.dataset.offset);
+      this.view.commitActive();
+      entry = this.entryAt(start);
+      if (!entry) return true;
+      this.select(entry);
+      this.startMove(event, entry);
+      return true;
+    }
     if (!entry) return false;
     event.preventDefault();
     if (this.view.active) {
@@ -281,7 +312,7 @@ export class ImageLayer {
     const entry = this.entryFor(img);
     if (!entry) return false;
     event.preventDefault();
-    this.editSource(entry.start);
+    this.replaceFile(entry.start);
     return true;
   }
 
@@ -357,9 +388,13 @@ export class ImageLayer {
       document.removeEventListener('keydown', key, true);
       if (frame) cancelAnimationFrame(frame);
       if (!moving) return;
+      const from = this.ghost ? this.ghost.getBoundingClientRect() : null;
+      const dropped = apply && target;
+      // Let go elsewhere: the picture glides back from the pointer.
       this.endGhost(img);
       this.hideCaret();
-      if (apply && target) this.moveTo(entry.start, target);
+      if (dropped) this.moveTo(entry.start, target, from);
+      else if (from) this.land(entry.start, from);
     };
     const up = () => finish(true);
     const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); } };
@@ -481,13 +516,14 @@ export class ImageLayer {
   }
   hideCaret() { if (this.caret) { this.caret.remove(); this.caret = null; } }
 
-  moveTo(start, target) {
+  moveTo(start, target, from = null) {
     const entry = this.entryAt(start);
     if (!entry || !target) return;
     const result = Markdown.moveSpan(this.view.content, entry.start, entry.end, target.offset, target.paragraph);
-    if (result.text === this.view.content) { this.select(entry); return; }
-    this.view.setContent(result.text);
+    if (result.text === this.view.content) { this.select(entry); this.land(entry.start, from); return; }
+    this.view.setContent(result.text, { step: true });
     this.rerender(result.at);
+    this.land(result.at, from);
   }
 
   // Embeds for freshly uploaded files, put where the user dropped them.
@@ -497,8 +533,10 @@ export class ImageLayer {
     if (view.active) view.commitActive();
     const spot = target || { offset: view.content.length, paragraph: true };
     const result = Markdown.insertAt(view.content, Math.min(spot.offset, view.content.length), embeds.join(spot.paragraph ? '\n\n' : ' '), spot.paragraph);
-    view.setContent(result.text);
+    view.setContent(result.text, { step: true });
     this.rerender(result.at);
+    const entry = this.entryAt(result.at);
+    if (entry) entry.img.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.2, .8, .2, 1)' });
   }
 
   async insertFiles(files, target) {
@@ -523,7 +561,7 @@ export class ImageLayer {
     const start = this.selected.start;
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); this.remove(start); return true; }
     if (event.key === 'Escape') { event.preventDefault(); this.clear(); return true; }
-    if (event.key === 'Enter' || event.key === 'F2') { event.preventDefault(); this.editSource(start); return true; }
+    if (event.key === 'Enter' || event.key === 'F2') { event.preventDefault(); this.replaceFile(start); return true; }
     return false;
   }
 
@@ -550,7 +588,7 @@ export class ImageLayer {
       { label: 'Grande (toute la largeur)', run: () => this.setFraction(start, 1) },
       { label: 'Taille d’origine', checked: !options.width, run: () => this.update(start, { width: null }) },
       'separator',
-      { label: 'Modifier le Markdown', icon: 'pencil', run: () => this.editSource(start), hint: 'Entrée' },
+      { label: 'Remplacer l’image…', icon: 'image', run: () => this.replaceFile(start), hint: 'Entrée' },
       path ? { label: 'Ouvrir l’image dans un onglet', icon: 'image', run: () => app.workspace.openPath(path, { newTab: true }) } : null,
       path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(path) } : null,
       'separator',
