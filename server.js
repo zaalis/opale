@@ -15,6 +15,8 @@ const { Vault, VaultError, cleanRelative } = require('./lib/vault.js');
 const { search } = require('./lib/search.js');
 const mcp = require('./lib/mcp.js');
 const starter = require('./lib/starter.js');
+const { GoogleAccount, DriveClient } = require('./lib/google.js');
+const { SyncService } = require('./lib/sync.js');
 const Meta = require('./shared/meta.js');
 const Board = require('./shared/board.js');
 
@@ -68,6 +70,8 @@ function createOpale(options = {}) {
   const clients = new Set();
   const agent = { client: '', connectedAt: 0, lastSeen: 0, calls: 0, lastTool: '' };
   const state = { vault: null, port: 0, activeNote: '', pendingOpen: '', hadClient: false, exitTimer: null };
+  const google = options.google || new GoogleAccount();
+  const sync = new SyncService({ account: google, drive: options.drive || new DriveClient(google), interval: options.syncInterval, device: options.device });
 
   // ---------------------------------------------------------------- events
   function broadcast(type, payload) {
@@ -75,6 +79,7 @@ function createOpale(options = {}) {
     for (const res of clients) { try { res.write(frame); } catch {} }
   }
   const agentPayload = () => ({ ...agent, active: agent.lastSeen > 0 && Date.now() - agent.lastSeen < 10 * 60 * 1000 });
+  sync.on('status', (status) => broadcast('sync', status));
 
   // ----------------------------------------------------------------- vault
   function instanceInfo() {
@@ -90,6 +95,7 @@ function createOpale(options = {}) {
     state.vault = next; state.activeNote = '';
     next.on('change', (change) => broadcast('fs', change));
     if (options.watch !== false) next.watch();
+    sync.attach(next);
     appdata.rememberVault(config, next.root);
     appdata.saveConfig(config);
     publishInstance();
@@ -97,6 +103,7 @@ function createOpale(options = {}) {
     return next;
   }
   function closeVault() {
+    sync.detach();
     if (state.vault) state.vault.close();
     state.vault = null; state.activeNote = '';
     config.lastVault = ''; appdata.saveConfig(config);
@@ -120,6 +127,7 @@ function createOpale(options = {}) {
       bookmarks: vault ? vault.bookmarks() : [],
       snippets: vault ? vault.snippets() : '',
       agent: agentPayload(),
+      drive: sync.status(),
       defaultVaultParent: path.join(os.homedir(), 'Documents', 'Opale'),
       pendingOpen,
     };
@@ -139,6 +147,11 @@ function createOpale(options = {}) {
     const data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
     res.end(data);
+  }
+  function sendPage(res, title, message) {
+    const escape = (value) => String(value).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'" });
+    res.end(`<!doctype html><html lang="fr"><meta charset="utf-8"><title>Opale — ${escape(title)}</title><style>body{font:16px system-ui,sans-serif;background:#16161a;color:#e7e7ea;display:grid;place-items:center;min-height:100vh;margin:0}main{max-width:460px;padding:32px;border:1px solid #2c2c33;border-radius:12px;background:#1d1d22}h1{font-size:20px;margin:0 0 10px;color:#fbbf24}p{line-height:1.55;margin:0;color:#b9b9c2}</style><main><h1>${escape(title)}</h1><p>${escape(message)}</p></main></html>`);
   }
   function sendError(res, error) {
     if (res.headersSent) { try { res.end(); } catch {} return; }
@@ -323,6 +336,44 @@ function createOpale(options = {}) {
       broadcast('agent', agentPayload());
       return { endpoint: `http://127.0.0.1:${state.port}/mcp`, token: config.token, agent: agentPayload() };
     },
+    // ------------------------------------------------ Google Drive integration
+    'GET /api/drive': () => sync.status(),
+    'PUT /api/drive/client': async (ctx) => {
+      const body = await ctx.json();
+      google.setClient(body.json !== undefined ? body.json : { clientId: body.clientId, clientSecret: body.clientSecret });
+      sync.emit('status', sync.status());
+      return sync.status();
+    },
+    'POST /api/drive/connect': () => {
+      const url = google.beginAuth(`http://127.0.0.1:${state.port}/oauth/google`);
+      openExternal(url);
+      sync.emit('status', sync.status());
+      return { url };
+    },
+    'POST /api/drive/disconnect': async () => { await google.disconnect(); sync.emit('status', sync.status()); return sync.status(); },
+    'GET /api/drive/vaults': async () => ({ vaults: await sync.drive.vaults() }),
+    'POST /api/drive/link': async (ctx) => { needVault(); return sync.link(String((await ctx.json()).vaultId || '')); },
+    'POST /api/drive/unlink': () => { needVault(); return sync.unlink(); },
+    'PUT /api/drive/enabled': async (ctx) => { needVault(); return sync.setEnabled((await ctx.json()).enabled !== false); },
+    'POST /api/drive/sync': async (ctx) => { needVault(); sync.syncNow({ force: (await ctx.json()).force === true }).catch(() => {}); return sync.status(); },
+    'POST /api/drive/resolve': async (ctx) => { needVault(); const body = await ctx.json(); return sync.resolve(String(body.path || ''), String(body.keep || 'both')); },
+    // A new computer: fetch a vault kept in Drive into a fresh local folder.
+    'POST /api/drive/clone': async (ctx) => {
+      const body = await ctx.json();
+      const remote = (await sync.drive.vaults()).find((item) => item.vaultId === body.vaultId);
+      if (!remote) throw new VaultError('Ce coffre n’existe plus dans Google Drive.', 404, 'missing');
+      const parent = String(body.parent || '').trim() || path.join(os.homedir(), 'Documents', 'Opale');
+      if (!path.isAbsolute(parent)) throw new VaultError('Indiquez le chemin complet de l’emplacement.');
+      const name = cleanRelative(String(body.name || remote.name).trim());
+      if (name.includes('/')) throw new VaultError('Le nom du coffre ne peut pas contenir de « / ».');
+      const root = path.join(parent, name);
+      if (fs.existsSync(root) && fs.readdirSync(root).length) throw new VaultError(`Le dossier « ${root} » existe déjà et n’est pas vide.`, 409, 'exists');
+      fs.mkdirSync(root, { recursive: true });
+      openVault(root);
+      await sync.link(remote.vaultId);
+      return statePayload();
+    },
+
     // Called by a connecting program (zaalis IDE) so the window can say who is there.
     'POST /api/agent/hello': async (ctx) => {
       if (!ctx.bearer) throw new VaultError('Jeton requis.', 401, 'unauthorized');
@@ -376,6 +427,16 @@ function createOpale(options = {}) {
     const hasBearer = !!bearer && safeEqual(bearer, config.token);
 
     if (pathname === '/api/ping') return send(res, 200, { app: 'opale', version: VERSION });
+    // Google sends the system browser back here after sign-in. The one-time
+    // state value ties the answer to the request made from this window.
+    if (pathname === '/oauth/google' && req.method === 'GET') {
+      let message; let ok = false;
+      try { await google.finishAuth(Object.fromEntries(url.searchParams)); ok = true; message = `Opale est connecté à Google Drive${google.email ? ` (${google.email})` : ''}. Vous pouvez fermer cet onglet et revenir à Opale.`; }
+      catch (error) { google.lastError = error.message; message = error.message; }
+      sync.emit('status', sync.status());
+      if (ok) sync.schedule(0);
+      return sendPage(res, ok ? 'Connexion réussie' : 'Connexion impossible', message);
+    }
 
     if (pathname === '/mcp') {
       if (!ownOrigin) return send(res, 403, { error: 'Origine refusée.' });
@@ -439,6 +500,7 @@ function createOpale(options = {}) {
     get token() { return config.token; },
     get uiToken() { return uiToken; },
     get vault() { return state.vault; },
+    sync, google,
     openVault, closeVault,
     async listen() {
       const wanted = options.port !== undefined ? Number(options.port) : Number(process.env.OPALE_PORT) || DEFAULT_PORT;
@@ -454,6 +516,7 @@ function createOpale(options = {}) {
         clearTimeout(state.exitTimer);
         for (const res of clients) { try { res.end(); } catch {} }
         clients.clear();
+        sync.detach();
         if (state.vault) { state.vault.close(); state.vault = null; }
         appdata.clearInstance();
         server.close(() => resolve());
@@ -462,6 +525,15 @@ function createOpale(options = {}) {
     },
   };
   return app;
+}
+
+// The system browser, for Google's sign-in page (never the app's own window).
+function openExternal(url) {
+  if (!/^https:\/\//.test(url)) return;
+  try {
+    if (process.platform === 'win32') spawn('rundll32.exe', ['url.dll,FileProtocolHandler', url], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    else spawn(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
+  } catch {}
 }
 
 // ------------------------------------------------------------------ launch

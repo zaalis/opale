@@ -475,3 +475,34 @@ button.status-item:active, .tree-row:active, .result-file:active, .picker-item:a
   .settings-nav { width: 150px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+/* ------------------------------------------------------- Drive sync */
+.status-sync { display: inline-flex; align-items: center; gap: 5px; color: var(--text-3); }
+.status-sync .sync-icon { display: inline-flex; }
+.status-sync.warn { color: var(--warn); }
+.status-sync.muted { opacity: .65; }
+.status-sync.is-spinning { color: var(--text-2); }
+.sync-pct:empty { display: none; }
+.sync-ring { display: inline-flex; }
+.sync-ring svg { overflow: visible; }
+.sync-ring circle { fill: none; stroke-width: 2; }
+.sync-ring-track { stroke: var(--bg-4); }
+.sync-ring-bar { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: var(--sync-progress, 28) 100; transform: rotate(-90deg); transform-origin: 8px 8px; transition: stroke-dasharray 300ms var(--ease-out); }
+.status-sync:not(.is-determinate) .sync-ring svg { animation: sync-spin 900ms linear infinite; }
+@keyframes sync-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .status-sync .sync-ring svg { animation-duration: 2.4s; } }
+.sync-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 4px 0 12px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-2); }
+.sync-logo { display: inline-flex; flex-shrink: 0; }
+.sync-card-title { color: var(--text-0); font-weight: 600; font-size: 15px; }
+.sync-heading { margin: 22px 0 2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.sync-steps { margin: 4px 0 8px; padding-left: 20px; color: var(--text-1); font-size: 13px; line-height: 1.65; }
+.sync-steps strong { color: var(--text-0); font-weight: 600; }
+.sync-manual { margin-top: 12px; }
+.connection-status.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 11%, var(--bg-2)); }
+.link-btn { color: var(--link); padding: 0; text-decoration: underline; text-underline-offset: 2px; font-size: inherit; }
+.sync-launch .btn span { display: inline-flex; }
+.modal-drive .modal-body, .modal-conflicts .modal-body { padding: 16px 22px 22px; }
+.modal-conflicts { max-width: 680px; }
+.sync-conflict { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.sync-conflict-name { color: var(--text-0); font-weight: 600; }
+.sync-conflict-actions { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -1,4 +1,5 @@
 node_modules/
+lib/google-client.json
 dist/*
 !dist/Opale-Setup.exe
 *.log

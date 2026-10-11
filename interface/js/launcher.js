@@ -1,6 +1,7 @@
 // Opale — choosing a vault: shown full-screen on first launch, and as a
 // window when switching from an open vault.
 import { api, app, h, icon, openModal, reportError } from './core.js';
+import { syncUi } from './sync.js';
 
 async function switchTo(request) {
   try {
@@ -36,7 +37,8 @@ function content(state) {
   return h('div.launcher',
     h('section.launcher-col',
       h('h3', 'Coffres récents'),
-      recent.length ? h('div.vault-list', recent) : h('p.launcher-empty', 'Aucun coffre pour le moment. Un coffre est un simple dossier qui contient vos notes.')),
+      recent.length ? h('div.vault-list', recent) : h('p.launcher-empty', 'Aucun coffre pour le moment. Un coffre est un simple dossier qui contient vos notes.'),
+      ...syncUi.launcherSection(state)),
     h('section.launcher-col',
       h('h3', 'Créer un coffre'),
       h('label.field-label', 'Nom'), name,

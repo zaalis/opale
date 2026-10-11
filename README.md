@@ -54,8 +54,40 @@ préservés lors de la désinstallation.
   dans le texte, à gauche, centré ou à droite (texte autour). Tout est écrit dans le Markdown :
   `![[photo.png|left|320]]`
 
-Non repris d'Obsidian : extensions communautaires, Sync/Publish, Canvas, rendu LaTeX,
-volets côte à côte.
+Non repris d'Obsidian : extensions communautaires, Publish, rendu LaTeX, volets côte à côte.
+
+## Synchronisation Google Drive
+
+**Paramètres → Intégrations → Google Drive** garde un coffre identique sur plusieurs
+ordinateurs. Le coffre est rangé dans `Mon Drive › Opale › <nom du coffre>` et reste
+lisible depuis drive.google.com.
+
+Mise en place, une seule fois, dans [console.cloud.google.com](https://console.cloud.google.com) :
+
+1. Créer un projet et activer **Google Drive API**.
+2. **Écran de consentement OAuth** : « Externe », s'ajouter comme utilisateur test, puis
+   **Publier l'application** (en mode « Test », Google coupe l'accès au bout de 7 jours).
+   La portée `drive.file` n'exige pas de validation par Google.
+3. **Identifiants → ID client OAuth → Application de bureau**, télécharger le JSON et
+   l'importer dans Opale. Le même fichier sert sur tous les ordinateurs.
+
+Sur un autre ordinateur, l'écran des coffres propose **Récupérer un coffre depuis Drive**.
+
+Fonctionnement :
+
+- Une synchronisation part quelques secondes après chaque modification, et toutes les
+  30 secondes pour les changements des autres ordinateurs. La barre d'état montre un
+  cercle et un pourcentage pendant les gros transferts, une icône discrète sinon.
+- Chaque fichier est comparé à la dernière version commune (`.opale/sync.json`). Une
+  note modifiée sur deux ordinateurs à des endroits différents est fusionnée ; modifiée
+  aux mêmes lignes, la version locale reste en place et l'autre est enregistrée à côté
+  (`Note (conflit PC-PORTABLE 2026-10-11 14h32).md`), à régler dans la fenêtre des conflits.
+- Supprimer d'un côté envoie à la corbeille de l'autre (`.trash` ou corbeille de Drive),
+  sauf si le fichier y a été modifié entre-temps. Une suppression massive, ou un dossier
+  Drive disparu, suspend la synchronisation jusqu'à confirmation.
+- Un renommage est un déplacement dans Drive (l'historique des versions de Drive suit).
+- `.opale` et `.trash` ne quittent jamais l'ordinateur. Le compte Google est enregistré
+  dans `%APPDATA%\Opale\google.json`.
 
 ## Connexion à zaalis IDE
 
@@ -91,6 +123,9 @@ server.js            serveur HTTP : interface, API du coffre, /mcp
 lib/vault.js         lecture/écriture, index des liens, renommage, surveillance du dossier
 lib/search.js        langage de recherche
 lib/mcp.js           outils proposés à l'assistant
+lib/google.js        compte Google (OAuth bureau + PKCE) et appels à l'API Drive
+lib/sync.js          synchronisation à trois états, conflits, planification
+lib/merge.js         fusion à trois voies des notes
 shared/              métadonnées et rendu Markdown (serveur + interface)
 interface/           l'application (modules ES, sans bibliothèque)
 native/              fenêtre WebView2, icône, scripts de construction

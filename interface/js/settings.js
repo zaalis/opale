@@ -1,12 +1,13 @@
 // Opale — settings window, and the application of settings to the page.
 import { api, app, bus, confirmDialog, h, icon, openModal, reportError, toast } from './core.js';
 import { store } from './store.js';
+import { syncUi } from './sync.js';
 
 const ACCENTS = ['#fbbf24', '#8b7cf6', '#38bdf8', '#2dd4bf', '#4ade80', '#fb7185', '#e879f9'];
 
 const SECTIONS = [
   ['editor', 'Éditeur'], ['files', 'Fichiers et liens'], ['appearance', 'Apparence'], ['daily', 'Notes quotidiennes et modèles'],
-  ['hotkeys', 'Raccourcis clavier'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
+  ['hotkeys', 'Raccourcis clavier'], ['integrations', 'Intégrations'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
 ];
 
 function row(label, hint, control) {
@@ -63,6 +64,7 @@ const PANES = {
     row('Dossier des modèles', 'Les notes de ce dossier sont proposées par « Insérer un modèle ».', text('templateFolder', 'Dossier des modèles', 'Modèles')),
     h('p.setting-note', 'Dans un modèle : ', h('code', '{{title}}'), ', ', h('code', '{{date}}'), ', ', h('code', '{{time}}'), ' ou ', h('code', '{{date:dddd D MMMM YYYY}}'), '.'),
   ],
+  integrations: () => syncUi.pane(),
   hotkeys: () => [h('div.hotkeys', app.commands.hotkeys().sort((a, b) => a.name.localeCompare(b.name)).map((item) => h('div.hotkey', h('span', item.name), h('kbd', item.hotkey))))],
   connection: () => {
     const box = h('div.connection', h('div.panel-empty', 'Chargement…'));

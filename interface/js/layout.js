@@ -2,6 +2,7 @@
 // the central area and the status bar.
 import { app, bus, debounce, h, icon, iconButton } from './core.js';
 import { store } from './store.js';
+import { syncUi } from './sync.js';
 
 const LEFT_TABS = [['files', 'files', 'Fichiers'], ['search', 'search', 'Rechercher (Ctrl+Maj+F)'], ['bookmarks', 'bookmark', 'Signets'], ['tags', 'tag', 'Étiquettes']];
 const RIGHT_TABS = [['backlinks', 'link-in', 'Rétroliens'], ['outgoing', 'link-out', 'Liens sortants'], ['outline', 'outline', 'Plan de la note'], ['graph', 'graph', 'Graphe local']];
@@ -121,7 +122,7 @@ export const layout = {
     this.statusBacklinks = h('button.status-item', { type: 'button', title: 'Afficher les rétroliens', onClick: () => this.show('right', 'backlinks') });
     this.statusWords = h('span.status-item');
     this.statusMode = h('button.status-item', { type: 'button', title: 'Changer de mode d’affichage', onClick: () => { const view = app.workspace.activeNote; if (view) view.toggleReading(); } });
-    this.status.append(this.statusAgent, h('div.status-space'), this.statusSave, this.statusBacklinks, this.statusWords, this.statusMode);
+    this.status.append(this.statusAgent, h('div.status-space'), syncUi.statusItem(), this.statusSave, this.statusBacklinks, this.statusWords, this.statusMode);
     const refresh = debounce(() => this.updateStatus(), 200);
     for (const event of ['active-view', 'note-content', 'note-saved', 'note-mode', 'note-rendered', 'index']) bus.on(event, refresh);
     bus.on('agent', () => this.updateAgent());

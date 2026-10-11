@@ -9,6 +9,7 @@ import { commands } from './commands.js';
 import { settingsUi } from './settings.js';
 import { launcher } from './launcher.js';
 import { uploadFile } from './editing.js';
+import { syncUi } from './sync.js';
 
 const root = document.getElementById('app');
 
@@ -46,6 +47,7 @@ function connectEvents() {
   source.addEventListener('vault', () => location.reload());
   source.addEventListener('agent', (event) => { app.agent = JSON.parse(event.data); bus.emit('agent', app.agent); });
   source.addEventListener('activity', (event) => onActivity(JSON.parse(event.data)));
+  source.addEventListener('sync', (event) => syncUi.onStatus(JSON.parse(event.data)));
   // An assistant asks to show a note: never replace what the user is reading.
   source.addEventListener('open-note', (event) => {
     const { path } = JSON.parse(event.data);
@@ -118,7 +120,7 @@ async function start() {
   let state;
   try { state = await api('/api/state'); }
   catch (error) { root.replaceChildren(h('div.fatal', h('h1', 'Opale ne répond pas'), h('p', error.message), h('button.btn.primary', { type: 'button', onClick: () => location.reload() }, 'Réessayer'))); return; }
-  app.version = state.version;
+  app.version = state.version; app.drive = state.drive;
   if (!state.vault) { document.title = 'Opale'; launcher.showFull(state, root); return; }
 
   app.vault = state.vault; app.settings = state.settings; app.bookmarks = state.bookmarks; app.snippets = state.snippets; app.agent = state.agent || {};
