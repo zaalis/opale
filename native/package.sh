@@ -13,7 +13,18 @@ esac
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-ROOT="$STAGE/opale_${VERSION}_${ARCH}"
+mkdir -p "$STAGE/debian"
+cat > "$STAGE/debian/control" <<EOF
+Source: opale
+Section: office
+Priority: optional
+Maintainer: zaalis
+
+Package: opale
+Architecture: any
+Description: Carnet de notes Markdown local
+EOF
+ROOT="$STAGE/debian/opale"
 INSTALL="$ROOT/usr/lib/opale"
 mkdir -p "$INSTALL" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/usr/share/icons/hicolor/256x256/apps" "$ROOT/DEBIAN"
 install -m 755 dist/opale "$INSTALL/Opale"
@@ -23,18 +34,20 @@ install -m 644 dist/opale.png "$INSTALL/opale.png"
 install -m 644 native/opale.desktop "$ROOT/usr/share/applications/opale.desktop"
 install -m 644 native/icons/hicolor/256x256/apps/opale.png "$ROOT/usr/share/icons/hicolor/256x256/apps/opale.png"
 ln -s ../lib/opale/Opale "$ROOT/usr/bin/opale"
+DEPS="$(cd "$STAGE" && dpkg-shlibdeps -O -e "$INSTALL/Opale" -e "$INSTALL/opale-pickfolder" -e "$INSTALL/opale-server" | sed 's/^shlibs:Depends=//')"
+[ -n "$DEPS" ] || { echo "Cannot determine native runtime dependencies" >&2; exit 1; }
 cat > "$ROOT/DEBIAN/control" <<EOF
 Package: opale
 Version: $VERSION
 Section: office
 Priority: optional
 Architecture: $ARCH
-Depends: libgtk-3-0, libwebkit2gtk-4.0-37 | libwebkit2gtk-4.1-0
+Depends: ${DEPS}, xdg-utils
 Maintainer: zaalis
 Description: Carnet de notes Markdown local
  Opale est un carnet de notes local relie par des liens Markdown.
 EOF
-dpkg-deb --build "$ROOT" "dist/Opale_${VERSION}_${ARCH}.deb"
+dpkg-deb --root-owner-group --build "$ROOT" "dist/Opale_${VERSION}_${ARCH}.deb"
 
 ARCHIVE="Opale-${VERSION}-linux-${ARCH}"
 ARCHIVE_ROOT="$STAGE/$ARCHIVE"

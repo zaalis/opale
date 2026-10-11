@@ -81,6 +81,8 @@ test('inline: emphasis, code, links, tags, embeds', () => {
   assert.equal(Markdown.renderInline('[[Existe|ici]] [[Absente#S]]', ctx), '<a class="internal-link" data-href="Existe" data-path="Existe.md">ici</a> <a class="internal-link is-unresolved" data-href="Absente" data-subpath="S">Absente &gt; S</a>');
   assert.match(Markdown.renderInline('![[image.png|120]]', ctx), /<img class="embed-image" src="\/api\/file\?path=img%2Fimage\.png" alt="image\.png" width="120"/);
   assert.match(Markdown.renderInline('![[Existe]]', ctx), /class="embed embed-note" data-embed-path="Existe\.md" data-embed-depth="1"/);
+  // A missing picture names its target, so the interface can offer to repair it.
+  assert.equal(Markdown.renderInline('![photo](absente%20ici.png)', ctx), '<span class="embed embed-missing" data-href="absente ici.png">photo</span>');
   assert.equal(Markdown.renderInline('un #tag/sous et 2 * 3 * 4', ctx), 'un <a class="tag" data-tag="tag/sous">#tag/sous</a> et 2 * 3 * 4');
   assert.equal(Markdown.renderInline('snake_case_name et _ital_', ctx), 'snake_case_name et <em>ital</em>');
   assert.match(Markdown.renderInline('https://exemple.fr/a.', ctx), /^<a class="external-link" href="https:\/\/exemple\.fr\/a" target="_blank" rel="noopener noreferrer">https:\/\/exemple\.fr\/a<\/a>\.$/);
@@ -133,4 +135,35 @@ test('liveBlocks: one unit per block and per top-level list item', () => {
   assert.deepEqual(blocks, [['heading', 0, 0], ['paragraph', 2, 3], ['list', 5, 6], ['list', 7, 7], ['list', 9, 9], ['list', 10, 10], ['code', 12, 14]]);
   const fourth = Markdown.liveBlocks(text)[5];
   assert.match(Markdown.renderToken(fourth.token, ctx), /<ol data-line="10" start="4">/);
+});
+
+test('images: placement and size options render and round-trip', () => {
+  const ctx = { resolve: (target) => (target === 'chat.png' ? 'img/chat.png' : null), fileUrl: (path) => `/f/${path}` };
+  assert.deepEqual(Markdown.imageOptions('Mon chat|left|300'), { alt: 'Mon chat', align: 'left', width: '300', height: '' });
+  assert.deepEqual(Markdown.imageOptions('300x200|droite'), { alt: '', align: 'right', width: '300', height: '200' });
+  assert.match(Markdown.renderInline('![[chat.png|left|300]]', ctx), /<img class="embed-image align-left" src="\/f\/img\/chat\.png" alt="chat\.png" width="300"/);
+  assert.match(Markdown.renderInline('![Chat|center|120](chat.png)', ctx), /class="embed-image align-center"[^>]*alt="Chat" width="120"/);
+  assert.match(Markdown.renderInline('![[chat.png|Légende]]', ctx), /class="embed-image" [^>]*alt="Légende"/);
+  // Rewriting keeps the target and the text; the size always comes last.
+  assert.equal(Markdown.rewriteImage('![[chat.png]]', { width: 250.4 }), '![[chat.png|250]]');
+  assert.equal(Markdown.rewriteImage('![[chat.png|Légende|300]]', { align: 'right' }), '![[chat.png|Légende|right|300]]');
+  assert.equal(Markdown.rewriteImage('![[chat.png|left|300x200]]', { width: null, align: '' }), '![[chat.png]]');
+  assert.equal(Markdown.rewriteImage('![[chat.png\|300]]', { align: 'left' }), '![[chat.png\|left\|300]]');
+  assert.equal(Markdown.rewriteImage('![Chat](img/chat.png "titre")', { width: 90 }), '![Chat|90](img/chat.png "titre")');
+});
+
+test('images: removing, inserting and moving an embed keeps the text tidy', () => {
+  const text = 'Avant.\n\n![[a.png|300]]\n\nAprès le texte.\n';
+  const start = text.indexOf('![['); const end = text.indexOf(']]') + 2;
+  assert.equal(Markdown.removeSpan(text, start, end), 'Avant.\n\nAprès le texte.\n');
+  assert.equal(Markdown.removeSpan('Un ![[a.png]] deux', 3, 13), 'Un deux');
+  assert.equal(Markdown.removeSpan('![[a.png]] deux', 0, 10), 'deux');
+  assert.deepEqual(Markdown.insertAt('Un deux', 2, '![[a.png]]', false), { text: 'Un ![[a.png]] deux', at: 3 });
+  assert.deepEqual(Markdown.insertAt('Undeux', 2, '![[a.png]]', false), { text: 'Un ![[a.png]] deux', at: 3 });
+  assert.deepEqual(Markdown.insertAt('# Titre\n\nTexte', 7, '![[a.png]]', true), { text: '# Titre\n\n![[a.png]]\n\nTexte', at: 9 });
+  // Into a sentence further down, then back up as its own paragraph.
+  const down = Markdown.moveSpan(text, start, end, text.indexOf('le texte'), false);
+  assert.deepEqual(down, { text: 'Avant.\n\nAprès ![[a.png|300]] le texte.\n', at: 14 });
+  const up = Markdown.moveSpan(down.text, 14, 28, 0, true);
+  assert.equal(up.text, '![[a.png|300]]\n\nAvant.\n\nAprès le texte.\n');
 });

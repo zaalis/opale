@@ -8,7 +8,7 @@
 #
 #  Usage:  bash native/build.sh [--no-server]
 #
-#  Requires: gcc, pkg-config, GTK 3 and WebKitGTK development files, Node.js 18+
+#  Requires: gcc, pkg-config, GTK 3 and WebKitGTK development files, Node.js 22+
 #    Debian / Ubuntu : sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 #    Fedora          : sudo dnf install gcc pkgconf-pkg-config gtk3-devel webkit2gtk4.1-devel
 #    Arch            : sudo pacman -S base-devel gtk3 webkit2gtk-4.1
@@ -44,6 +44,7 @@ cp native/icons/hicolor/256x256/apps/opale.png dist/opale.png
 
 if [ "$WITH_SERVER" = 1 ]; then
   command -v node >/dev/null || { echo "Node.js not found (needed to package the server; use --no-server to skip)." >&2; exit 1; }
+  node -e "if (Number(process.versions.node.split('.')[0]) < 22) throw Error('Node.js 22+ required'); const c=require('./lib/google-client.json'); if (!/\\.apps\\.googleusercontent\\.com$/.test(c.clientId || '')) throw Error('Valid Google desktop client required');"
   echo "==> Packaging the server"
   if [ ! -d node_modules/@yao-pkg/pkg ]; then npm install --no-audit --no-fund; fi
   case "$(uname -m)" in

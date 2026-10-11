@@ -2,9 +2,8 @@
 // continuation, bracket pairing, formatting shortcuts, link and tag
 // completion, pasted and dropped attachments. Used by both the source editor
 // and the block being edited in the live view.
-import { api, fuzzy, h, highlighted, Meta, reportError } from './core.js';
+import { api, app, fuzzy, h, highlighted, Meta, reportError } from './core.js';
 import { store } from './store.js';
-import { primary, secondaryCtrl } from './platform.js';
 
 // Replace [from, to) and tell listeners, as if the user had typed it.
 export function replaceRange(textarea, from, to, text, selectFrom, selectTo) {
@@ -169,6 +168,9 @@ function handleBackspace(textarea) {
 }
 
 // -------------------------------------------------------------- attachments
+// `targetFolder` is deliberately optional: note attachments follow the vault
+// setting, whereas an image created from the file explorer belongs exactly in
+// the folder the user selected.
 export async function uploadFile(file, sourcePath, targetFolder = '') {
   let name = file.name && file.name !== 'image.png' ? file.name : '';
   if (!name) {
@@ -176,18 +178,47 @@ export async function uploadFile(file, sourcePath, targetFolder = '') {
     name = `Image collée ${Meta.formatDate(new Date(), 'YYYYMMDDHHmmss')}.${ext}`;
   }
   name = name.replace(/[<>:"|?*\\/\u0000-\u001f]/g, '-').replace(/^\.+/, '').replace(/[. ]+$/, '') || 'Fichier';
-  const folder = targetFolder ? `&folder=${encodeURIComponent(targetFolder)}` : '';
-  const result = await api(`/api/file?name=${encodeURIComponent(name)}&source=${encodeURIComponent(sourcePath || '')}${folder}`, { method: 'PUT', body: file, raw: true });
+  const result = await api(`/api/file?name=${encodeURIComponent(name)}&source=${encodeURIComponent(sourcePath || '')}&folder=${encodeURIComponent(targetFolder || '')}`, { method: 'PUT', body: file, raw: true });
   return result.path;
+}
+
+// Width of a picture as it was taken, read before it is sent so that a small
+// image is never blown up to the default size.
+function naturalWidth(file) {
+  return new Promise((resolve) => {
+    if (!file || typeof Image === 'undefined') { resolve(0); return; }
+    const url = URL.createObjectURL(file); const img = new Image();
+    let settled = false;
+    const done = (value) => { if (settled) return; settled = true; URL.revokeObjectURL(url); resolve(value); };
+    img.onload = () => done(img.naturalWidth || 0);
+    img.onerror = () => done(0);
+    setTimeout(() => done(0), 4000);
+    img.src = url;
+  });
+}
+
+// What to write in the note for an uploaded file. An image gets the preset
+// width (Settings → Files), or its own width when it is smaller.
+export async function embedFor(path, file) {
+  const kind = Meta.kindOf(path); const name = Meta.baseName(path);
+  if (!['image', 'audio', 'video', 'pdf'].includes(kind)) return `[[${name}]]`;
+  if (kind !== 'image') return `![[${name}]]`;
+  const preset = Number(app.settings.imageWidth ?? 400) || 0;
+  if (!preset) return `![[${name}]]`;
+  const natural = await naturalWidth(file);
+  return `![[${name}|${natural ? Math.min(natural, preset) : preset}]]`;
 }
 
 async function insertFiles(textarea, files, sourcePath) {
   for (const file of files) {
     try {
       const path = await uploadFile(file, sourcePath);
-      const embeddable = ['image', 'audio', 'video', 'pdf'].includes(Meta.kindOf(path));
-      const { selectionStart: from, selectionEnd: to } = textarea;
-      replaceRange(textarea, from, to, `${embeddable ? '!' : ''}[[${Meta.baseName(path)}]]\n`);
+      const embed = await embedFor(path, file);
+      // In the line where the caret is, spaced from the words around it.
+      const { selectionStart: from, selectionEnd: to, value } = textarea;
+      const left = from > 0 && !/\s/.test(value[from - 1]) ? ' ' : '';
+      const right = to < value.length && !/\s/.test(value[to]) ? ' ' : '';
+      replaceRange(textarea, from, to, left + embed + right);
     } catch (error) { reportError(error); }
   }
 }
@@ -322,8 +353,8 @@ export function attachEditing(textarea, notePath) {
   textarea.addEventListener('keydown', (event) => {
     if (event.isComposing) return;
     if (suggestKey(event)) { event.preventDefault(); event.stopPropagation(); return; }
-    // AltGr can report as Ctrl+Alt: shortcuts need the primary key (⌘ or Ctrl) without Alt.
-    const shortcut = primary(event) && !event.altKey;
+    // AltGr reports as Ctrl+Alt on Windows: shortcuts need Ctrl without Alt.
+    const shortcut = (event.ctrlKey || event.metaKey) && !event.altKey;
     if (shortcut) {
       const key = event.key.toLowerCase();
       if (!event.shiftKey && HOTKEYS[key]) { event.preventDefault(); FORMATS[HOTKEYS[key]](textarea); return; }
@@ -333,8 +364,6 @@ export function attachEditing(textarea, notePath) {
       if (key === '[') { event.preventDefault(); FORMATS.outdent(textarea); return; }
       return;
     }
-    // ⌃+key on a Mac belongs to the text system (⌃A, ⌃E…) and to window shortcuts (⌃Tab).
-    if (secondaryCtrl(event)) return;
     if (event.key === 'Enter' && !event.shiftKey && !event.altKey) { if (handleEnter(textarea)) event.preventDefault(); return; }
     if (event.key === 'Tab') {
       event.preventDefault();

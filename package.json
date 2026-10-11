@@ -17,11 +17,15 @@
   "pkg": {
     "assets": [
       "interface/**/*",
-      "shared/**/*"
+      "shared/**/*",
+      "lib/google-client.json"
     ]
   },
   "license": "UNLICENSED",
   "devDependencies": {
     "@yao-pkg/pkg": "^6.22.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

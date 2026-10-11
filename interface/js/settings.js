@@ -1,17 +1,18 @@
+import { tellShell } from './platform.js';
 // Opale — settings window, and the application of settings to the page.
 import { api, app, bus, confirmDialog, h, icon, openModal, reportError, toast } from './core.js';
 import { store } from './store.js';
-import { keyLabel, keys, tellShell, TEXT } from './platform.js';
+import { syncUi } from './sync.js';
 
 const ACCENTS = ['#fbbf24', '#8b7cf6', '#38bdf8', '#2dd4bf', '#4ade80', '#fb7185', '#e879f9'];
 
 const SECTIONS = [
   ['editor', 'Éditeur'], ['files', 'Fichiers et liens'], ['appearance', 'Apparence'], ['daily', 'Notes quotidiennes et modèles'],
-  ['hotkeys', 'Raccourcis clavier'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
+  ['hotkeys', 'Raccourcis clavier'], ['integrations', 'Intégrations'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
 ];
 
 function row(label, hint, control) {
-  return h('div.setting', h('div.setting-text', h('div.setting-label', label), hint ? h('div.setting-hint', keys(hint)) : null), h('div.setting-control', control));
+  return h('div.setting', h('div.setting-text', h('div.setting-label', label), hint ? h('div.setting-hint', hint) : null), h('div.setting-control', control));
 }
 function toggle(key, label) {
   const input = h('input', { type: 'checkbox', checked: !!app.settings[key], 'aria-label': label, onChange: () => settingsUi.change({ [key]: input.checked }) });
@@ -19,6 +20,10 @@ function toggle(key, label) {
 }
 function select(key, label, options) {
   const input = h('select.select', { 'aria-label': label, onChange: () => settingsUi.change({ [key]: input.value }) }, options.map(([value, text]) => h('option', { value, selected: app.settings[key] === value }, text)));
+  return input;
+}
+function numberSelect(key, label, options) {
+  const input = h('select.select', { 'aria-label': label, onChange: () => settingsUi.change({ [key]: Number(input.value) }) }, options.map(([value, text]) => h('option', { value: String(value), selected: Number(app.settings[key]) === value }, text)));
   return input;
 }
 function text(key, label, placeholder) {
@@ -42,7 +47,8 @@ const PANES = {
     row('Dossier des nouvelles notes', 'Utilisé avec « Dossier indiqué ».', text('newNoteFolder', 'Dossier des nouvelles notes', 'Boîte de réception')),
     row('Emplacement des pièces jointes', 'Où vont les images collées ou déposées.', select('attachmentLocation', 'Emplacement des pièces jointes', [['folder', 'Dossier indiqué ci-dessous'], ['current', 'Même dossier que la note'], ['root', 'Racine du coffre']])),
     row('Dossier des pièces jointes', '', text('attachmentFolder', 'Dossier des pièces jointes', 'Pièces jointes')),
-    row('Fichiers supprimés', 'Ce que devient un fichier supprimé.', select('trash', 'Fichiers supprimés', [['local', 'Corbeille du coffre (.trash)'], ['system', TEXT.trashOption], ['permanent', 'Suppression définitive']])),
+    row('Taille des images insérées', 'Largeur donnée à une image collée ou déposée dans une note. Une image plus petite garde sa taille.', numberSelect('imageWidth', 'Taille des images insérées', [[240, 'Petite (240 px)'], [400, 'Moyenne (400 px)'], [640, 'Grande (640 px)'], [0, 'Taille d’origine']])),
+    row('Fichiers supprimés', 'Ce que devient un fichier supprimé.', select('trash', 'Fichiers supprimés', [['local', 'Corbeille du coffre (.trash)'], ['system', 'Corbeille du système'], ['permanent', 'Suppression définitive']])),
     row('Mettre à jour les liens', 'Réécrit les liens quand une note est renommée ou déplacée.', toggle('autoUpdateLinks', 'Mettre à jour les liens')),
   ],
   appearance: () => [
@@ -59,7 +65,8 @@ const PANES = {
     row('Dossier des modèles', 'Les notes de ce dossier sont proposées par « Insérer un modèle ».', text('templateFolder', 'Dossier des modèles', 'Modèles')),
     h('p.setting-note', 'Dans un modèle : ', h('code', '{{title}}'), ', ', h('code', '{{date}}'), ', ', h('code', '{{time}}'), ' ou ', h('code', '{{date:dddd D MMMM YYYY}}'), '.'),
   ],
-  hotkeys: () => [h('div.hotkeys', app.commands.hotkeys().sort((a, b) => a.name.localeCompare(b.name)).map((item) => h('div.hotkey', h('span', item.name), h('kbd', keyLabel(item.hotkey)))))],
+  integrations: () => syncUi.pane(),
+  hotkeys: () => [h('div.hotkeys', app.commands.hotkeys().sort((a, b) => a.name.localeCompare(b.name)).map((item) => h('div.hotkey', h('span', item.name), h('kbd', item.hotkey))))],
   connection: () => {
     const box = h('div.connection', h('div.panel-empty', 'Chargement…'));
     api('/api/connection').then((info) => {

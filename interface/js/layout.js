@@ -2,6 +2,7 @@
 // the central area and the status bar.
 import { app, bus, debounce, h, icon, iconButton } from './core.js';
 import { store } from './store.js';
+import { syncUi } from './sync.js';
 
 const LEFT_TABS = [['files', 'files', 'Fichiers'], ['search', 'search', 'Rechercher (Ctrl+Maj+F)'], ['bookmarks', 'bookmark', 'Signets'], ['tags', 'tag', 'Étiquettes']];
 const RIGHT_TABS = [['backlinks', 'link-in', 'Rétroliens'], ['outgoing', 'link-out', 'Liens sortants'], ['outline', 'outline', 'Plan de la note'], ['graph', 'graph', 'Graphe local']];
@@ -53,12 +54,20 @@ export const layout = {
       event.preventDefault();
       const start = event.clientX; const width = this.sides[side].width;
       document.body.classList.add('resizing');
-      const move = (moveEvent) => {
-        const delta = (moveEvent.clientX - start) * (side === 'left' ? 1 : -1);
+      // One width per frame, applied straight away (no easing while held).
+      let frame = 0; let x = start;
+      const paint = () => {
+        frame = 0;
+        const delta = (x - start) * (side === 'left' ? 1 : -1);
         this.sides[side].width = Math.max(190, Math.min(640, width + delta));
-        this.apply();
+        this.sides[side].el.style.width = `${this.sides[side].width}px`;
       };
-      const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.classList.remove('resizing'); app.workspace.persist(); bus.emit('layout'); };
+      const move = (moveEvent) => { x = moveEvent.clientX; if (!frame) frame = requestAnimationFrame(paint); };
+      const up = () => {
+        window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+        if (frame) { cancelAnimationFrame(frame); paint(); }
+        document.body.classList.remove('resizing'); app.workspace.persist(); bus.emit('layout');
+      };
       window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
     });
     return handle;
@@ -113,7 +122,7 @@ export const layout = {
     this.statusBacklinks = h('button.status-item', { type: 'button', title: 'Afficher les rétroliens', onClick: () => this.show('right', 'backlinks') });
     this.statusWords = h('span.status-item');
     this.statusMode = h('button.status-item', { type: 'button', title: 'Changer de mode d’affichage', onClick: () => { const view = app.workspace.activeNote; if (view) view.toggleReading(); } });
-    this.status.append(this.statusAgent, h('div.status-space'), this.statusSave, this.statusBacklinks, this.statusWords, this.statusMode);
+    this.status.append(this.statusAgent, h('div.status-space'), syncUi.statusItem(), this.statusSave, this.statusBacklinks, this.statusWords, this.statusMode);
     const refresh = debounce(() => this.updateStatus(), 200);
     for (const event of ['active-view', 'note-content', 'note-saved', 'note-mode', 'note-rendered', 'index']) bus.on(event, refresh);
     bus.on('agent', () => this.updateAgent());

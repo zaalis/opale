@@ -1,7 +1,6 @@
+import { keyLabel, keys } from './platform.js';
 // Opale — shared building blocks of the interface: DOM helpers, icons, the
 // server API, a small event bus, toasts, dialogs and menus.
-import { keyLabel, keys } from './platform.js';
-
 export const Meta = window.OpaleMeta;
 export const Markdown = window.OpaleMarkdown;
 
@@ -11,6 +10,17 @@ export const app = { settings: {}, vault: null, bookmarks: [], agent: {} };
 
 // ------------------------------------------------------------------- icons
 const ICONS = {
+  'board-select': '<path d="m5 3 14 10-7 1-3 7Z"/>',
+  'board-hand': '<path d="M8 12V6a1.5 1.5 0 0 1 3 0v5V4a1.5 1.5 0 0 1 3 0v7V6a1.5 1.5 0 0 1 3 0v6V9a1.5 1.5 0 0 1 3 0v6c0 4-2.5 6-6 6h-1c-2 0-3.5-1-4.5-2.5L5 14a1.6 1.6 0 0 1 2.5-2Z"/>',
+  'board-text': '<path d="M5 7V4h14v3M12 4v16M8 20h8"/>',
+  'board-sticky': '<path d="M14 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9Z"/><path d="M14 21v-5a2 2 0 0 1 2-2h5M7 8h10M7 12h5"/>',
+  'board-shape': '<rect x="3" y="3" width="9" height="9" rx="2"/><circle cx="16" cy="16" r="5"/>',
+  'board-connector': '<circle cx="5" cy="18" r="2"/><path d="M7 18h3a3 3 0 0 0 3-3V9a3 3 0 0 1 3-3h5m-4-3 4 3-4 3"/>',
+  'board-pen': '<path d="m12 3 7 7-4 9-7 2-5-5 2-7Z"/><path d="m12 3 3-2 7 7-3 2M4 20l6-6"/><circle cx="12" cy="12" r="2"/>',
+  'board-highlighter': '<path d="M8 3h8v8l-2 3h-4l-2-3Z"/><path d="M8 8h8M10 14v4l4-2v-2"/><path d="M5 21h14" stroke-width="3"/>',
+  'board-eraser': '<path d="m4 12 8-8a2 2 0 0 1 3 0l6 6a2 2 0 0 1 0 3l-7 7H9l-5-5a2 2 0 0 1 0-3ZM8 8l10 10M14 20h7"/>',
+  'board-frame': '<path d="M7 3v18M17 3v18M3 7h18M3 17h18"/>',
+  'board-comment': '<path d="M21 11a8 8 0 0 1-8 8H8l-5 3V11a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/><path d="M7 9h10M7 13h7"/>',
   files: '<path d="M4 5a2 2 0 0 1 2-2h4l2 3h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>',
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
   'file-plus': '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M12 12v6M9 15h6"/>',
@@ -50,11 +60,19 @@ const ICONS = {
   dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01M12 12h.01"/>',
   sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 16l.7 1.8L21.5 18.5l-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7Z"/>',
   external: '<path d="M14 5h5v5M19 5l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+  'img-inline': '<rect x="9" y="8" width="6" height="7" rx="1"/><path d="M3 11.5h3.5M17.5 11.5H21M3 4.5h18M3 19h18"/>',
+  'img-left': '<rect x="3" y="5" width="8" height="8" rx="1"/><path d="M14 5h7M14 9h7M14 13h7M3 17.5h18"/>',
+  'img-center': '<rect x="7" y="7.5" width="10" height="8" rx="1"/><path d="M3 4h18M3 19.5h18"/>',
+  'img-right': '<rect x="13" y="5" width="8" height="8" rx="1"/><path d="M3 5h7M3 9h7M3 13h7M3 17.5h18"/>',
   image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 3-3 3 3"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   pin: '<path d="M9 4h6l-1 6 3 3H7l3-3ZM12 13v7"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 6.3M20 5v6h-6"/>',
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="2.8"/>',
+  cloud: '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.8 3.8 0 0 1 17.5 18Z"/>',
+  'cloud-check': '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.8 3.8 0 0 1 17.5 18Z"/><path d="m9.5 13.5 2 2 3.5-3.5"/>',
+  'cloud-off': '<path d="M9 6.3A6 6 0 0 1 17.8 10.6 3.8 3.8 0 0 1 19.6 17M15 18H7a4.5 4.5 0 0 1-1.8-8.6M3 3l18 18"/>',
+  alert: '<path d="M10.3 4 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
 };
 export function icon(name, size = 18) {
   return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -68,9 +86,8 @@ export function h(spec, attrs, ...children) {
   if (classes.length) el.className = classes.join(' ');
   if (attrs && (typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) { children.unshift(attrs); attrs = null; }
   for (let [key, value] of Object.entries(attrs || {})) {
-    if (value === undefined || value === null) continue;
-    // Tooltips name their shortcut in the portable spelling; show it the way this system writes it.
     if (key === 'title' || key === 'aria-label') value = keys(value);
+    if (value === undefined || value === null) continue;
     // `false` must be applied, not skipped: spellcheck and draggable default to on.
     if (value === false) { if (key in el && typeof el[key] === 'boolean') el[key] = false; continue; }
     if (key === 'html') el.innerHTML = value;
@@ -157,7 +174,8 @@ export function openModal({ title, body, className = '', onClose, footer }) {
       const at = modalStack.indexOf(handle);
       if (at < 0) return;
       modalStack.splice(at, 1);
-      backdrop.remove();
+      backdrop.classList.remove('is-visible');
+      setTimeout(() => backdrop.remove(), 230);
       if (previous && document.contains(previous)) { try { previous.focus({ preventScroll: true }); } catch {} }
       if (onClose) onClose(result);
     },
@@ -166,6 +184,7 @@ export function openModal({ title, body, className = '', onClose, footer }) {
   dialog.append(h('div.modal-body', body));
   if (footer) dialog.append(h('div.modal-footer', footer));
   document.body.append(backdrop);
+  requestAnimationFrame(() => backdrop.classList.add('is-visible'));
   modalStack.push(handle);
   return handle;
 }

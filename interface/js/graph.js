@@ -3,7 +3,6 @@
 // note, as the "local graph" of the right panel.
 import { api, app, bus, debounce, h, iconButton, Meta } from './core.js';
 import { store } from './store.js';
-import { primary } from './platform.js';
 
 const CELL = 280;
 
@@ -308,7 +307,7 @@ export class GraphView {
       const up = (upEvent) => {
         window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
         const drag = this.drag; this.drag = null;
-        if (drag && drag.node && !drag.moved) this.open(drag.node, primary(upEvent) || drag.button === 1);
+        if (drag && drag.node && !drag.moved) this.open(drag.node, upEvent.ctrlKey || upEvent.metaKey || drag.button === 1);
         canvas.style.cursor = '';
         this.kick(0.02);
       };

@@ -3,7 +3,6 @@
 import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, reportError, showMenu, toast } from './core.js';
 import { uploadFile } from './editing.js';
 import { store } from './store.js';
-import { DELETE_HINT, isDeleteKey, primary, TEXT, keys } from './platform.js';
 
 const SORTS = {
   'name-asc': ['Nom (A → Z)', (a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' })],
@@ -22,7 +21,8 @@ export const explorer = {
     this.el = h('div.panel.explorer',
       h('div.panel-toolbar',
         iconButton('file-plus', 'Nouvelle note (Ctrl+N)', () => this.newNote(this.targetFolder())),
-        iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder() || '')),
+        iconButton('template', 'Nouveau moodboard', () => this.newBoard(this.targetFolder())),
+        iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder())),
         iconButton('folder-plus', 'Nouveau dossier', () => this.newFolder(this.targetFolder())),
         iconButton('sort', 'Ordre de tri', (event) => this.sortMenu(event)),
         iconButton('collapse', 'Tout replier', () => { this.expanded.clear(); this.render(); app.workspace.persist(); }),
@@ -72,7 +72,7 @@ export const explorer = {
       for (const item of node.files) rows.push(this.row(item, depth, { active: item.path === active }));
     };
     walk('', 0);
-    if (!rows.length) rows.push(h('div.panel-empty', keys('Ce coffre est vide. Créez une note avec Ctrl+N.')));
+    if (!rows.length) rows.push(h('div.panel-empty', 'Ce coffre est vide. Créez une note avec Ctrl+N.'));
     this.list.replaceChildren(...rows);
     if (this.renaming) this.startRename(this.renaming);
   },
@@ -129,7 +129,7 @@ export const explorer = {
       const path = row.dataset.path;
       this.select(path);
       if (row.dataset.folder) { if (this.expanded.has(path)) this.expanded.delete(path); else this.expanded.add(path); this.render(); app.workspace.persist(); }
-      else app.workspace.openPath(path, { newTab: primary(event) });
+      else app.workspace.openPath(path, { newTab: event.ctrlKey || event.metaKey });
     });
     list.addEventListener('auxclick', (event) => {
       const row = rowOf(event);
@@ -156,7 +156,7 @@ export const explorer = {
         this.render();
       } else if (current && event.key === 'Enter') { event.preventDefault(); current.click(); }
       else if (current && event.key === 'F2') { event.preventDefault(); this.startRename(this.selected); }
-      else if (current && isDeleteKey(event)) { event.preventDefault(); this.remove(this.selected); }
+      else if (current && event.key === 'Delete') { event.preventDefault(); this.remove(this.selected); }
     });
 
     list.addEventListener('dragstart', (event) => {
@@ -185,11 +185,11 @@ export const explorer = {
     list.addEventListener('drop', (event) => {
       const from = event.dataTransfer.getData('application/x-opale-path');
       clearDrop();
-      const files = [...event.dataTransfer.files];
-      if (files.length && !from) { event.preventDefault(); this.importImages(files, dropFolder(event)); return; }
-      if (!from) return;
       event.preventDefault();
       const folder = dropFolder(event);
+      const files = [...event.dataTransfer.files];
+      if (files.length && !from) { this.importImages(files, folder); return; }
+      if (!from) return;
       if (Meta.dirName(from) === folder || folder === from || folder.startsWith(`${from}/`)) return;
       this.move(from, Meta.joinPath(folder, Meta.baseName(from)), folder);
     });
@@ -207,15 +207,17 @@ export const explorer = {
   menu(x, y, path, isFolder) {
     if (!path) {
       return showMenu(x, y, [
+        { label: 'Nouveau moodboard', icon: 'template', run: () => this.newBoard('') },
         { label: 'Nouvelle note', icon: 'file-plus', run: () => this.newNote('') },
         { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages('') },
         { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder('') },
         'separator',
-        { label: TEXT.revealVault, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
+        { label: 'Afficher le coffre dans le gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
       ]);
     }
     const bookmarked = app.bookmarks.includes(path);
     return showMenu(x, y, [
+      isFolder ? { label: 'Nouveau moodboard', icon: 'template', run: () => this.newBoard(path) } : null,
       isFolder ? { label: 'Nouvelle note', icon: 'file-plus', run: () => this.newNote(path) } : { label: 'Ouvrir dans un nouvel onglet', icon: 'plus', run: () => app.workspace.openPath(path, { newTab: true }) },
       isFolder ? { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages(path) } : null,
       isFolder ? { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder(path) } : { label: 'Dupliquer', icon: 'copy', run: () => this.duplicate(path), disabled: Meta.kindOf(path) !== 'note' },
@@ -225,9 +227,9 @@ export const explorer = {
       isFolder ? null : { label: bookmarked ? 'Retirer des signets' : 'Ajouter aux signets', icon: 'bookmark', run: () => app.panels.toggleBookmark(path) },
       'separator',
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(path).then(() => toast('Chemin copié')) },
-      { label: TEXT.revealItem, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
+      { label: 'Afficher dans le gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
       'separator',
-      { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: DELETE_HINT },
+      { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: 'Suppr' },
     ]);
   },
 
@@ -239,23 +241,13 @@ export const explorer = {
     })));
   },
 
-  chooseImages(folder = '') {
-    const input = h('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true, 'aria-label': 'Choisir une ou plusieurs images' });
-    input.addEventListener('change', () => { const files = [...input.files]; input.remove(); if (files.length) this.importImages(files, folder); }, { once: true });
-    document.body.append(input); input.click();
-  },
-
-  async importImages(files, folder = '') {
-    const images = [...files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
-    if (!images.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+  async newBoard(folder = this.targetFolder()) {
     try {
-      const paths = [];
-      for (const file of images) paths.push(await uploadFile(file, '', folder));
-      for (const path of paths) await app.workspace.waitFor(path);
-      if (folder) this.expanded.add(folder);
-      this.selected = paths[paths.length - 1]; this.reveal(this.selected);
-      app.workspace.openPath(paths[0], { newTab: paths.length > 1 });
-      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'}${folder ? ` dans « ${folder} »` : ' à la racine du coffre'}.`);
+      const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas' } });
+      await app.workspace.waitFor(created.path);
+      this.selected = created.path;
+      this.reveal(created.path);
+      app.workspace.openPath(created.path);
     } catch (error) { reportError(error); }
   },
 
@@ -268,6 +260,33 @@ export const explorer = {
       await app.workspace.waitFor(created.path);
       this.selected = created.path;
       app.workspace.openPath(created.path, { focusTitle: true, mode: app.settings.defaultMode === 'reading' ? 'live' : undefined });
+    } catch (error) { reportError(error); }
+  },
+
+  chooseImages(folder = '') {
+    const input = h('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true, 'aria-label': 'Choisir une ou plusieurs images' });
+    input.addEventListener('change', () => {
+      const files = [...input.files];
+      input.remove();
+      if (files.length) this.importImages(files, folder || '');
+    }, { once: true });
+    document.body.append(input);
+    input.click();
+  },
+
+  async importImages(files, folder = '') {
+    const images = [...files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
+    if (!images.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+    if (images.length !== files.length) toast('Les fichiers non image ont été ignorés.');
+    try {
+      const paths = [];
+      for (const file of images) paths.push(await uploadFile(file, '', folder));
+      for (const path of paths) await app.workspace.waitFor(path);
+      if (folder) this.expanded.add(folder);
+      this.selected = paths[paths.length - 1];
+      this.reveal(this.selected);
+      app.workspace.openPath(paths[0], { newTab: paths.length > 1 });
+      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'}${folder ? ` dans « ${folder} »` : ' à la racine du coffre'}.`);
     } catch (error) { reportError(error); }
   },
 
@@ -325,7 +344,7 @@ export const explorer = {
   async remove(path) {
     const isFolder = store.folders.includes(path);
     const count = isFolder ? [...store.files.keys()].filter((file) => file.startsWith(`${path}/`)).length : 0;
-    const fate = app.settings.trash === 'permanent' ? 'supprimé définitivement' : app.settings.trash === 'system' ? `envoyé à ${TEXT.trash}` : 'déplacé dans la corbeille du coffre (.trash)';
+    const fate = app.settings.trash === 'permanent' ? 'supprimé définitivement' : app.settings.trash === 'system' ? 'envoyé à la corbeille du système' : 'déplacé dans la corbeille du coffre (.trash)';
     const ok = await confirmDialog({
       title: isFolder ? 'Supprimer le dossier' : 'Supprimer le fichier',
       message: `« ${Meta.baseName(path)} »${isFolder && count ? ` et ses ${count} fichier(s)` : ''} sera ${fate}.`,

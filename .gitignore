@@ -1,3 +1,6 @@
 node_modules/
-dist/
+lib/google-client.json
+dist/*
+!dist/Opale_*.deb
+!dist/Opale_*_linux-*.tar.gz
 *.log
