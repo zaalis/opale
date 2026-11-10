@@ -10,6 +10,8 @@ import { settingsUi } from './settings.js';
 import { launcher } from './launcher.js';
 import { uploadFile } from './editing.js';
 import { syncUi } from './sync.js';
+import { collab } from './collab/client.js';
+import { collabUi } from './collab/ui.js';
 
 const root = document.getElementById('app');
 
@@ -48,6 +50,7 @@ function connectEvents() {
   source.addEventListener('agent', (event) => { app.agent = JSON.parse(event.data); bus.emit('agent', app.agent); });
   source.addEventListener('activity', (event) => onActivity(JSON.parse(event.data)));
   source.addEventListener('sync', (event) => syncUi.onStatus(JSON.parse(event.data)));
+  source.addEventListener('collab', (event) => collab.onEvent(JSON.parse(event.data)));
   // An assistant asks to show a note: never replace what the user is reading.
   source.addEventListener('open-note', (event) => {
     const { path } = JSON.parse(event.data);
@@ -104,6 +107,7 @@ function installFileDrop() {
     if (!files.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
     const note = workspace.activeNote;
     if (!note) return explorer.importImages(files, explorer.targetFolder() || '');
+    if (note.shared) return note.insertAttachments([]);
     // Decided now, before the upload: the page may move in the meantime.
     const target = note.dropTargetAt(event.clientX, event.clientY);
     try {
@@ -130,6 +134,7 @@ async function start() {
   layout.init(root);
   workspace.init(layout.main);
   explorer.init(layout.sides.left.panes.files);
+  collabUi.init(explorer.el);
   panels.init(layout.sides.left.panes, layout.sides.right.panes);
   commands.init();
 
@@ -137,10 +142,13 @@ async function start() {
   layout.restore(saved.layout);
   layout.setVault(app.vault);
   explorer.restore(saved.explorer);
+  // Shared projects first, so that their tabs come back too.
+  await collab.load();
   workspace.restore(saved, state.pendingOpen);
   panels.renderTags(); panels.renderBookmarks(); panels.refreshRight();
   layout.updateAgent(); layout.updateStatus();
   installFileDrop();
+  collabUi.start();
 
   // Settings that change how an open note is drawn.
   bus.on('settings', (patch) => { if (patch && ('spellcheck' in patch || 'showProperties' in patch)) for (const tab of workspace.tabs) if (tab.view.type === 'note' && tab.view.loaded && !tab.view.active) tab.view.render(); });

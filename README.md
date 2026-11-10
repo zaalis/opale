@@ -89,6 +89,33 @@ Fonctionnement :
 - `.opale` et `.trash` ne quittent jamais l'ordinateur. Le compte Google est enregistré
   dans `%APPDATA%\Opale\google.json`.
 
+## Projets partagés
+
+La section **Projets partagés** (barre de gauche, sous les notes) réunit des notes et
+des moodboards modifiables à plusieurs, en direct. Chaque membre garde une copie
+complète sur son ordinateur ; le dossier du projet dans Drive sert de mémoire commune.
+Il n'y a pas de serveur Opale : les ordinateurs se trouvent grâce à Drive puis se
+parlent directement. Détails : [docs/PROJETS-PARTAGES.md](docs/PROJETS-PARTAGES.md).
+
+- **Créer** (bouton +) : crée `Mon Drive › Opale › Projets partagés › <nom>` et une
+  première note. **Inviter** (Membres et permissions) : adresse du compte Google et rôle
+  (Administrateur, Éditeur, Lecteur) ; Drive partage le dossier, Opale donne un code.
+  **Rejoindre** : le projet apparaît dans la liste des projets partagés avec vous, ou
+  avec le code.
+- Point de couleur à côté du projet : vert = tout est sur Drive, orange clignotant =
+  envoi en cours, jaune = modifications seulement sur cet ordinateur, rouge = erreur.
+  **État de la synchronisation** détaille les quatre états (cet ordinateur, participants
+  connectés, Drive, en attente).
+- Curseurs, sélections, déplacements en cours et « Suivre cette personne » (clic sur
+  un visage, Échap pour arrêter) ne passent qu'entre ordinateurs, jamais par Drive.
+
+**Mise en place Google** : en plus de `drive.file`, l'écran de consentement OAuth doit
+déclarer la portée `https://www.googleapis.com/auth/drive`, seule à permettre d'ouvrir
+un dossier partagé par quelqu'un d'autre. Elle est demandée à part, au premier usage
+des projets partagés. Google la classe « restreinte » : tant que l'application n'est
+pas vérifiée, l'écran de connexion affiche un avertissement et les comptes doivent être
+ajoutés comme utilisateurs test (100 au plus).
+
 ## Connexion à zaalis IDE
 
 Tant qu'Opale tourne, il publie son adresse dans `%APPDATA%\Opale\instance.json`
@@ -126,7 +153,9 @@ lib/mcp.js           outils proposés à l'assistant
 lib/google.js        compte Google (OAuth bureau + PKCE) et appels à l'API Drive
 lib/sync.js          synchronisation à trois états, conflits, planification
 lib/merge.js         fusion à trois voies des notes
-shared/              métadonnées et rendu Markdown (serveur + interface)
+lib/collab/          projets partagés : identité, membres, Drive, copie locale, service
+shared/              métadonnées, rendu Markdown, CRDT et session des projets partagés
+interface/js/collab/ projets partagés dans l'interface (WebRTC, présence, éditeurs, fenêtres)
 interface/           l'application (modules ES, sans bibliothèque)
 native/              fenêtre WebView2, icône, scripts de construction
 test/                node --test

@@ -1,6 +1,8 @@
 // Opale — the interface's copy of the vault index. The server owns the truth;
 // every change arrives over the event stream and is folded in here.
-import { api, bus, Meta } from './core.js';
+import { api, app, bus, Meta } from './core.js';
+
+const shared = (path) => typeof path === 'string' && path.startsWith('@shared/');
 
 export const store = {
   files: new Map(),
@@ -30,9 +32,9 @@ export const store = {
     if (!this._resolver) this._resolver = Meta.buildResolver([...this.files.keys()]);
     return this._resolver;
   },
-  resolve(target, source) { return this.resolver.resolve(target, source || null); },
+  resolve(target, source) { if (shared(source)) return app.collab.resolve(target, source); return this.resolver.resolve(target, source || null); },
   linkText(path) { return this.resolver.linkText(path); },
-  has(path) { return this.files.has(path); },
+  has(path) { return shared(path) ? !!app.collab && app.collab.hasPath(path) : this.files.has(path); },
   notes() { return [...this.files.values()].filter((entry) => entry.kind === 'note'); },
 
   // path -> Set of notes linking to it
@@ -67,6 +69,7 @@ export const store = {
 
   // Note text for embeds and hover previews, cached until the file changes.
   async text(path) {
+    if (shared(path)) return app.collab.textOf(path);
     const entry = this.files.get(path);
     const cached = this._texts.get(path);
     if (cached && entry && cached.mtime === entry.mtime) return cached.content;

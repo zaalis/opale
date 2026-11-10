@@ -5,6 +5,8 @@ import { store } from './store.js';
 import { NoteView } from './note.js';
 import { GraphView } from './graph.js';
 import { BoardView } from './board/view.js';
+import { collab, isShared } from './collab/client.js';
+import { SharedBoardView, SharedNoteView } from './collab/views.js';
 
 let nextId = 1;
 
@@ -58,6 +60,7 @@ function entryFor(path) { const kind = Meta.kindOf(path); return { type: ['note'
 function titleOf(entry) {
   if (entry.type === 'graph') return 'Graphe';
   if (entry.type === 'empty') return 'Nouvel onglet';
+  if (isShared(entry.path)) return collab.titleOf(entry.path);
   return noteTitle(entry.path);
 }
 
@@ -83,6 +86,7 @@ export const workspace = {
   current(tab) { return tab.history[tab.index]; },
 
   makeView(entry, options) {
+    if (isShared(entry.path)) return entry.type === 'board' ? new SharedBoardView(entry.path, options) : new SharedNoteView(entry.path, options);
     if (entry.type === 'note') return new NoteView(entry.path, options);
     if (entry.type === 'board') return new BoardView(entry.path, options);
     if (entry.type === 'graph') return new GraphView();
@@ -138,7 +142,7 @@ export const workspace = {
     if (!tab) return;
     const entry = this.current(tab);
     document.title = `${titleOf(entry)} — ${app.vault ? app.vault.name : ''} — Opale`;
-    api('/api/active', { method: 'POST', body: { path: ['note', 'board'].includes(entry.type) ? entry.path : '' } }).catch(() => {});
+    api('/api/active', { method: 'POST', body: { path: ['note', 'board'].includes(entry.type) && !isShared(entry.path) ? entry.path : '' } }).catch(() => {});
   },
 
   openPath(path, options = {}) {
@@ -167,6 +171,7 @@ export const workspace = {
     if (resolved) return this.openPath(resolved, { newTab, subpath });
     const clean = String(target || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\.md$/i, '');
     if (!clean) return undefined;
+    if (isShared(source)) return collab.createLinked(source, clean, newTab);
     try {
       const body = clean.includes('/') ? { folder: Meta.dirName(clean), name: Meta.baseName(clean), exact: true } : { name: clean, source, exact: true };
       const created = await api('/api/note', { method: 'POST', body });

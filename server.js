@@ -17,6 +17,8 @@ const mcp = require('./lib/mcp.js');
 const starter = require('./lib/starter.js');
 const { GoogleAccount, DriveClient } = require('./lib/google.js');
 const { SyncService } = require('./lib/sync.js');
+const { CollabService } = require('./lib/collab/service.js');
+const { ProjectDrive, FakeDrive } = require('./lib/collab/drive.js');
 const Meta = require('./shared/meta.js');
 const Board = require('./shared/board.js');
 
@@ -72,6 +74,7 @@ function createOpale(options = {}) {
   const state = { vault: null, port: 0, activeNote: '', pendingOpen: '', hadClient: false, exitTimer: null };
   const google = options.google || new GoogleAccount();
   const sync = new SyncService({ account: google, drive: options.drive || new DriveClient(google), interval: options.syncInterval, device: options.device });
+  const collab = options.collab || createCollab(google);
 
   // ---------------------------------------------------------------- events
   function broadcast(type, payload) {
@@ -80,6 +83,7 @@ function createOpale(options = {}) {
   }
   const agentPayload = () => ({ ...agent, active: agent.lastSeen > 0 && Date.now() - agent.lastSeen < 10 * 60 * 1000 });
   sync.on('status', (status) => broadcast('sync', status));
+  collab.on('event', (event) => broadcast('collab', event));
 
   // ----------------------------------------------------------------- vault
   function instanceInfo() {
@@ -374,6 +378,40 @@ function createOpale(options = {}) {
       return statePayload();
     },
 
+    // ----------------------------------------------------- shared projects
+    'GET /api/collab': () => collab.overview(),
+    'PUT /api/collab/network': async (ctx) => ({ network: collab.setNetwork(await ctx.json()), deviceName: collab.deviceName }),
+    'POST /api/collab/authorize': () => {
+      if (collab.fake) return collab.overview();
+      const url = google.beginAuth(`http://127.0.0.1:${state.port}/oauth/google`, { shared: true });
+      openExternal(url);
+      return { url };
+    },
+    'POST /api/collab/create': async (ctx) => collab.create((await ctx.json()).name),
+    'GET /api/collab/discover': async () => ({ projects: await collab.discover() }),
+    'POST /api/collab/join': async (ctx) => collab.join(await ctx.json()),
+    'POST /api/collab/open': async (ctx) => { const runtime = await project(ctx); runtime.start(); return runtime.bootstrap(); },
+    'POST /api/collab/close': async (ctx) => { (await project(ctx)).stop(); return { ok: true }; },
+    'POST /api/collab/persist': async (ctx) => { const body = await ctx.json(); return { changes: await (await project(ctx)).persist(body.changes, { local: body.local === true, from: String(body.from || ''), token: String(body.token || '') }) }; },
+    'POST /api/collab/since': async (ctx) => (await project(ctx)).since((await ctx.json()).vv),
+    'POST /api/collab/state': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).acceptState(body.state, String(body.from || '')); },
+    'POST /api/collab/coordinate': async (ctx) => (await project(ctx)).coordinate(await ctx.json()),
+    'POST /api/collab/checkpoint': async (ctx) => (await project(ctx)).checkpoint(),
+    'POST /api/collab/poll': async (ctx) => { const runtime = await project(ctx); await runtime.poll(); return runtime.summary(); },
+    'POST /api/collab/hello': async (ctx) => (await project(ctx)).hello(),
+    'POST /api/collab/proof': async (ctx) => (await project(ctx)).proof(await ctx.json()),
+    'POST /api/collab/verify': async (ctx) => (await project(ctx)).verifyPeer(await ctx.json()),
+    'POST /api/collab/signal': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).signal(String(body.to || ''), body.payload); },
+    'POST /api/collab/members': async (ctx) => (await project(ctx)).members(),
+    'POST /api/collab/invite': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).invite(body.email, String(body.role || 'editor')); },
+    'POST /api/collab/role': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).setRole(body.email, String(body.role || '')); },
+    'POST /api/collab/remove': async (ctx) => (await project(ctx)).remove((await ctx.json()).email),
+    'POST /api/collab/revoke': async (ctx) => (await project(ctx)).revokeDevice((await ctx.json()).device),
+    'POST /api/collab/leave': async (ctx) => (await project(ctx)).leave(),
+    'POST /api/collab/forget': async (ctx) => { (await project(ctx)).forget(false); return collab.overview(); },
+    'POST /api/collab/export': async (ctx) => { const body = await ctx.json(); const target = String(body.path || '').trim(); if (target && !path.isAbsolute(target)) throw new VaultError('Indiquez le chemin complet du dossier.'); return collab.exportCopy(String(body.project || ''), target || undefined); },
+    'POST /api/collab/reveal': async (ctx) => { const body = await ctx.json(); const target = String(body.path || ''); if (path.isAbsolute(target) && fs.existsSync(target) && process.platform === 'win32') spawn('explorer.exe', [target], { detached: true, stdio: 'ignore' }).unref(); return { ok: true }; },
+
     // Called by a connecting program (zaalis IDE) so the window can say who is there.
     'POST /api/agent/hello': async (ctx) => {
       if (!ctx.bearer) throw new VaultError('Jeton requis.', 401, 'unauthorized');
@@ -390,6 +428,8 @@ function createOpale(options = {}) {
       return { ok: true };
     },
   };
+
+  async function project(ctx) { return collab.runtime(String((await ctx.json()).project || '')); }
 
   function serveEvents(req, res) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -434,6 +474,7 @@ function createOpale(options = {}) {
       try { await google.finishAuth(Object.fromEntries(url.searchParams)); ok = true; message = `Opale est connecté à Google Drive${google.email ? ` (${google.email})` : ''}. Vous pouvez fermer cet onglet et revenir à Opale.`; }
       catch (error) { google.lastError = error.message; message = error.message; }
       sync.emit('status', sync.status());
+      collab.emit('event', { project: '', type: 'account', account: collab.accountInfo() });
       if (ok) sync.schedule(0);
       return sendPage(res, ok ? 'Connexion réussie' : 'Connexion impossible', message);
     }
@@ -500,7 +541,7 @@ function createOpale(options = {}) {
     get token() { return config.token; },
     get uiToken() { return uiToken; },
     get vault() { return state.vault; },
-    sync, google,
+    sync, google, collab,
     openVault, closeVault,
     async listen() {
       const wanted = options.port !== undefined ? Number(options.port) : Number(process.env.OPALE_PORT) || DEFAULT_PORT;
@@ -517,6 +558,7 @@ function createOpale(options = {}) {
         for (const res of clients) { try { res.end(); } catch {} }
         clients.clear();
         sync.detach();
+        collab.closeAll();
         if (state.vault) { state.vault.close(); state.vault = null; }
         appdata.clearInstance();
         server.close(() => resolve());
@@ -525,6 +567,20 @@ function createOpale(options = {}) {
     },
   };
   return app;
+}
+
+// Shared projects. OPALE_FAKE_DRIVE (tests only) replaces Google Drive with a
+// local folder shared by several instances, each with its own account name.
+function createCollab(google) {
+  const fakeDir = process.env.OPALE_FAKE_DRIVE;
+  if (fakeDir) {
+    const email = String(process.env.OPALE_FAKE_EMAIL || 'moi@example.test').toLowerCase();
+    const account = { connected: true, email, info: () => ({ configured: true, connected: true, email, sharedScope: true }) };
+    const service = new CollabService({ account, drive: new FakeDrive(path.resolve(fakeDir), email) });
+    service.fake = true;
+    return service;
+  }
+  return new CollabService({ account: google, drive: new ProjectDrive(google) });
 }
 
 // The system browser, for Google's sign-in page (never the app's own window).

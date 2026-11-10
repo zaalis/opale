@@ -1,0 +1,30 @@
+{
+  "theme": "dark",
+  "accent": "#fbbf24",
+  "fontSize": 16,
+  "readableLineLength": true,
+  "defaultMode": "live",
+  "spellcheck": false,
+  "showProperties": true,
+  "newNoteLocation": "root",
+  "newNoteFolder": "",
+  "attachmentLocation": "folder",
+  "attachmentFolder": "Pièces jointes",
+  "imageWidth": 400,
+  "trash": "local",
+  "autoUpdateLinks": true,
+  "explorerSort": "name-asc",
+  "dailyFolder": "Journal",
+  "dailyFormat": "YYYY-MM-DD",
+  "dailyTemplate": "",
+  "templateFolder": "Modèles",
+  "graph": {
+    "tags": false,
+    "attachments": false,
+    "orphans": true,
+    "unresolved": true,
+    "repel": 60,
+    "link": 60,
+    "center": 40
+  }
+}

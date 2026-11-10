@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="opale_night">#131218</color>
+    <color name="opale_icon_bg">#18171E</color>
+
+    <style name="Theme.Opale" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/opale_night</item>
+        <item name="android:colorBackground">@color/opale_night</item>
+        <item name="android:colorAccent">#FBBF24</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

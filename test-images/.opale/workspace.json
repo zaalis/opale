@@ -1,0 +1,25 @@
+{
+  "tabs": [
+    {
+      "type": "note",
+      "path": "2 - Texte long avec images.md",
+      "mode": "live"
+    }
+  ],
+  "active": 0,
+  "layout": {
+    "left": {
+      "open": true,
+      "tab": "files",
+      "width": 280
+    },
+    "right": {
+      "open": true,
+      "tab": "backlinks",
+      "width": 300
+    }
+  },
+  "explorer": {
+    "expanded": []
+  }
+}
