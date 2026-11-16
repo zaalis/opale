@@ -1,4 +1,5 @@
+
+# Preserve bundled third-party files exactly, including their license formatting.
+interface/vendor/** -text -whitespace
+
 *.sh text eol=lf
-*.c text eol=lf
-*.js text eol=lf
-*.cjs text eol=lf

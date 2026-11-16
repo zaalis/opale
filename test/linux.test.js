@@ -101,3 +101,13 @@ test('Drive reports browser launch failure without leaving a pending login', { s
     fs.rmSync(temp, { recursive: true, force: true });
   }
 });
+
+test('Linux AI credentials are encrypted and the independent profile key is private', {skip:!platform.LINUX}, ()=>{
+ const home=fs.mkdtempSync(path.join(os.tmpdir(),'opale-ai-key-')),previous=process.env.OPALE_HOME;process.env.OPALE_HOME=home;
+ try{const secrets=require('../lib/design/secrets');const file=path.join(home,'design.json');secrets.save(file,{key:'local-test-secret'});
+ assert.equal(fs.readFileSync(file,'utf8').includes('local-test-secret'),false);assert.equal(secrets.load(file).key,'local-test-secret');
+ assert.equal(fs.statSync(path.join(home,'credentials.key')).mode&0o777,0o600);
+ const sealed=require('../lib/linux-credentials').seal(Buffer.from('original'));assert.equal(require('../lib/linux-credentials').open(sealed).toString(),'original');
+ const changed=Buffer.from(sealed,'base64');changed[changed.length-1]^=1;assert.throws(()=>require('../lib/linux-credentials').open(changed.toString('base64')));
+ }finally{if(previous===undefined)delete process.env.OPALE_HOME;else process.env.OPALE_HOME=previous;fs.rmSync(home,{recursive:true,force:true});}
+});

@@ -8,16 +8,19 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
-const platform = require('./lib/platform.js');
+const { execFile, spawn } = require('child_process');
 
 const appdata = require('./lib/appdata.js');
+const platform = require('./lib/platform.js');
 const { Vault, VaultError, cleanRelative } = require('./lib/vault.js');
 const { search } = require('./lib/search.js');
 const mcp = require('./lib/mcp.js');
 const starter = require('./lib/starter.js');
 const { GoogleAccount, DriveClient } = require('./lib/google.js');
 const { SyncService } = require('./lib/sync.js');
+const { CollabService } = require('./lib/collab/service.js');
+const { ProjectDrive, FakeDrive } = require('./lib/collab/drive.js');
+const { MiroAccount, MiroService } = require('./lib/miro.js');
 const Meta = require('./shared/meta.js');
 const Board = require('./shared/board.js');
 
@@ -25,6 +28,7 @@ const VERSION = require('./package.json').version;
 const DEFAULT_PORT = 27184;
 const STATIC_ROOTS = { '/shared/': path.join(__dirname, 'shared'), '/': path.join(__dirname, 'interface') };
 const STATIC_TYPES = {
+  '.mjs': 'text/javascript; charset=utf-8', '.wasm': 'application/wasm', '.bcmap': 'application/octet-stream', '.pfb': 'application/octet-stream', '.ttf': 'font/ttf',
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2',
 };
@@ -72,7 +76,13 @@ function createOpale(options = {}) {
   const agent = { client: '', connectedAt: 0, lastSeen: 0, calls: 0, lastTool: '' };
   const state = { vault: null, port: 0, activeNote: '', pendingOpen: '', hadClient: false, exitTimer: null };
   const google = options.google || new GoogleAccount();
+  const miro = options.miro || new MiroAccount();
+  const miroService = new MiroService(miro, options.miroOptions);
+  const miroInfo = () => ({ ...miroService.info(), redirectUri: `http://127.0.0.1:${state.port}/oauth/miro` });
   const sync = new SyncService({ account: google, drive: options.drive || new DriveClient(google), interval: options.syncInterval, device: options.device });
+  const collab = options.collab || createCollab(google);
+  const updater = options.updater || new (require('./lib/updater').Updater)();
+  const design = options.design || new (require('./lib/design/service').DesignService)();
 
   // ---------------------------------------------------------------- events
   function broadcast(type, payload) {
@@ -81,6 +91,7 @@ function createOpale(options = {}) {
   }
   const agentPayload = () => ({ ...agent, active: agent.lastSeen > 0 && Date.now() - agent.lastSeen < 10 * 60 * 1000 });
   sync.on('status', (status) => broadcast('sync', status));
+  collab.on('event', (event) => broadcast('collab', event));
 
   // ----------------------------------------------------------------- vault
   function instanceInfo() {
@@ -181,10 +192,13 @@ function createOpale(options = {}) {
     fs.createReadStream(file).pipe(res);
   }
 
-  function serveVaultFile(req, res, rel) {
+  function serveVaultFile(req, res, rel, download = false) {
     const vault = needVault();
     const clean = vault.canonical(cleanRelative(rel));
     const full = vault.abs(clean);
+    return serveFile(req, res, full, clean, download);
+  }
+  function serveFile(req, res, full, clean, download = false) {
     const stat = fs.statSync(full);
     if (!stat.isFile()) throw new VaultError('Fichier introuvable.', 404, 'missing');
     const ext = Meta.extOf(clean);
@@ -192,10 +206,10 @@ function createOpale(options = {}) {
     const headers = {
       'Content-Type': type || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff', 'Last-Modified': stat.mtime.toUTCString(),
-      'Content-Disposition': `${type ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(Meta.baseName(clean))}`,
+      'Content-Disposition': `${type && !download ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(Meta.baseName(clean))}`,
     };
     // An SVG opened on its own is a document: keep its scripts from running.
-    if (ext !== 'pdf') headers['Content-Security-Policy'] = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+    if (ext !== 'pdf') headers['Content-Security-Policy'] = `sandbox${download ? ' allow-downloads' : ''}; default-src 'none'; style-src 'unsafe-inline'; img-src data:`;
     const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
     if (range && (range[1] || range[2])) {
       let start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
@@ -212,7 +226,7 @@ function createOpale(options = {}) {
   // ---------------------------------------------------------- folder picker
   function pickFolder() {
     const base = process.pkg ? path.dirname(process.execPath) : __dirname;
-    return platform.pickFolder(base).catch((error) => { throw new VaultError(error.message, 500, 'picker'); });
+    return platform.pickFolder(base).catch(error => { throw new VaultError(error.message, 500, 'picker'); });
   }
 
   // ------------------------------------------------------------ API routes
@@ -278,12 +292,106 @@ function createOpale(options = {}) {
     'POST /api/rename': async (ctx) => { const body = await ctx.json(); return needVault().rename(String(body.from || ''), String(body.to || '')); },
     'POST /api/delete': async (ctx) => { const body = await ctx.json(); return needVault().remove(String(body.path || ''), { permanent: body.permanent === true }); },
 
-    'GET /api/file': (ctx) => { serveVaultFile(ctx.req, ctx.res, ctx.query.get('path') || ''); return undefined; },
+    'GET /api/file': async (ctx) => {
+      const requested = ctx.query.get('path') || '';
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\/assets\/([A-Za-z0-9_-]+)\/([^/\\]+)$/.exec(requested);
+      if (shared) {
+        const full = await collab.runtime(shared[1]).getAttachment(shared[2], { cacheOnly: ctx.query.get('cacheOnly') === '1' });
+        serveFile(ctx.req, ctx.res, full, shared[3], ctx.query.get('download') === '1');
+      } else serveVaultFile(ctx.req, ctx.res, requested, ctx.query.get('download') === '1');
+      return undefined;
+    },
+    'PUT /api/collab/attachment-cache': async (ctx) => {
+      const runtime = collab.runtime(ctx.query.get('project'));
+      runtime.checkToken(ctx.query.get('token'));
+      runtime.cacheAttachment(ctx.query.get('id'), await readBody(ctx.req, MAX_UPLOAD_BYTES));
+      return { ok: true };
+    },
+    'GET /api/design/templates': () => design.templates(),
+    'POST /api/design/templates': async ctx => design.saveTemplate(await ctx.json()),
+    'GET /api/update': () => updater.info(),
+    'POST /api/update/check': () => { updater.check(); return updater.info(); },
+    'POST /api/update/apply': () => updater.apply(),
+    'GET /api/design': () => design.info(),
+    'PUT /api/design/connection': async ctx => { const body=await ctx.json(); return design.configure(String(body.provider||''),body); },
+    'DELETE /api/design/connection': async ctx => design.disconnect(String((await ctx.json()).provider||'')),
+    'POST /api/design/models': async ctx => design.discover(String((await ctx.json()).provider||'')),
+    'POST /api/design/auth/start': async ctx => design.start(String((await ctx.json()).provider||'')),
+    'POST /api/design/auth/poll': async ctx => { const body=await ctx.json(); return design.poll(String(body.provider||''),String(body.flowId||'')); },
+    'DELETE /api/design/auth': async ctx => design.cancel(String((await ctx.json()).flowId||'')),
+    'POST /api/design/run': async ctx => {
+      const body=await ctx.json(); const source=String(body.source||'');
+      const project=/^@shared\/([A-Za-z0-9_-]+)\//.exec(source);
+      if(project){const runtime=collab.runtime(project[1]); runtime.load(); if(!runtime.myAccess().ok||runtime.role()==='reader')throw new VaultError('Ce projet est en lecture seule.',403,'readonly');}else needVault();
+      const readImage=async requested=>{
+        if(typeof requested!=='string'||!requested)throw new VaultError('Image d’entrée manquante.');
+        const shared=/^@shared\/([A-Za-z0-9_-]+)\/assets\/([A-Za-z0-9_-]+)\/([^/\\]+)$/.exec(requested);
+        if(project&&(!shared||shared[1]!==project[1]))throw new VaultError('Cette image doit appartenir au projet partagé.',403,'isolation');
+        const full=shared?await collab.runtime(shared[1]).getAttachment(shared[2]):needVault().abs(needVault().canonical(cleanRelative(requested)));
+        if(fs.statSync(full).size>25*1024*1024)throw new VaultError('L’image dépasse 25 Mo. Utilisez un nœud de redimensionnement.',413,'too-large');
+        const bytes=fs.readFileSync(full);const ext=require('./lib/miro-media').imageExtension(bytes);if(!ext)throw new VaultError('Utilisez une image PNG, JPEG, GIF ou WebP pour ce modèle.');
+        return {bytes,mime:`image/${ext==='jpg'?'jpeg':ext}`};
+      };
+      const images=await Promise.all((Array.isArray(body.images)?body.images:[]).slice(0,4).map(readImage));
+      const mask=body.mask?await readImage(body.mask):undefined;
+      const controller=new AbortController();ctx.res.on('close',()=>{if(!ctx.res.writableEnded)controller.abort();});
+      const result=await design.run({...body,images,mask},{signal:controller.signal,onDelta:delta=>broadcast('design',{runId:String(body.runId||''),delta})});
+      if(result.bytes){const ext=require('./lib/miro-media').imageExtension(result.bytes);if(!ext||result.bytes.length>25*1024*1024)throw new VaultError('Le modèle a renvoyé une image non prise en charge.',502,'invalid-image');
+        const name=`Opal Design ${Date.now()}.${ext}`;let saved;
+        if(project)saved=await collab.runtime(project[1]).stageAttachment(name,result.bytes);
+        else {const vault=needVault();saved=vault.uniquePath(vault.attachmentFolder(source),name.slice(0,-ext.length-1),ext);vault.writeBinary(saved,result.bytes);}
+        return {file:saved};
+      }
+      return {text:result.text||''};
+    },
+    'GET /api/link-icon': async (ctx) => {
+      let target;
+      try { target = new URL(ctx.query.get('url')); } catch { throw new VaultError('Lien invalide.'); }
+      if (!['https:', 'http:'].includes(target.protocol) || target.username || target.password) throw new VaultError('Lien invalide.');
+      const iconUrl = new URL('/favicon.ico', target); iconUrl.protocol = 'https:';
+      const media = require('./lib/miro-media.js');
+      const bytes = await media.download(iconUrl.href, 0, 512 * 1024);
+      const ext = media.imageExtension(bytes);
+      const ico = bytes.length > 6 && bytes.readUInt32LE(0) === 0x00010000;
+      if (!ext && !ico) throw new VaultError('Icône indisponible.', 404, 'missing');
+      ctx.res.writeHead(200, { 'Content-Type': ico ? 'image/x-icon' : `image/${ext === 'jpg' ? 'jpeg' : ext}`, 'Content-Length': bytes.length, 'Cache-Control': 'private, max-age=86400', 'Content-Security-Policy': "sandbox; default-src 'none'" });
+      ctx.res.end(bytes); return undefined;
+    },
+    'POST /api/presentation-pdf': async (ctx) => {
+      const source = ctx.query.get('source') || '';
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(source);
+      if (shared) {
+        const runtime = collab.runtime(shared[1]); runtime.load();
+        if (!runtime.myAccess().ok || runtime.role() === 'reader') throw new VaultError('Ce projet est en lecture seule.', 403, 'readonly');
+      } else needVault();
+      const ext = String(ctx.query.get('ext') || '').toLowerCase();
+      const bytes = await readBody(ctx.req, MAX_UPLOAD_BYTES);
+      const pdf = await require('./lib/presentation-import.js').convertPresentation(bytes, ext);
+      ctx.res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Cache-Control': 'no-store' });
+      ctx.res.end(pdf); return undefined;
+    },
+    // Import only public, validated raster images; never fetch local network addresses.
+    'POST /api/image-from-url': async (ctx) => {
+      const body = await ctx.json();
+      const media = require('./lib/miro-media.js');
+      const bytes = await media.download(String(body.url || ''));
+      const ext = media.imageExtension(bytes);
+      if (!ext) throw new VaultError('Le lien ne contient pas une image PNG, JPEG, GIF ou WebP valide.', 400, 'invalid-image');
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(String(body.source || ''));
+      if (shared) return { path: await collab.runtime(shared[1]).stageAttachment(`Image internet.${ext}`, bytes) };
+      const vault = needVault();
+      const folder = vault.attachmentFolder(String(body.source || ''));
+      const target = vault.uniquePath(folder, 'Image internet', ext);
+      vault.writeBinary(target, bytes);
+      return { path: target };
+    },
     // Attachment upload (paste or drop): raw bytes in the body.
     'PUT /api/file': async (ctx) => {
-      const vault = needVault();
       const name = cleanRelative(String(ctx.query.get('name') || 'Fichier'));
       if (name.includes('/')) throw new VaultError('Nom de fichier invalide.');
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(ctx.query.get('source') || '');
+      if (shared) return { path: await collab.runtime(shared[1]).stageAttachment(name, await readBody(ctx.req, MAX_UPLOAD_BYTES)) };
+      const vault = needVault();
       // A folder is supplied only by the explicit “add image” action in the
       // explorer. Keep ordinary paste/drop attachments governed by settings.
       const explicitFolder = ctx.query.get('folder');
@@ -330,6 +438,26 @@ function createOpale(options = {}) {
       broadcast('agent', agentPayload());
       return { endpoint: `http://127.0.0.1:${state.port}/mcp`, token: config.token, agent: agentPayload() };
     },
+    // ------------------------------------------------ Miro moodboard import
+    'GET /api/miro': miroInfo,
+    'PUT /api/miro/client': async (ctx) => {
+      if (miroService.running) throw new VaultError('Attendez la fin de l’import avant de changer la configuration Miro.', 409, 'miro-busy');
+      miro.setClient(await ctx.json()); return miroInfo();
+    },
+    'POST /api/miro/connect': async () => {
+      if (miroService.running) throw new VaultError('Un import Miro est déjà en cours.', 409, 'miro-busy');
+      const url = miro.beginAuth(miroInfo().redirectUri);
+      await (options.openExternal || openExternal)(url); return { url };
+    },
+    'POST /api/miro/disconnect': async () => {
+      if (miroService.running) throw new VaultError('Attendez la fin de l’import avant de déconnecter Miro.', 409, 'miro-busy');
+      await miro.disconnect(); return miroInfo();
+    },
+    'GET /api/miro/boards': (ctx) => miroService.boards(ctx.query.get('cursor') || ''),
+    'POST /api/miro/import': async (ctx) => {
+      const vault = needVault(); const body = await ctx.json();
+      return miroService.startImport(vault, body.board, () => state.vault === vault);
+    },
     // ------------------------------------------------ Google Drive integration
     'GET /api/drive': () => sync.status(),
     'PUT /api/drive/client': async (ctx) => {
@@ -340,13 +468,7 @@ function createOpale(options = {}) {
     },
     'POST /api/drive/connect': async () => {
       const url = google.beginAuth(`http://127.0.0.1:${state.port}/oauth/google`);
-      try { await openExternal(url); }
-      catch (error) {
-        google.pending = null;
-        google.lastError = error.message;
-        sync.emit('status', sync.status());
-        throw new VaultError(error.message, 503, 'browser');
-      }
+      try { await openExternal(url); } catch(error) { google.pending = null; throw new VaultError(error.message, 503, "browser"); }
       sync.emit('status', sync.status());
       return { url };
     },
@@ -374,6 +496,40 @@ function createOpale(options = {}) {
       return statePayload();
     },
 
+    // ----------------------------------------------------- shared projects
+    'GET /api/collab': () => collab.overview(),
+    'PUT /api/collab/network': async (ctx) => ({ network: collab.setNetwork(await ctx.json()), deviceName: collab.deviceName }),
+    'POST /api/collab/authorize': async () => {
+      if (collab.fake) return collab.overview();
+      const url = google.beginAuth(`http://127.0.0.1:${state.port}/oauth/google`, { shared: true });
+      try { await openExternal(url); } catch(error) { google.pending = null; throw new VaultError(error.message, 503, "browser"); }
+      return { url };
+    },
+    'POST /api/collab/create': async (ctx) => collab.create((await ctx.json()).name),
+    'GET /api/collab/discover': async () => ({ projects: await collab.discover() }),
+    'POST /api/collab/join': async (ctx) => collab.join(await ctx.json()),
+    'POST /api/collab/open': async (ctx) => { const runtime = await project(ctx); runtime.start(); return runtime.bootstrap(); },
+    'POST /api/collab/close': async (ctx) => { (await project(ctx)).stop(); return { ok: true }; },
+    'POST /api/collab/persist': async (ctx) => { const body = await ctx.json(); return { changes: await (await project(ctx)).persist(body.changes, { local: body.local === true, from: String(body.from || ''), token: String(body.token || '') }) }; },
+    'POST /api/collab/since': async (ctx) => (await project(ctx)).since((await ctx.json()).vv),
+    'POST /api/collab/state': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).acceptState(body.state, String(body.from || '')); },
+    'POST /api/collab/coordinate': async (ctx) => (await project(ctx)).coordinate(await ctx.json()),
+    'POST /api/collab/checkpoint': async (ctx) => (await project(ctx)).checkpoint(),
+    'POST /api/collab/poll': async (ctx) => { const runtime = await project(ctx); await runtime.poll(); return runtime.summary(); },
+    'POST /api/collab/hello': async (ctx) => (await project(ctx)).hello(),
+    'POST /api/collab/proof': async (ctx) => (await project(ctx)).proof(await ctx.json()),
+    'POST /api/collab/verify': async (ctx) => (await project(ctx)).verifyPeer(await ctx.json()),
+    'POST /api/collab/signal': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).signal(String(body.to || ''), body.payload); },
+    'POST /api/collab/members': async (ctx) => (await project(ctx)).members(),
+    'POST /api/collab/invite': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).invite(body.email, String(body.role || 'editor')); },
+    'POST /api/collab/role': async (ctx) => { const body = await ctx.json(); return (await project(ctx)).setRole(body.email, String(body.role || '')); },
+    'POST /api/collab/remove': async (ctx) => (await project(ctx)).remove((await ctx.json()).email),
+    'POST /api/collab/revoke': async (ctx) => (await project(ctx)).revokeDevice((await ctx.json()).device),
+    'POST /api/collab/leave': async (ctx) => (await project(ctx)).leave(),
+    'POST /api/collab/forget': async (ctx) => { (await project(ctx)).forget(false); return collab.overview(); },
+    'POST /api/collab/export': async (ctx) => { const body = await ctx.json(); const target = String(body.path || '').trim(); if (target && !path.isAbsolute(target)) throw new VaultError('Indiquez le chemin complet du dossier.'); return collab.exportCopy(String(body.project || ''), target || undefined); },
+    'POST /api/collab/reveal': async (ctx) => { const body = await ctx.json(); const target = String(body.path || ''); if (path.isAbsolute(target) && fs.existsSync(target)) platform.reveal(target, false); return { ok: true }; },
+
     // Called by a connecting program (zaalis IDE) so the window can say who is there.
     'POST /api/agent/hello': async (ctx) => {
       if (!ctx.bearer) throw new VaultError('Jeton requis.', 401, 'unauthorized');
@@ -390,6 +546,8 @@ function createOpale(options = {}) {
       return { ok: true };
     },
   };
+
+  async function project(ctx) { return collab.runtime(String((await ctx.json()).project || '')); }
 
   function serveEvents(req, res) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -429,11 +587,21 @@ function createOpale(options = {}) {
     if (pathname === '/api/ping') return send(res, 200, { app: 'opale', version: VERSION });
     // Google sends the system browser back here after sign-in. The one-time
     // state value ties the answer to the request made from this window.
+    if (pathname === '/oauth/miro' && req.method === 'GET') {
+      try {
+        await miro.finishAuth(Object.fromEntries(url.searchParams));
+        return sendPage(res, 'Connexion Miro réussie', 'Votre compte est connecté à Opale. Fermez cet onglet et revenez dans Paramètres → Plugins → Miro pour importer un tableau.');
+      } catch (error) {
+        miro.lastError = error instanceof VaultError ? error.message : 'Impossible de terminer la connexion Miro. Réessayez depuis le plugin.';
+        return sendPage(res, 'Connexion Miro impossible', miro.lastError);
+      }
+    }
     if (pathname === '/oauth/google' && req.method === 'GET') {
       let message; let ok = false;
       try { await google.finishAuth(Object.fromEntries(url.searchParams)); ok = true; message = `Opale est connecté à Google Drive${google.email ? ` (${google.email})` : ''}. Vous pouvez fermer cet onglet et revenir à Opale.`; }
       catch (error) { google.lastError = error.message; message = error.message; }
       sync.emit('status', sync.status());
+      collab.emit('event', { project: '', type: 'account', account: collab.accountInfo() });
       if (ok) sync.schedule(0);
       return sendPage(res, ok ? 'Connexion réussie' : 'Connexion impossible', message);
     }
@@ -474,7 +642,7 @@ function createOpale(options = {}) {
 
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Méthode refusée.' });
     res.setHeader('Content-Security-Policy', [
-      "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https: http:",
+      "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", "worker-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https: http:",
       "media-src 'self' blob: https:", "font-src 'self' data:", "connect-src 'self'", "frame-src 'self' https:", "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
     ].join('; '));
     return serveStatic(req, res, pathname);
@@ -500,7 +668,7 @@ function createOpale(options = {}) {
     get token() { return config.token; },
     get uiToken() { return uiToken; },
     get vault() { return state.vault; },
-    sync, google,
+    sync, google, collab, miro, miroService,
     openVault, closeVault,
     async listen() {
       const wanted = options.port !== undefined ? Number(options.port) : Number(process.env.OPALE_PORT) || DEFAULT_PORT;
@@ -509,6 +677,7 @@ function createOpale(options = {}) {
       const initial = options.vaultPath || config.lastVault;
       if (initial && fs.existsSync(initial)) { try { openVault(initial); } catch {} }
       publishInstance();
+      if (updater.info().supported) { updater.check(); updater.timer = setInterval(() => updater.check(), 3600000); updater.timer.unref(); }
       return state.port;
     },
     close() {
@@ -517,6 +686,9 @@ function createOpale(options = {}) {
         for (const res of clients) { try { res.end(); } catch {} }
         clients.clear();
         sync.detach();
+        collab.closeAll();
+        design.close?.();
+        updater.close();
         if (state.vault) { state.vault.close(); state.vault = null; }
         appdata.clearInstance();
         server.close(() => resolve());
@@ -525,6 +697,20 @@ function createOpale(options = {}) {
     },
   };
   return app;
+}
+
+// Shared projects. OPALE_FAKE_DRIVE (tests only) replaces Google Drive with a
+// local folder shared by several instances, each with its own account name.
+function createCollab(google) {
+  const fakeDir = process.env.OPALE_FAKE_DRIVE;
+  if (fakeDir) {
+    const email = String(process.env.OPALE_FAKE_EMAIL || 'moi@example.test').toLowerCase();
+    const account = { connected: true, email, info: () => ({ configured: true, connected: true, email, sharedScope: true }) };
+    const service = new CollabService({ account, drive: new FakeDrive(path.resolve(fakeDir), email) });
+    service.fake = true;
+    return service;
+  }
+  return new CollabService({ account: google, drive: new ProjectDrive(google) });
 }
 
 // The system browser, for Google's sign-in page (never the app's own window).
@@ -596,9 +782,7 @@ async function main() {
   if (wantsWindow) openWindow(url);
 
   const stop = () => { app.close().finally(() => process.exit(0)); };
-  process.on('SIGINT', stop); process.on('SIGTERM', stop); process.on('SIGHUP', stop);
-  const parent = Number(process.env.OPALE_PARENT_PID);
-  if (parent > 0) setInterval(() => { if (!appdata.pidAlive(parent)) stop(); }, 2000).unref();
+  process.on('SIGINT', stop); process.on('SIGTERM', stop);
   process.on('exit', () => appdata.clearInstance());
 }
 

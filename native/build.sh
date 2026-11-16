@@ -40,11 +40,15 @@ echo "==> Compiling the window"
 gcc -O2 -Wall -Wextra -Wno-deprecated-declarations native/opale.c -o dist/opale $(pkg-config --cflags --libs gtk+-3.0 "$WEBKIT")
 echo "==> Compiling the folder picker"
 gcc -O2 -Wall -Wno-deprecated-declarations native/pickfolder.c -o dist/opale-pickfolder $(pkg-config --cflags --libs gtk+-3.0)
+echo "==> Compiling update window"
+gcc -O2 -Wall -Wextra native/updater.c -o dist/opale-updater $(pkg-config --cflags --libs gtk+-3.0)
+install -m 755 native/update-install.sh dist/opale-update-install
 cp native/icons/hicolor/256x256/apps/opale.png dist/opale.png
 
 if [ "$WITH_SERVER" = 1 ]; then
   command -v node >/dev/null || { echo "Node.js not found (needed to package the server; use --no-server to skip)." >&2; exit 1; }
   node -e "if (Number(process.versions.node.split('.')[0]) < 22) throw Error('Node.js 22+ required'); const c=require('./lib/google-client.json'); if (!/\\.apps\\.googleusercontent\\.com$/.test(c.clientId || '')) throw Error('Valid Google desktop client required');"
+  node scripts/build-update-metadata.cjs prepare
   echo "==> Packaging the server"
   if [ ! -d node_modules/@yao-pkg/pkg ]; then npm install --no-audit --no-fund; fi
   case "$(uname -m)" in

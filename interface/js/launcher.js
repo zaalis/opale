@@ -14,7 +14,7 @@ async function switchTo(request) {
 function content(state) {
   const parent = h('input.text-input', { type: 'text', value: state.defaultVaultParent || '', spellcheck: false, 'aria-label': 'Emplacement du nouveau coffre' });
   const name = h('input.text-input', { type: 'text', placeholder: 'Mon coffre', spellcheck: false, 'aria-label': 'Nom du nouveau coffre' });
-  const existing = h('input.text-input', { type: 'text', placeholder: '/home/…/Mes notes', spellcheck: false, 'aria-label': 'Chemin du dossier à ouvrir' });
+  const existing = h('input.text-input', { type: 'text', placeholder: 'C:\\Users\\…\\Mes notes', spellcheck: false, 'aria-label': 'Chemin du dossier à ouvrir' });
   const browse = async (input) => {
     try { const picked = await api('/api/pick-folder', { method: 'POST', body: {} }); if (picked.path) input.value = picked.path; return picked.path || ''; }
     catch (error) { reportError(error); return ''; }

@@ -30,6 +30,8 @@ mkdir -p "$INSTALL" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/usr/sh
 install -m 755 dist/opale "$INSTALL/Opale"
 install -m 755 dist/opale-pickfolder "$INSTALL/opale-pickfolder"
 install -m 755 dist/opale-server "$INSTALL/opale-server"
+install -m 755 dist/opale-updater "$INSTALL/opale-updater"
+install -m 755 dist/opale-update-install "$INSTALL/opale-update-install"
 install -m 644 dist/opale.png "$INSTALL/opale.png"
 install -m 644 native/opale.desktop "$ROOT/usr/share/applications/opale.desktop"
 install -m 644 native/icons/hicolor/256x256/apps/opale.png "$ROOT/usr/share/icons/hicolor/256x256/apps/opale.png"
@@ -43,11 +45,12 @@ Section: office
 Priority: optional
 Architecture: $ARCH
 Depends: ${DEPS}, xdg-utils
+Recommends: libreoffice-impress, policykit-1
 Maintainer: zaalis
 Description: Carnet de notes Markdown local
  Opale est un carnet de notes local relie par des liens Markdown.
 EOF
-dpkg-deb --root-owner-group --build "$ROOT" "dist/Opale_${VERSION}_${ARCH}.deb"
+dpkg-deb -Zgzip -z6 --root-owner-group --build "$ROOT" "dist/Opale_${VERSION}_${ARCH}.deb"
 
 ARCHIVE="Opale-${VERSION}-linux-${ARCH}"
 ARCHIVE_ROOT="$STAGE/$ARCHIVE"
@@ -56,4 +59,5 @@ cp -a "$INSTALL/." "$ARCHIVE_ROOT/"
 cp native/opale.desktop "$ARCHIVE_ROOT/"
 cp native/icons/hicolor/256x256/apps/opale.png "$ARCHIVE_ROOT/"
 tar -C "$STAGE" -czf "dist/Opale_${VERSION}_linux-${ARCH}.tar.gz" "$ARCHIVE"
+node scripts/build-update-metadata.cjs publish "$ARCH"
 echo "Packages ready in dist/"

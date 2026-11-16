@@ -148,7 +148,8 @@ static pid_t launch_server(void) {
         setsid();
         int null = open("/dev/null", O_RDWR);
         if (null >= 0) { dup2(null, 0); dup2(null, 1); dup2(null, 2); if (null > 2) close(null); }
-        setenv("OPALE_SHELL_EXE", shell.self_path, 1);   /* lets the server record how to start Opale again */
+        setenv("OPALE_SHELL_EXE", shell.self_path, 1);
+        gchar *parent_pid = g_strdup_printf("%d", getppid()); setenv("OPALE_SHELL_PID", parent_pid, 1); g_free(parent_pid);   /* lets the server record how to start Opale again */
         setenv("OPALE_PARENT_PID", pid_text, 1);
         execv(argv[0], (char *const *)argv);
         _exit(127);
@@ -184,8 +185,14 @@ static gboolean is_app_uri(const gchar *uri) {
 
 static void open_externally(const gchar *uri) {
     if (!uri) return;
-    if (g_str_has_prefix(uri, "http://") || g_str_has_prefix(uri, "https://") || g_str_has_prefix(uri, "mailto:"))
-        g_app_info_launch_default_for_uri(uri, NULL, NULL);
+    if (g_str_has_prefix(uri, "http://") || g_str_has_prefix(uri, "https://") || g_str_has_prefix(uri, "mailto:")) {
+        GError *error=NULL;
+        if (!g_app_info_launch_default_for_uri(uri, NULL, &error) && g_getenv("WSL_DISTRO_NAME")) {
+            gchar *bridge=g_find_program_in_path("rundll32.exe");
+            if(bridge){gchar *args[]={bridge,"url.dll,FileProtocolHandler",(gchar*)uri,NULL};g_spawn_async(NULL,args,NULL,0,NULL,NULL,NULL,NULL);g_free(bridge);}
+        }
+        g_clear_error(&error);
+    }
 }
 
 /* Links to the web open in the default browser, never in this window. */
@@ -262,10 +269,14 @@ static void on_title_changed(WebKitWebView *view, GParamSpec *spec, gpointer dat
 }
 
 /* The window follows the theme chosen in Opale (light or dark). */
+static void quit_shell(void);
 static void on_theme_message(WebKitUserContentManager *manager, WebKitJavascriptResult *result, gpointer data) {
     (void)manager; (void)data;
     JSCValue *value = webkit_javascript_result_get_js_value(result);
     if (!jsc_value_is_object(value)) return;
+    JSCValue *close = jsc_value_object_get_property(value, "close");
+    if (close && jsc_value_to_boolean(close)) { g_object_unref(close); quit_shell(); return; }
+    if (close) g_object_unref(close);
     JSCValue *theme = jsc_value_object_get_property(value, "theme");
     if (theme && jsc_value_is_string(theme)) {
         gchar *name = jsc_value_to_string(theme);

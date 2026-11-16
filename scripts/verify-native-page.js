@@ -37,8 +37,24 @@
     for (let i = 0; i < pixels.length; i += 4) if (pixels[i] > 240 && pixels[i + 1] < 20 && pixels[i + 2] < 20) red++;
     assert(red > 10000, `Export lost shape pixels: ${red}`);
     assert(canvas.toDataURL('image/jpeg').startsWith('data:image/jpeg'), 'JPEG export unavailable');
+    await app.explorer.newBoard('', 'design');
+    await wait(()=>app.workspace.activeView?.design?.catalog);
+    const designView=app.workspace.activeView, design=designView.design;
+    const search=document.querySelector('.design-library input');search.focus();search.value='Consigne';search.dispatchEvent(new Event('input',{bubbles:true}));
+    assert(document.querySelectorAll('.design-tool-card').length===1,'Native Design search failed');
+    document.querySelector('.design-tool-card').click();
+    assert(designView.doc.elements.some(n=>n.kind==='design'&&n.data.tool==='prompt'),'Native Design tool failed');
+    search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));
+    const bitmap=document.createElement('canvas');bitmap.width=bitmap.height=32;bitmap.getContext('2d').fillRect(0,0,32,32);
+    const blob=await new Promise(r=>bitmap.toBlob(r));
+    const source=design.add('image',{x:0,y:0});await design.attach(source,new File([blob],'native.png',{type:'image/png'}));
+    const resized=design.add('resize',{x:460,y:0});designView.mutate(resized,d=>d.params={width:16,height:16});design.connect(source.id,resized.id,'image');await design.run(resized.id);
+    assert(resized.data.resultFile,'Native image transformation failed: '+JSON.stringify(design.states.get(resized.id)));
+    const {loadCanvas}=await import(`${location.origin}/js/design/images.js`);const result=await loadCanvas(resized.data.resultFile);assert(result.width===16&&result.height===16,'Native transformed size incorrect');
+    await designView.flush();design.fit(false);
+    settingsUi.open('about');assert(document.querySelector('.about-version').textContent==='Version 0.2.0','Native About version incorrect');document.querySelector('.modal-backdrop button[aria-label="Fermer"]').click();
     app.settings.theme = 'light'; settingsUi.apply();
     await new Promise(r => setTimeout(r, 300));
-    window.webkit.messageHandlers.validation.postMessage('PASS native WebKit: packaged Drive client, moodboard toolbar, editing/save, Mermaid, Drawio decompression, export pixels/JPEG');
+    window.webkit.messageHandlers.validation.postMessage('PASS native WebKit: packaged Drive client, moodboard toolbar, editing/save, Mermaid, Drawio decompression, export pixels/JPEG, Design search/nodes/image transform, version 0.2.0');
   } catch (error) { window.webkit.messageHandlers.validation.postMessage(`FAIL ${error.message}: ${error.stack || error}`); }
 })();

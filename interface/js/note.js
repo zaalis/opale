@@ -4,7 +4,7 @@
 //   reading  rendered, read-only
 // The note text lives in `content`; every mode edits that one string, and it
 // is saved shortly after each change.
-import { api, app, bus, confirmDialog, debounce, h, icon, iconButton, Markdown, Meta, reportError, showMenu, toast } from './core.js';
+import { api, app, bus, confirmDialog, debounce, downloadFile, h, icon, iconButton, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
 import { attachEditing, caretPoint, closeSuggest, embedFor, uploadFile } from './editing.js';
 import { findImages, ImageLayer, isImageFile, pickImageFiles } from './images.js';
@@ -888,7 +888,7 @@ export class NoteView {
       'separator',
       { label: 'Copier le lien [[…]]', icon: 'link', run: () => navigator.clipboard.writeText(`[[${store.linkText(this.path)}]]`).then(() => toast('Lien copié')) },
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(this.path).then(() => toast('Chemin copié')) },
-      { label: 'Afficher dans le gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: this.path } }).catch(reportError) },
+      { label: 'Afficher dans l’gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: this.path } }).catch(reportError) },
       'separator',
       { label: 'Supprimer la note', icon: 'trash', danger: true, run: () => this.deleteNote() },
     ]);
@@ -902,6 +902,11 @@ export class NoteView {
     const missing = event.target.closest('.embed-missing.is-broken-link');
     if (missing && !event.target.closest('[data-embed-path]')) return showMenu(event.clientX, event.clientY, [{ label: 'Réparer l’image…', icon: 'image', run: () => this.repairLink(missing) }]);
     const link = event.target.closest('a.internal-link');
+    const media = event.target.closest('img.embed-image[data-path], video.embed-video[data-path], audio.embed-audio[data-path]');
+    if (media && media.dataset.path) return showMenu(event.clientX, event.clientY, [
+      { label: 'Ouvrir dans un nouvel onglet', run: () => app.workspace.openPath(media.dataset.path, { newTab: true }) },
+      { label: 'Télécharger le fichier', run: () => downloadFile(media.dataset.path) },
+    ]);
     const selected = String(window.getSelection() || '');
     if (textarea) {
       const has = textarea.selectionStart !== textarea.selectionEnd;
@@ -936,7 +941,8 @@ export class NoteView {
         broken ? 'separator' : null,
         { label: link.dataset.path ? 'Ouvrir' : 'Créer la note', icon: 'file', run: () => open(false) },
         { label: 'Ouvrir dans un nouvel onglet', icon: 'plus', run: () => open(true) },
-        link.dataset.path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(link.dataset.path) } : null,
+        link.dataset.path && (/^@shared\/[^/]+\/assets\//.test(link.dataset.path) || !['note', 'board'].includes(Meta.kindOf(link.dataset.path))) ? { label: 'Télécharger le fichier', run: () => downloadFile(link.dataset.path) } : null,
+        link.dataset.path && !link.dataset.path.startsWith('@shared/') ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(link.dataset.path) } : null,
       ]);
     }
     if (selected) return showMenu(event.clientX, event.clientY, [{ label: 'Copier', icon: 'copy', run: () => navigator.clipboard.writeText(selected).then(() => toast('Copié')), hint: 'Ctrl+C' }]);

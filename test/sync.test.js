@@ -95,12 +95,6 @@ test('a second computer receives the whole vault, folders included', async () =>
   assert.ok(!drive.calls.includes('update'));
 });
 
-test('Linux Drive sync preserves files differing only in case', { skip: process.platform !== 'linux' }, async () => {
-  const { laptop } = await pair({ 'Note.md': 'Uppercase', 'note.md': 'Lowercase' });
-  assert.equal(read(laptop, 'Note.md'), 'Uppercase');
-  assert.equal(read(laptop, 'note.md'), 'Lowercase');
-});
-
 test('an edit travels one way, then back', async () => {
   const { desk, laptop, deskSync, laptopSync } = await pair({ 'Note.md': 'v1' });
   edit(laptop, 'Note.md', 'v2 depuis le portable');

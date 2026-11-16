@@ -33,7 +33,7 @@ function packagedServer(executable) {
   const errors = [];
   try {
     const port = await server.listen();
-    browser = await chromium.launch({ headless: true, ...(process.env.OPALE_TEST_BROWSER ? { channel: process.env.OPALE_TEST_BROWSER } : {}) });
+    browser = await chromium.launch({ headless: true, channel: process.env.OPALE_TEST_BROWSER || (process.platform==='win32'?'chrome':undefined) });
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`http://127.0.0.1:${port}`);

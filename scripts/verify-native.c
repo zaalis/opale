@@ -12,6 +12,12 @@ static gboolean test_expired(gpointer unused) {
     quit_shell();
     return G_SOURCE_REMOVE;
 }
+static void snapshot_done(GObject *object,GAsyncResult *result,gpointer unused) {
+    (void)unused;GError *error=NULL;
+    cairo_surface_t *surface=webkit_web_view_get_snapshot_finish(WEBKIT_WEB_VIEW(object),result,&error);
+    if(surface){cairo_surface_write_to_png(surface,g_getenv("OPALE_NATIVE_SNAPSHOT"));cairo_surface_destroy(surface);}else {g_printerr("FAIL snapshot: %s\n",error?error->message:"unknown");test_status=1;g_clear_error(&error);}
+    quit_shell();
+}
 static void validation_message(WebKitUserContentManager *manager, WebKitJavascriptResult *result, gpointer unused) {
     (void)manager; (void)unused;
     JSCValue *value = webkit_javascript_result_get_js_value(result);
@@ -21,7 +27,8 @@ static void validation_message(WebKitUserContentManager *manager, WebKitJavascri
     if (g_str_has_prefix(text, "PASS") && !dark) { test_status = 0; g_print("%s\nPASS native GTK theme follows interface\n", text); }
     else g_printerr("FAIL %s (GTK dark=%d)\n", text, dark);
     g_free(text);
-    quit_shell();
+    if(test_status==0 && g_getenv("OPALE_NATIVE_SNAPSHOT")) webkit_web_view_get_snapshot(WEBKIT_WEB_VIEW(shell.webview),WEBKIT_SNAPSHOT_REGION_VISIBLE,WEBKIT_SNAPSHOT_OPTIONS_NONE,NULL,snapshot_done,NULL);
+    else quit_shell();
 }
 static gboolean install_validation(gpointer unused) {
     (void)unused;

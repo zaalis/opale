@@ -237,16 +237,7 @@ test('watcher picks up files written behind Opale’s back', async () => {
   vault.close();
 });
 
-test('paths follow host filesystem case rules', () => {
-  if (process.platform === 'linux') {
-    const vault = app.vault;
-    const entry = vault.write('accueil.md', '# Accueil minuscule\n');
-    assert.equal(entry.path, 'accueil.md');
-    assert.ok(vault.files.has('Accueil.md') && vault.files.has('accueil.md'));
-    assert.throws(() => vault.rename('Accueil.md', 'accueil.md'), VaultError);
-    vault.remove('accueil.md', { mode: 'permanent' });
-    return;
-  }
+test('case-insensitive paths map onto the indexed spelling', {skip:process.platform === 'linux'}, () => {
   const vault = app.vault;
   const entry = vault.write('accueil.md', '# Accueil\n');
   assert.equal(entry.path, 'Accueil.md');

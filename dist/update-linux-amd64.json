@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "version": "0.2.0",
+  "buildId": "a8e5cc06c12f14228327958b410a13f00b3b4bc4de80bc801eda072638881c67",
+  "builtAt": 1794858146379,
+  "file": "Opale_0.2.0_linux-amd64.tar.gz",
+  "bytes": 30397725,
+  "sha256": "3ff2650ca012975950edac07f9587a2323d6795ab63700a02482086ea828da78",
+  "deb": {
+    "file": "Opale_0.2.0_amd64.deb",
+    "bytes": 30375882,
+    "sha256": "480134c4bf719a51fa206dbc409a74546955b82db5b1cd303c8fd50a11e6b9ba"
+  }
+}

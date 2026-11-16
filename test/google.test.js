@@ -105,7 +105,7 @@ test('Drive requests: listing by vault tag, multipart upload, trash', async () =
   const drive = new DriveClient(google);
   const [item] = await drive.list('v');
   assert.deepEqual({ id: item.id, md5: item.md5, size: item.size, device: item.device, folder: item.folder }, { id: 'f1', md5: 'abc', size: 5, device: 'PC', folder: false });
-  assert.match(new URL(seen[0].url).searchParams.get('q'), /appProperties has \{ key='opaleVault' and value='v' \} and trashed=false/);
+  assert.match(new URL(seen[0].url).searchParams.get('q'), /appProperties has \{ key='opaleVault' and value='v' \} and 'me' in owners and trashed=false/);
   const uploaded = await drive.upload({ name: 'Note.md', parentId: 'p', vaultId: 'v', device: 'PC', data: Buffer.from('hello') });
   assert.equal(uploaded.id, 'f1');
   const upload = seen[1];

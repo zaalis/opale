@@ -231,7 +231,7 @@ export const commands = {
     register('settings:connection', 'Connexion à zaalis IDE', () => app.settings_ui.open('connection'));
     register('theme:toggle', 'Basculer entre thème clair et sombre', () => app.settings_ui.change({ theme: app.settings.theme === 'light' ? 'dark' : 'light' }));
     register('vault:switch', 'Changer de coffre', () => app.launcher.open());
-    register('vault:reveal', 'Afficher le coffre dans le gestionnaire de fichiers', () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError));
+    register('vault:reveal', 'Afficher le coffre dans l’gestionnaire de fichiers', () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError));
     register('app:reload', 'Recharger Opale', () => ws.flushAll().then(() => location.reload()), { hotkey: 'Ctrl+R' });
 
     document.addEventListener('keydown', onKeydown);

@@ -1,6 +1,6 @@
 # Opale : cartographie et reprise du moodboard
 
-Cartographie de l’édition Linux, adaptée depuis l’édition classique.
+État vérifié le 5 octobre 2026 dans `C:\Users\boque\Desktop\opale`.
 Remote : `https://github.com/zaalis/opale.git`. Base Git : `e8c03de` sur `main`.
 Le dossier `Documents\Opale` contient les coffres de notes ; le code de l'application est sur le Bureau.
 
@@ -8,7 +8,7 @@ Le dossier `Documents\Opale` contient les coffres de notes ; le code de l'applic
 
 ```mermaid
 flowchart LR
-  Native["Fenêtre Linux · native/opale.c"] --> Web["Interface GTK 3 / WebKitGTK · interface/"]
+  Native["Fenêtre Windows · native/main.cpp"] --> Web["Interface WebView2 · interface/"]
   Web --> API["Serveur local · server.js"]
   IDE["Assistant IDE / client MCP"] --> MCP["lib/mcp.js"]
   MCP --> Vault["Coffre et surveillance · lib/vault.js"]
@@ -25,7 +25,7 @@ flowchart LR
 | Zone | Fichiers | Responsabilité |
 | --- | --- | --- |
 | Démarrage et événements | `interface/js/main.js`, `lib/appdata.js` | Ouvrir le coffre, charger l'interface, synchroniser l'index ; configuration locale. |
-| Fenêtre Linux | `native/opale.c`, `native/build.sh` | GTK 3 / WebKitGTK, fenêtre native, compilation et empaquetage du serveur. |
+| Fenêtre Windows | `native/main.cpp`, `native/build.bat` | WebView2, fenêtre native, compilation et empaquetage du serveur. |
 | API locale | `server.js` | HTTP sur loopback, authentification, création/lecture/écriture, uploads, sessions, MCP. |
 | Données du coffre | `lib/vault.js`, `lib/search.js` | Chemins, index, conflits, renommage/déplacement et références, recherche. |
 | Format et rendu Markdown | `shared/meta.js`, `shared/markdown.js`, `interface/js/renderer.js` | Types de fichiers, liens, métadonnées, rendu et coloration. |
@@ -100,9 +100,9 @@ Le parcours couvre aussi la disparition du cadre et des poignées après un dép
 
 Le script requiert Playwright (localement ou via `NODE_PATH`) et Chrome installé ; `OPALE_TEST_BROWSER` permet de choisir un autre canal disponible.
 
-`npm run package` : compilation de `dist/opale`, `dist/opale-pickfolder`, empaquetage de `dist/opale-server` et création du paquet Debian et de l’archive Linux.
+`npm run installer` : compilation de `dist/Opale.exe`, `dist/pickfolder.exe`, empaquetage de `dist/opale-server.exe` et création de `dist/Opale-Setup.exe`.
 
-Le parcours navigateur a aussi été exécuté avec `OPALE_TEST_SERVER=dist/opale-server.exe` : tous les contrôles ci-dessus passent avec les ressources empaquetées. La fenêtre GTK 3 / WebKitGTK native n'a pas fait l'objet d'une interaction automatisée.
+Le parcours navigateur a aussi été exécuté avec `OPALE_TEST_SERVER=dist/opale-server.exe` : tous les contrôles ci-dessus passent avec les ressources empaquetées. La fenêtre WebView2 native n'a pas fait l'objet d'une interaction automatisée.
 
 ## Limites et prochaines extensions
 

@@ -4,3 +4,7 @@ dist/*
 !dist/Opale_*.deb
 !dist/Opale_*_linux-*.tar.gz
 *.log
+
+!dist/update-linux-*.json
+artifacts/
+*.obj

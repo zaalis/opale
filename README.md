@@ -7,6 +7,18 @@ sans dépendance : un serveur Node, une interface web, une fenêtre native GTK 3
 Un coffre Obsidian existant s'ouvre tel quel (Opale range ses réglages dans `.opale/`
 et ne touche pas à `.obsidian/`).
 
+## Version 0.2.0 Linux
+
+Cette branche reprend l'interface et les fonctions de la version Windows 0.2.0 : projets partagés réactifs, lecture TXT, chargement progressif des images, exports 4K/8K et sept formats, import des pages PDF/PowerPoint, liens et Opal Design.
+
+Opal Design est accessible depuis l'explorateur et les projets partagés. Les modèles se configurent dans Paramètres > Opal Design. Les connexions sont indépendantes de Windows ; les identifiants sont chiffrés avec une clé propre au profil Linux, protégée par les permissions du compte. Les noms de fichiers restent sensibles à la casse.
+
+La conversion PowerPoint utilise LibreOffice Impress (`sudo apt install libreoffice-impress`). L'import PDF utilise le moteur fourni, sans service distant. L'enregistrement des captures utilise le sélecteur natif GTK.
+
+Les mises à jour suivent exclusivement la branche **Linux**, jamais main. Le bouton reste masqué quand l'application est à jour et pendant la vérification silencieuse. La version portable ou installée dans le compte utilise l'archive ; une installation système utilise le paquet .deb avec l'autorisation standard du bureau via Polkit. L'utilitaire GTK affiche la progression puis relance Opale.
+
+Voir le [rapport Linux 0.2.0](docs/RAPPORT-LINUX-0.2.0-2026-11-16.md) et le [guide Design](docs/OPAL-DESIGN.md).
+
 ## Lancer
 
 ```bash
@@ -26,7 +38,7 @@ sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 npm ci
 npm test
 npm run package
-sudo apt install ./dist/Opale_0.1.0_amd64.deb
+sudo apt install ./dist/Opale_0.2.0_amd64.deb
 ```
 
 Le paquet embarque le serveur Node et installe la fenêtre dans `/usr/lib/opale/Opale`, avec la commande `opale` et un lanceur de bureau. Node n'est pas requis sur la machine destinataire. `npm run install-local` installe pour l'utilisateur.
