@@ -90,3 +90,13 @@
 .b-drag-ghost { position:fixed; z-index:1000; pointer-events:none; transform-origin:0 0; opacity:.85; }.is-dragged { opacity:.35; }
 @media(max-width:900px) { .board-inspector { top:66px; max-width:calc(100% - 32px); }.board-tools { bottom:12px; }.board-save { display:none; } }
 @media(prefers-reduced-motion:reduce) { .b-flip,.b-wheel-disc { transition:none; } }
+
+.board-placement-preview { position:absolute; z-index:10; pointer-events:none; border:1px dashed var(--accent); border-radius:5px; background:color-mix(in srgb, var(--accent) 8%, transparent); color:var(--accent); padding:5px; box-sizing:border-box; opacity:.8; }
+.board-layer { border:1px solid var(--border); border-radius:9px; transition:background .15s, border-color .15s; }
+.board-layer.is-layer-drop { border-color:var(--accent); background:var(--bg-1); }
+.board-layer-thumb { width:44px; height:36px; flex:none; border:1px solid var(--border); border-radius:5px; display:grid; place-items:center; overflow:hidden; }
+.board-layer-thumb img { width:100%; height:100%; object-fit:cover; }
+.board-layer .board-layer-name { flex:1; min-width:90px; }
+.board-layer-grip { border:0; background:transparent; color:inherit; font-size:18px; cursor:grab; padding:6px; }
+.board-layer-grip:active { cursor:grabbing; }
+@media (prefers-reduced-motion: reduce) { .board-layer { transition:none; } }

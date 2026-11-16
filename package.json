@@ -17,7 +17,8 @@
   "pkg": {
     "assets": [
       "interface/**/*",
-      "shared/**/*"
+      "shared/**/*",
+      "lib/google-client.json"
     ]
   },
   "license": "UNLICENSED",

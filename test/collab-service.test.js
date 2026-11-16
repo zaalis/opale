@@ -35,6 +35,40 @@ async function edit(runtime, token, mutate) {
 }
 const noteOf = (runtime) => Crdt.listFiles(runtime.replica).find((file) => file.kind === 'note');
 
+test('shared attachments reach another member and respect project permissions', async () => {
+  const w = world();
+  try {
+    const alice = w.computer('alice', 'alice@example.test');
+    const bob = w.computer('bob', 'bob@example.test');
+    const pid = (await alice.service.create('Pièces jointes')).projectId;
+    const ra = alice.service.runtime(pid); ra.start();
+    const invite = await ra.invite('bob@example.test', 'editor');
+    await bob.service.join({ code: invite.code });
+    const rb = bob.service.runtime(pid); rb.start(); await rb.poll();
+    const content = Buffer.from([0, 255, 20, 43, 19]);
+    const sharedPath = await ra.putAttachment('image test.png', content);
+    const id = sharedPath.split('/')[3];
+    assert.deepEqual(fs.readFileSync(await rb.getAttachment(id)), content);
+    const note = noteOf(ra).id;
+    await edit(ra, ra.token, r => Crdt.textOps(r, Crdt.K.note(note), `![[assets/${id}/image test.png]]`));
+    const exported = path.join(ra.store.dir, 'export-test');
+    const result = await ra.exportCopy(exported);
+    assert.equal(result.attachments, 1);
+    assert.deepEqual(fs.readFileSync(path.join(exported, 'assets', id, 'image test.png')), content);
+    // The local cache is available on a temporary Drive outage.
+    fs.writeFileSync(path.join(w.driveDir, 'offline-bob@example.test'), '');
+    assert.deepEqual(fs.readFileSync(await rb.getAttachment(id)), content);
+    await assert.rejects(rb.putAttachment('offline.txt', content));
+    fs.rmSync(path.join(w.driveDir, 'offline-bob@example.test'));
+    await ra.setRole('bob@example.test', 'reader'); await rb.poll();
+    await assert.rejects(rb.putAttachment('refused.txt', content), /lecture seule/);
+    const other = (await alice.service.create('Autre projet')).projectId;
+    const otherRuntime = alice.service.runtime(other); otherRuntime.start();
+    await assert.rejects(otherRuntime.getAttachment(id), /introuvable/);
+    await assert.rejects(rb.getAttachment('../../local.json'), /introuvable/);
+  } finally { w.done(); }
+});
+
 test('create, invite, join, edit, and access limited to members', async () => {
   const w = world();
   try {

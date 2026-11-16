@@ -38,6 +38,9 @@ if errorlevel 1 goto :failed
 del /Q ..\dist\*.obj ..\dist\opale.res >nul 2>&1
 
 if /I "%~1"=="--with-server" (
+    echo Checking the bundled Google OAuth client ...
+    node ..\scripts\check-google-client.cjs
+    if errorlevel 1 goto :failed
     echo Packaging opale-server.exe ...
     pushd ..
     if not exist node_modules\@yao-pkg\pkg call npm install --no-audit --no-fund

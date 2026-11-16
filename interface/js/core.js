@@ -144,6 +144,10 @@ export async function api(route, options = {}) {
   return data;
 }
 export const fileUrl = (path) => `/api/file?path=${encodeURIComponent(path)}`;
+export function downloadFile(path) {
+  const link = h('a', { href: `${fileUrl(path)}&download=1`, download: Meta.baseName(path) });
+  document.body.append(link); link.click(); setTimeout(() => link.remove(), 1000);
+}
 
 // ------------------------------------------------------------------- toasts
 export function toast(message, options = {}) {

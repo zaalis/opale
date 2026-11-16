@@ -335,9 +335,6 @@ export class SharedNoteView extends NoteView {
     this.project.remove(this.fileId);
     toast(`« ${this.fileName()} » a été supprimée pour tous les participants.`, { action: { label: 'Annuler', run: () => this.project.restore(this.fileId) } });
   }
-  // Attachments live in each person's own vault: not shared yet.
-  async insertAttachments() { toast('Les images et fichiers joints ne sont pas encore partagés dans les projets partagés.'); }
-  async chooseImages() { return this.insertAttachments(); }
   stats() { const meta = Meta.extract(this.content); return { words: meta.words, chars: meta.chars, backlinks: 0 }; }
   destroy() {
     for (const off of this.offs || []) off();
@@ -613,7 +610,7 @@ export class SharedBoardView extends BoardView {
 
   add(el, index) {
     const added = super.add(el, index);
-    if (['image', 'file', 'video', 'note', 'pdf', 'audio'].includes(el.kind) && (el.data.file || el.data.image) && !this.warnedFiles) {
+    if (['image', 'file', 'video', 'note', 'pdf', 'audio'].includes(el.kind) && (el.data.file || el.data.image) && !String(el.data.file || el.data.image).startsWith(`@shared/${this.project.id}/`) && !this.warnedFiles) {
       this.warnedFiles = true;
       toast('Les images et fichiers de votre coffre ne sont pas encore partagés : les autres participants verront un cadre vide.');
     }

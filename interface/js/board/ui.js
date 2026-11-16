@@ -1,5 +1,5 @@
 // Moodboard controls. All document edits use the view's transactions.
-import { api, app, h, iconButton, Meta, openModal, promptText, reportError, showMenu, toast } from '../core.js';
+import { api, app, downloadFile, fileUrl, h, iconButton, Meta, openModal, promptText, reportError, showMenu, toast } from '../core.js';
 import { store } from '../store.js';
 import { uploadFile } from '../editing.js';
 import { SHAPES, search as searchShapes, shapeSvg } from './shapes.js';
@@ -118,6 +118,8 @@ export class BoardUi {
     const widget = el && WIDGETS[el.kind];
     showMenu(event.clientX, event.clientY, [
       ...(widget && widget.menu ? widget.menu(v, el, event.target) || [] : []),
+      el && el.data.file && !['note', 'board'].includes(el.kind) && { label: 'Ouvrir le fichier', run: () => this.openElement(el) },
+      el && el.data.file && !['note', 'board'].includes(el.kind) && { label: 'Télécharger le fichier', run: () => downloadFile(el.data.file) },
       el && { label: 'Modifier', run: () => v.editElement(el), disabled: v.readOnly },
       el && { label: 'Dupliquer', run: () => v.input.duplicate(v.selected, 32, true), disabled: v.readOnly },
       el && { label: 'Grouper', run: () => this.group(true), disabled: v.readOnly },
@@ -173,7 +175,7 @@ export class BoardUi {
     try {
       if (['image', 'note', 'file', 'video'].includes(item.kind)) {
         const kinds = item.kind === 'file' ? null : [item.kind];
-        this.pickFiles(kinds, (file) => this.placeItem({ kind: item.kind, data: { file } })); return;
+        this.pickFiles(kinds, (file) => { if (this.view.shared) this.addVaultFiles([file], this.view.viewCenter()).catch(reportError); else this.placeItem({ kind: item.kind, data: { file } }); }); return;
       }
       if (['link', 'embed'].includes(item.kind)) {
         const url = await promptText({ title: 'Adresse du lien', label: 'URL https://', validate: (s) => /^https?:\/\//i.test(s) ? '' : 'Une adresse http:// ou https:// est requise.' });
@@ -192,14 +194,28 @@ export class BoardUi {
     const modal = this.modal({ title: 'Choisir un fichier', body: h('div', search, list) }); refresh(); search.focus();
   }
   chooseVaultImage(pick) { this.pickFiles(['image'], pick); }
-  replaceImage(el) { this.chooseVaultImage((file) => this.view.mutate(el, (d) => { d.file = file; })); }
-  repair(el) { this.pickFiles(null, (file) => this.view.mutate(el, (d) => { d.file = file; })); }
+  async shareFile(path) {
+    if (!this.view.shared || path.startsWith(`@shared/${this.view.project.id}/`)) return path;
+    const response = await fetch(fileUrl(path));
+    if (!response.ok) throw new Error('Impossible de lire le fichier à partager.');
+    const blob = await response.blob();
+    return uploadFile(new File([blob], Meta.baseName(path), { type: blob.type }), this.view.path);
+  }
+  replaceImage(el) { this.chooseVaultImage(async (file) => { try { const shared = await this.shareFile(file); this.view.mutate(el, (d) => { d.file = shared; }); } catch (error) { reportError(error); } }); }
+  repair(el) { this.pickFiles(null, async (file) => { try { const shared = await this.shareFile(file); this.view.mutate(el, (d) => { d.file = shared; }); } catch (error) { reportError(error); } }); }
   openElement(el) {
     if (el.data.file) app.workspace.openPath(el.data.file, { newTab: true });
     else if (/^https?:\/\//i.test(el.data.url)) window.open(el.data.url, '_blank', 'noopener,noreferrer');
   }
   async addVaultFiles(paths, at, options = {}) {
-    const elements = paths.filter((path) => store.has(path)).map((path, i) => { const kind = Meta.kindOf(path); return Board.create(['image', 'note', 'video'].includes(kind) ? kind : 'file', { x: at.x + i * 36, y: at.y + i * 36, data: { file: path } }); });
+    if (this.view.shared) {
+      const copied = [];
+      for (const path of paths) {
+        copied.push(await this.shareFile(path));
+      }
+      paths = copied;
+    }
+    const elements = paths.filter((path) => store.has(path)).map((path, i) => { const kind = Meta.kindOf(path); const sharedAsset = /^@shared\/[^/]+\/assets\//.test(path); return Board.create(['image', 'video'].includes(kind) || (kind === 'note' && !sharedAsset) ? kind : 'file', { x: at.x + i * 36, y: at.y + i * 36, data: { file: path } }); });
     return this.addElements(elements, options);
   }
   async dropFiles(files, at) {
@@ -212,6 +228,13 @@ export class BoardUi {
         else { const path = await uploadFile(file, this.view.path); await app.workspace.waitFor(path); paths.push(path); }
       }
       await this.addVaultFiles(paths, at, { select: false });
+    } catch (error) { reportError(error); }
+  }
+  async dropImageUrl(url, at) {
+    if (this.view.readOnly) return;
+    try {
+      const { path } = await api('/api/image-from-url', { method: 'POST', body: { url, source: this.view.path } });
+      await app.workspace.waitFor(path); await this.addVaultFiles([path], at, { select: false });
     } catch (error) { reportError(error); }
   }
   pasteText(text, at) {
@@ -276,12 +299,35 @@ export class BoardUi {
   }
   pickValue(anchor, items, onPick) { const rect = anchor.getBoundingClientRect(); showMenu(rect.left, rect.bottom, items.map((item) => typeof item === 'object' ? { ...item, run: () => onPick(item.value ?? item.id) } : { label: String(item), run: () => onPick(item) })); }
   layers() {
-    const v = this.view; const list = h('div.board-file-list');
+    const v = this.view; const list = h('div.board-file-list'); let dragging = null;
+    const move = (id, destination) => {
+      if (v.readOnly) return;
+      const from = v.doc.layers.findIndex((layer) => layer.id === id);
+      const to = Math.max(0, Math.min(v.doc.layers.length - 1, destination));
+      if (from < 0 || from === to) return;
+      v.setMeta((doc) => { const [layer] = doc.layers.splice(from, 1); doc.layers.splice(to, 0, layer); }); refresh();
+    };
     const refresh = () => {
       list.replaceChildren();
-      for (const layer of v.doc.layers) list.append(h('div.board-layer', h('span', layer.name), button(layer.visible ? 'Masquer' : 'Afficher', () => { v.setMeta(() => { layer.visible = !layer.visible; }); refresh(); }), button(layer.locked ? 'Déverrouiller' : 'Verrouiller', () => { v.setMeta(() => { layer.locked = !layer.locked; }); refresh(); }), button('Déplacer la sélection ici', () => v.change(() => { for (const el of v.selected) { v.touch(el); el.layer = layer.id; } }))));
+      for (const layer of [...v.doc.layers].reverse()) {
+        const index = v.doc.layers.indexOf(layer);
+        const image = [...v.doc.elements].reverse().find((el) => el.layer === layer.id && el.kind === 'image' && el.data.file && store.has(el.data.file));
+        const thumb = h('div.board-layer-thumb', image ? h('img', { src: fileUrl(image.data.file), alt: '' }) : h('span', '◇'));
+        const title = h('strong.board-layer-name', layer.name);
+        const up = button('↑', () => move(layer.id, index + 1)); up.title = 'Monter le calque'; up.setAttribute('aria-label', `Monter ${layer.name}`); up.disabled = v.readOnly || index === v.doc.layers.length - 1;
+        const down = button('↓', () => move(layer.id, index - 1)); down.title = 'Descendre le calque'; down.setAttribute('aria-label', `Descendre ${layer.name}`); down.disabled = v.readOnly || index === 0;
+        const grip = h('button.board-layer-grip', { type: 'button', draggable: !v.readOnly, title: 'Glisser pour déplacer le calque', 'aria-label': `Déplacer ${layer.name}` }, '☰');
+        grip.addEventListener('dragstart', (event) => { dragging = layer.id; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', layer.id); });
+        grip.addEventListener('dragend', () => { dragging = null; list.querySelectorAll('.is-layer-drop').forEach((row) => row.classList.remove('is-layer-drop')); });
+        const row = h('div.board-layer', thumb, title, button(layer.visible ? 'Masquer' : 'Afficher', () => { if (!v.readOnly) { v.setMeta(() => { layer.visible = !layer.visible; }); refresh(); } }), button(layer.locked ? 'Déverrouiller' : 'Verrouiller', () => { if (!v.readOnly) { v.setMeta(() => { layer.locked = !layer.locked; }); refresh(); } }), button('Déplacer la sélection ici', () => { if (!v.readOnly) v.change(() => { for (const el of v.selected) { v.touch(el); el.layer = layer.id; } }); }), up, down, grip);
+        row.addEventListener('dragover', (event) => { if (!dragging || dragging === layer.id) return; event.preventDefault(); event.dataTransfer.dropEffect = 'move'; row.classList.add('is-layer-drop'); });
+        row.addEventListener('dragleave', () => row.classList.remove('is-layer-drop'));
+        row.addEventListener('drop', (event) => { if (!dragging) return; event.preventDefault(); event.stopPropagation(); const id = dragging; dragging = null; move(id, index); });
+        list.append(row);
+      }
     };
-    this.modal({ title: 'Calques', body: list, footer: [button('Ajouter un calque', async () => { const name = await promptText({ title: 'Nom du calque' }); if (name) { v.setMeta((doc) => doc.layers.push({ id: Board.newId(), name, visible: true, locked: false })); refresh(); } })] }); refresh();
+    const add = button('Ajouter un calque', async () => { const name = await promptText({ title: 'Nom du calque' }); if (name && !v.readOnly) { v.setMeta((doc) => doc.layers.push({ id: Board.newId(), name, visible: true, locked: false })); refresh(); } }); add.disabled = v.readOnly;
+    this.modal({ title: 'Calques', body: list, footer: [add] }); refresh();
   }
   options(event) {
     const v = this.view; const rect = event.currentTarget.getBoundingClientRect();

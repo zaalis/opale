@@ -237,8 +237,8 @@
   function mediaHtml(path, label, ctx) {
     const kind = Meta.kindOf(path); const url = ctx.fileUrl ? ctx.fileUrl(path) : path;
     if (kind === 'image') return imageTag(url, imageOptions(label), Meta.baseName(path), ` loading="lazy"${attr('data-path', path)}`);
-    if (kind === 'audio') return `<audio class="embed-audio" controls preload="none" src="${escapeHtml(url)}"></audio>`;
-    if (kind === 'video') return `<video class="embed-video" controls preload="metadata" src="${escapeHtml(url)}"></video>`;
+    if (kind === 'audio') return `<audio class="embed-audio" controls preload="none" src="${escapeHtml(url)}"${attr('data-path', path)}></audio>`;
+    if (kind === 'video') return `<video class="embed-video" controls preload="metadata" src="${escapeHtml(url)}"${attr('data-path', path)}></video>`;
     return null;
   }
 

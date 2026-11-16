@@ -19,6 +19,7 @@ const { GoogleAccount, DriveClient } = require('./lib/google.js');
 const { SyncService } = require('./lib/sync.js');
 const { CollabService } = require('./lib/collab/service.js');
 const { ProjectDrive, FakeDrive } = require('./lib/collab/drive.js');
+const { MiroAccount, MiroService } = require('./lib/miro.js');
 const Meta = require('./shared/meta.js');
 const Board = require('./shared/board.js');
 
@@ -73,6 +74,9 @@ function createOpale(options = {}) {
   const agent = { client: '', connectedAt: 0, lastSeen: 0, calls: 0, lastTool: '' };
   const state = { vault: null, port: 0, activeNote: '', pendingOpen: '', hadClient: false, exitTimer: null };
   const google = options.google || new GoogleAccount();
+  const miro = options.miro || new MiroAccount();
+  const miroService = new MiroService(miro, options.miroOptions);
+  const miroInfo = () => ({ ...miroService.info(), redirectUri: `http://127.0.0.1:${state.port}/oauth/miro` });
   const sync = new SyncService({ account: google, drive: options.drive || new DriveClient(google), interval: options.syncInterval, device: options.device });
   const collab = options.collab || createCollab(google);
 
@@ -184,10 +188,13 @@ function createOpale(options = {}) {
     fs.createReadStream(file).pipe(res);
   }
 
-  function serveVaultFile(req, res, rel) {
+  function serveVaultFile(req, res, rel, download = false) {
     const vault = needVault();
     const clean = vault.canonical(cleanRelative(rel));
     const full = vault.abs(clean);
+    return serveFile(req, res, full, clean, download);
+  }
+  function serveFile(req, res, full, clean, download = false) {
     const stat = fs.statSync(full);
     if (!stat.isFile()) throw new VaultError('Fichier introuvable.', 404, 'missing');
     const ext = Meta.extOf(clean);
@@ -195,10 +202,10 @@ function createOpale(options = {}) {
     const headers = {
       'Content-Type': type || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff', 'Last-Modified': stat.mtime.toUTCString(),
-      'Content-Disposition': `${type ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(Meta.baseName(clean))}`,
+      'Content-Disposition': `${type && !download ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(Meta.baseName(clean))}`,
     };
     // An SVG opened on its own is a document: keep its scripts from running.
-    if (ext !== 'pdf') headers['Content-Security-Policy'] = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+    if (ext !== 'pdf') headers['Content-Security-Policy'] = `sandbox${download ? ' allow-downloads' : ''}; default-src 'none'; style-src 'unsafe-inline'; img-src data:`;
     const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
     if (range && (range[1] || range[2])) {
       let start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
@@ -288,12 +295,37 @@ function createOpale(options = {}) {
     'POST /api/rename': async (ctx) => { const body = await ctx.json(); return needVault().rename(String(body.from || ''), String(body.to || '')); },
     'POST /api/delete': async (ctx) => { const body = await ctx.json(); return needVault().remove(String(body.path || ''), { permanent: body.permanent === true }); },
 
-    'GET /api/file': (ctx) => { serveVaultFile(ctx.req, ctx.res, ctx.query.get('path') || ''); return undefined; },
+    'GET /api/file': async (ctx) => {
+      const requested = ctx.query.get('path') || '';
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\/assets\/([A-Za-z0-9_-]+)\/([^/\\]+)$/.exec(requested);
+      if (shared) {
+        const full = await collab.runtime(shared[1]).getAttachment(shared[2]);
+        serveFile(ctx.req, ctx.res, full, shared[3], ctx.query.get('download') === '1');
+      } else serveVaultFile(ctx.req, ctx.res, requested, ctx.query.get('download') === '1');
+      return undefined;
+    },
+    // Import only public, validated raster images; never fetch local network addresses.
+    'POST /api/image-from-url': async (ctx) => {
+      const body = await ctx.json();
+      const media = require('./lib/miro-media.js');
+      const bytes = await media.download(String(body.url || ''));
+      const ext = media.imageExtension(bytes);
+      if (!ext) throw new VaultError('Le lien ne contient pas une image PNG, JPEG, GIF ou WebP valide.', 400, 'invalid-image');
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(String(body.source || ''));
+      if (shared) return { path: await collab.runtime(shared[1]).putAttachment(`Image internet.${ext}`, bytes) };
+      const vault = needVault();
+      const folder = vault.attachmentFolder(String(body.source || ''));
+      const target = vault.uniquePath(folder, 'Image internet', ext);
+      vault.writeBinary(target, bytes);
+      return { path: target };
+    },
     // Attachment upload (paste or drop): raw bytes in the body.
     'PUT /api/file': async (ctx) => {
-      const vault = needVault();
       const name = cleanRelative(String(ctx.query.get('name') || 'Fichier'));
       if (name.includes('/')) throw new VaultError('Nom de fichier invalide.');
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(ctx.query.get('source') || '');
+      if (shared) return { path: await collab.runtime(shared[1]).putAttachment(name, await readBody(ctx.req, MAX_UPLOAD_BYTES)) };
+      const vault = needVault();
       // A folder is supplied only by the explicit “add image” action in the
       // explorer. Keep ordinary paste/drop attachments governed by settings.
       const explicitFolder = ctx.query.get('folder');
@@ -339,6 +371,26 @@ function createOpale(options = {}) {
       agent.client = ''; agent.connectedAt = 0; agent.lastSeen = 0;
       broadcast('agent', agentPayload());
       return { endpoint: `http://127.0.0.1:${state.port}/mcp`, token: config.token, agent: agentPayload() };
+    },
+    // ------------------------------------------------ Miro moodboard import
+    'GET /api/miro': miroInfo,
+    'PUT /api/miro/client': async (ctx) => {
+      if (miroService.running) throw new VaultError('Attendez la fin de l’import avant de changer la configuration Miro.', 409, 'miro-busy');
+      miro.setClient(await ctx.json()); return miroInfo();
+    },
+    'POST /api/miro/connect': () => {
+      if (miroService.running) throw new VaultError('Un import Miro est déjà en cours.', 409, 'miro-busy');
+      const url = miro.beginAuth(miroInfo().redirectUri);
+      (options.openExternal || openExternal)(url); return { url };
+    },
+    'POST /api/miro/disconnect': async () => {
+      if (miroService.running) throw new VaultError('Attendez la fin de l’import avant de déconnecter Miro.', 409, 'miro-busy');
+      await miro.disconnect(); return miroInfo();
+    },
+    'GET /api/miro/boards': (ctx) => miroService.boards(ctx.query.get('cursor') || ''),
+    'POST /api/miro/import': async (ctx) => {
+      const vault = needVault(); const body = await ctx.json();
+      return miroService.startImport(vault, body.board, () => state.vault === vault);
     },
     // ------------------------------------------------ Google Drive integration
     'GET /api/drive': () => sync.status(),
@@ -469,6 +521,15 @@ function createOpale(options = {}) {
     if (pathname === '/api/ping') return send(res, 200, { app: 'opale', version: VERSION });
     // Google sends the system browser back here after sign-in. The one-time
     // state value ties the answer to the request made from this window.
+    if (pathname === '/oauth/miro' && req.method === 'GET') {
+      try {
+        await miro.finishAuth(Object.fromEntries(url.searchParams));
+        return sendPage(res, 'Connexion Miro réussie', 'Votre compte est connecté à Opale. Fermez cet onglet et revenez dans Paramètres → Plugins → Miro pour importer un tableau.');
+      } catch (error) {
+        miro.lastError = error instanceof VaultError ? error.message : 'Impossible de terminer la connexion Miro. Réessayez depuis le plugin.';
+        return sendPage(res, 'Connexion Miro impossible', miro.lastError);
+      }
+    }
     if (pathname === '/oauth/google' && req.method === 'GET') {
       let message; let ok = false;
       try { await google.finishAuth(Object.fromEntries(url.searchParams)); ok = true; message = `Opale est connecté à Google Drive${google.email ? ` (${google.email})` : ''}. Vous pouvez fermer cet onglet et revenir à Opale.`; }
@@ -541,7 +602,7 @@ function createOpale(options = {}) {
     get token() { return config.token; },
     get uiToken() { return uiToken; },
     get vault() { return state.vault; },
-    sync, google, collab,
+    sync, google, collab, miro, miroService,
     openVault, closeVault,
     async listen() {
       const wanted = options.port !== undefined ? Number(options.port) : Number(process.env.OPALE_PORT) || DEFAULT_PORT;

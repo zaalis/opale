@@ -234,12 +234,15 @@ export const collab = {
 
   // A path of a shared file: is it there (as far as we can tell now)?
   hasPath(path) {
+    const asset = /^@shared\/([A-Za-z0-9_-]+)\/assets\/([A-Za-z0-9_-]+)\/([^/\\]+)$/.exec(String(path || ''));
+    if (asset) return this.known(asset[1]);
     const parsed = parsePath(path);
     if (!parsed) return false;
     const project = this.projects.get(parsed.project);
     return project ? !!project.file(parsed.file) : this.known(parsed.project);
   },
   titleOf(path) {
+    if (/^@shared\/[^/]+\/assets\//.test(path)) return path.split('/').pop();
     const parsed = parsePath(path);
     const project = parsed && this.projects.get(parsed.project);
     const file = project && project.file(parsed.file);
@@ -250,6 +253,7 @@ export const collab = {
     const parsed = parsePath(source);
     const project = parsed && this.projects.get(parsed.project);
     if (!project) return null;
+    if (/^assets\/[A-Za-z0-9_-]{10,200}\/[^/\\]+$/.test(String(target || ''))) return `@shared/${parsed.project}/${target}`;
     const clean = String(target || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\.(md|canvas)$/i, '').toLowerCase();
     if (!clean) return null;
     const files = project.files().filter((file) => file.kind !== 'folder');

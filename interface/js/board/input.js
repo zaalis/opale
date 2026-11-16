@@ -5,6 +5,7 @@
 import { app, isTextInput, toast, topModal } from '../core.js';
 import { WIDGETS } from './widgets.js';
 import { place } from './render.js';
+import { droppedImageUrl, mayDropImage } from '../drop-image.js';
 
 const Board = window.OpaleBoard;
 const DRAG = 4;
@@ -26,7 +27,7 @@ export class Input {
     this.handlers = [
       [stage, 'pointerdown', (e) => this.down(e)],
       [stage, 'pointermove', (e) => this.hover(e)],
-      [stage, 'pointerleave', () => { if (!this.stop) view.ui.clearTransient(); }],
+      [stage, 'pointerleave', () => { this.clearPlacementPreview(); if (!this.stop) view.ui.clearTransient(); }],
       [stage, 'wheel', (e) => this.wheel(e), { passive: false }],
       [stage, 'dblclick', (e) => this.dblclick(e)],
       [stage, 'contextmenu', (e) => this.contextmenu(e)],
@@ -41,7 +42,7 @@ export class Input {
     ];
     for (const [target, type, fn, options] of this.handlers) target.addEventListener(type, fn, options);
   }
-  destroy() { for (const [target, type, fn, options] of this.handlers) target.removeEventListener(type, fn, options); if (this.stop) this.stop(); this.view.ui.clearTransient(); }
+  destroy() { this.clearPlacementPreview(); for (const [target, type, fn, options] of this.handlers) target.removeEventListener(type, fn, options); if (this.stop) this.stop(); this.view.ui.clearTransient(); }
 
   get active() { return app.workspace.activeView === this.view && this.view.loaded && !this.view.el.hidden; }
   // Keys and clipboard belong to the board unless something else has the focus.
@@ -55,6 +56,7 @@ export class Input {
   setTool(tool, options = {}) {
     Object.assign(this.options, options);
     this.tool = tool;
+    this.clearPlacementPreview();
     if (tool !== 'select' && this.view.editing) this.view.finishEdit(true);
     this.cursor();
     this.view.ui.updateTools();
@@ -673,8 +675,17 @@ export class Input {
   }
 
   // ----------------------------------------------------------- hovering
+  clearPlacementPreview() { if (this.placementPreview) { this.placementPreview.remove(); this.placementPreview = null; } }
   hover(event) {
-    if (event.buttons) return;
+    if (event.buttons) { this.clearPlacementPreview(); return; }
+    const kind = this.tool;
+    if (!this.view.readOnly && CREATES.has(kind) && Board.KINDS[kind] && !event.target.closest('.board-ui, .b-editor')) {
+      if (!this.placementPreview) { this.placementPreview = document.createElement('div'); this.placementPreview.className = 'board-placement-preview'; this.view.stage.append(this.placementPreview); }
+      const rect = this.view.stageRect(); const spec = Board.KINDS[kind]; const k = this.view.camera.k;
+      const w = Math.max(36, Math.min(260, spec.w * k)); const height = Math.max(24, Math.min(180, spec.h * k));
+      this.placementPreview.style.cssText = `left:${event.clientX - rect.left - (kind === 'text' ? 0 : w / 2)}px;top:${event.clientY - rect.top - height / 2}px;width:${w}px;height:${height}px`;
+      this.placementPreview.textContent = kind === 'text' ? 'Texte' : '';
+    } else this.clearPlacementPreview();
     const view = this.view;
     if (this.tool === 'connector') {
       const at = this.attachAt(event.clientX, event.clientY, null);
@@ -880,7 +891,7 @@ export class Input {
   // --------------------------------------------------------- drag & drop
   dragover(event) {
     const types = [...(event.dataTransfer ? event.dataTransfer.types : [])];
-    if (types.includes('Files') || types.includes(MARK) || types.includes('text/x-opale-path') || types.includes('application/x-opale-path')) {
+    if (mayDropImage(event.dataTransfer) || types.includes(MARK) || types.includes('text/x-opale-path') || types.includes('application/x-opale-path')) {
       event.preventDefault(); event.stopPropagation();
       event.dataTransfer.dropEffect = 'copy';
     }
@@ -903,7 +914,9 @@ export class Input {
     const path = transfer.getData('text/x-opale-path') || transfer.getData('application/x-opale-path');
     if (path) { event.preventDefault(); event.stopPropagation(); view.ui.addVaultFiles(path.split('\n').filter(Boolean), at, { select: false }); return; }
     const files = [...transfer.files];
-    if (files.length) { event.preventDefault(); event.stopPropagation(); view.ui.dropFiles(files, at); }
+    if (files.length) { event.preventDefault(); event.stopPropagation(); view.ui.dropFiles(files, at); return; }
+    const url = droppedImageUrl(transfer);
+    if (url) { event.preventDefault(); event.stopPropagation(); view.ui.dropImageUrl(url, at); }
   }
 }
 

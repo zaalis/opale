@@ -36,6 +36,7 @@ export function place(view, el, node) {
   s.transform = `translate(${el.x}px, ${el.y}px)${el.rotation ? ` rotate(${el.rotation}deg)` : ''}`;
   s.width = `${el.w}px`; s.height = `${el.h}px`;
   const layer = view.layer(el.layer);
+  node.style.zIndex = String(Math.max(0, view.doc.layers.indexOf(layer)));
   node.classList.toggle('is-hidden', !!layer && !layer.visible);
   node.classList.toggle('is-layer-locked', !!layer && layer.locked);
   node.classList.toggle('is-locked', el.locked);
@@ -269,6 +270,7 @@ export function placeConnector(view, el, node) {
   node.style.transform = `translate(${box.x}px, ${box.y}px)`;
   node.style.width = `${box.w}px`; node.style.height = `${box.h}px`;
   const layer = view.layer(el.layer);
+  node.style.zIndex = String(Math.max(0, view.doc.layers.indexOf(layer)));
   node.classList.toggle('is-hidden', !!layer && !layer.visible);
   node.classList.toggle('is-layer-locked', !!layer && layer.locked);
   node.classList.toggle('is-locked', el.locked);

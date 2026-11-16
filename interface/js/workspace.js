@@ -29,7 +29,7 @@ class FileView {
     else if (kind === 'audio') content = h('div.file-stage', h('audio', { controls: true, src: url }));
     else if (kind === 'video') content = h('div.file-stage', h('video.file-video', { controls: true, src: url }));
     else content = h('div.empty-state', h('p', `Opale n’affiche pas les fichiers « .${Meta.extOf(path) || '?'} ».`),
-      h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, 'Afficher dans l’Explorateur Windows'));
+      isShared(path) ? h('a.btn', { href: url, download: Meta.baseName(path) }, 'Télécharger le fichier') : h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, 'Afficher dans l’Explorateur Windows'));
     this.el = h('div.view.file-view', this.header, content);
   }
   updateHeader() { this.header.update(); }
@@ -56,7 +56,7 @@ class EmptyView {
   destroy() {}
 }
 
-function entryFor(path) { const kind = Meta.kindOf(path); return { type: ['note', 'board'].includes(kind) ? kind : 'file', path }; }
+function entryFor(path) { const kind = Meta.kindOf(path); return { type: /^@shared\/[^/]+\/assets\//.test(path) ? 'file' : ['note', 'board'].includes(kind) ? kind : 'file', path }; }
 function titleOf(entry) {
   if (entry.type === 'graph') return 'Graphe';
   if (entry.type === 'empty') return 'Nouvel onglet';
@@ -86,7 +86,7 @@ export const workspace = {
   current(tab) { return tab.history[tab.index]; },
 
   makeView(entry, options) {
-    if (isShared(entry.path)) return entry.type === 'board' ? new SharedBoardView(entry.path, options) : new SharedNoteView(entry.path, options);
+    if (isShared(entry.path) && entry.type !== 'file') return entry.type === 'board' ? new SharedBoardView(entry.path, options) : new SharedNoteView(entry.path, options);
     if (entry.type === 'note') return new NoteView(entry.path, options);
     if (entry.type === 'board') return new BoardView(entry.path, options);
     if (entry.type === 'graph') return new GraphView();

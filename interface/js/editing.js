@@ -200,7 +200,7 @@ function naturalWidth(file) {
 // What to write in the note for an uploaded file. An image gets the preset
 // width (Settings → Files), or its own width when it is smaller.
 export async function embedFor(path, file) {
-  const kind = Meta.kindOf(path); const name = Meta.baseName(path);
+  const kind = Meta.kindOf(path); const name = path.startsWith('@shared/') ? path.split('/').slice(2).join('/') : Meta.baseName(path);
   if (!['image', 'audio', 'video', 'pdf'].includes(kind)) return `[[${name}]]`;
   if (kind !== 'image') return `![[${name}]]`;
   const preset = Number(app.settings.imageWidth ?? 400) || 0;

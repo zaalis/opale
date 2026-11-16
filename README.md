@@ -9,6 +9,10 @@ et ne touche pas à `.obsidian/`).
 
 ## Lancer
 
+Le plugin **Miro** est accessible dans **Paramètres → Plugins** pour importer
+des moodboards dans le coffre, avec images locales et rapport de conversion.
+Voir le [guide de connexion Miro](docs/MIRO.md).
+
 ```powershell
 npm start            # fenêtre de l'application
 npm run serve        # serveur seul, puis http://127.0.0.1:27184
@@ -164,3 +168,7 @@ test/                node --test
 ```powershell
 npm test
 ```
+
+### Client Google Drive intégré à la compilation
+
+Pour construire l'application Windows avec Drive, placer dans `lib/google-client.json` un objet contenant `clientId` et `clientSecret` du client OAuth Google pour application de bureau. Ce fichier local est ignoré par Git. `npm run build` et `npm run installer` vérifient sa présence avant d'intégrer ces valeurs au serveur compilé. Ne jamais y placer de jeton de connexion ou de données de compte. Un client OAuth intégré à une application distribuée est accessible aux destinataires de l'exécutable ; son secret ne doit pas être considéré comme confidentiel. La disponibilité pour d'autres comptes dépend également de la configuration et, si nécessaire, de la validation de l'application côté Google.
