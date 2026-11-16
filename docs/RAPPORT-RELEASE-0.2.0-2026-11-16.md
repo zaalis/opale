@@ -29,3 +29,7 @@ Les comptes IA réels et les générations payantes n'ont pas été utilisés. L
 - Identité de compilation : `350fa3da2a72a8fb63d2c2c07c06148a2ed2713e135a5b7c9ee11b731edbc97d`.
 
 Les anciennes versions d'Opale sans mécanisme de mise à jour demandent une installation manuelle de 0.2.0. Les versions Windows qui contiennent le mécanisme utiliseront les prochains paquets publiés sur main.
+
+## Contrôle après publication
+
+Publication sur `main` effectuée (commit applicatif `17eabd32b98db3fce15a2a523dbb1292c9dceaaf`). Le mécanisme a ensuite été exécuté contre le vrai GitHub public : la compilation installée est reconnue à jour ; en simulant uniquement l'identité d'une ancienne compilation, le vrai paquet de 66 503 680 octets est téléchargé et son SHA-256 est validé avant l'état Prêt. Aucune installation n'a été lancée pendant cette vérification. Le dossier temporaire de téléchargement a été nettoyé.
