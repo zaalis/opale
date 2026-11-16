@@ -48,3 +48,9 @@ L'archive permet aussi de lancer `./Opale` dans son dossier extrait ; GTK 3 et W
 ## Limites du contrôle
 
 Les essais portent sur Ubuntu x86-64 dans WSL et sur un affichage virtuel, pas sur toutes les distributions ou tous les pilotes graphiques Linux. Aucun paquet ARM64 n'a été construit pendant cette intervention. Les comptes IA réels et les appels payants n'ont pas été sollicités. Le chemin de mise à jour système par demande de mot de passe Polkit n'a pas été piloté graphiquement ; le .deb est installé réellement et le chemin archive est vérifié de bout en bout avec redémarrage témoin.
+
+## Publication et contrôle GitHub
+
+Le portage et les deux paquets sont publiés sur la branche `Linux` au commit `60394837d2909613245085cf1a40b175471445df`. Le client de mise à jour est ensuite exécuté contre le vrai GitHub : la compilation 0.2.0 est reconnue à jour ; en simulant seulement l'identité d'une ancienne compilation, la vraie archive Linux de 30 397 725 octets est téléchargée et son SHA-256 est validé. Aucun installateur n'est lancé durant ce contrôle réseau. Journal : `linux-published.log`.
+
+La branche distante `main` reste au commit `c30716d6eb8727b163ff77f5f1c55733b1af6afc`. Le dossier Windows `opale` est vérifié propre et reste sur ce même commit.
