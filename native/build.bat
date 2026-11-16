@@ -10,6 +10,7 @@ REM  files it needs are in native\webview2 (version 1.0.3967.48).
 REM  Without opale-server.exe, Opale.exe runs ..\server.js with Node.
 REM ============================================================
 setlocal
+if not defined OPALE_SETUP_OUTPUT set "OPALE_SETUP_OUTPUT=%~dp0..\dist\Opale-Setup.exe"
 cd /d "%~dp0"
 
 set "VSPATH="
@@ -41,6 +42,10 @@ if /I "%~1"=="--with-server" (
     echo Checking the bundled Google OAuth client ...
     node ..\scripts\check-google-client.cjs
     if errorlevel 1 goto :failed
+    pushd ..
+    node scripts\build-update-metadata.cjs prepare
+    if errorlevel 1 ( popd & goto :failed )
+    popd
     echo Packaging opale-server.exe ...
     pushd ..
     if not exist node_modules\@yao-pkg\pkg call npm install --no-audit --no-fund
@@ -51,14 +56,18 @@ if /I "%~1"=="--with-server" (
 
 if /I "%~2"=="--installer" (
     echo Compiling uninstaller ...
-    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE uninstaller.cpp /Fe:"..\dist\Uninstall Opale.exe" /link /SUBSYSTEM:WINDOWS ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib
+    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE uninstaller.cpp /Fo:..\dist\ /Fe:"..\dist\Uninstall Opale.exe" /link /SUBSYSTEM:WINDOWS ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib
     if errorlevel 1 goto :failed
     echo Packaging Opale installer ...
     rc /nologo /fo ..\dist\installer.res installer.rc
     if errorlevel 1 goto :failed
-    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE installer.cpp /Fe:"..\dist\Opale-Setup.exe" /link /SUBSYSTEM:WINDOWS ..\dist\installer.res ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib gdi32.lib uuid.lib
+    cl /nologo /std:c++17 /utf-8 /EHsc /O2 /W3 /DUNICODE /D_UNICODE installer.cpp /Fo:..\dist\ /Fe:"%OPALE_SETUP_OUTPUT%" /link /SUBSYSTEM:WINDOWS ..\dist\installer.res ole32.lib shell32.lib shlwapi.lib advapi32.lib user32.lib gdi32.lib uuid.lib
     if errorlevel 1 goto :failed
-    del /Q "..\dist\installer.res" >nul 2>&1
+    pushd ..
+    node scripts\build-update-metadata.cjs "%OPALE_SETUP_OUTPUT%"
+    if errorlevel 1 ( popd & goto :failed )
+    popd
+    del /Q "..\dist\installer.res" "..\dist\installer.obj" "..\dist\uninstaller.obj" >nul 2>&1
 )
 
 echo.

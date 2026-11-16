@@ -231,6 +231,8 @@ export class Mesh {
         }
         case 'ok': link.theyReady = true; this.maybeOpen(link); break;
         case 'no': throw new Error(`cet ordinateur a été refusé (${data.reason})`);
+        case 'asset-get': if (link.ready) this.project.assets.send(link, data.id).catch(() => {}); break;
+        case 'asset-part': if (link.ready) this.project.assets.receive(link, data).catch(() => {}); break;
         case 'm': if (link.ready) this.session.message(link.peer, data.m); break;
         case 'bye': this.drop(link.peer, 'bye'); break;
         default:

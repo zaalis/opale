@@ -566,6 +566,13 @@ export class ImageLayer {
   async insertFiles(files, target) {
     const images = [...files].filter(isImageFile);
     if (!images.length) { toast('Choisissez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+    const preview = h('div.attachment-drop-preview.media-loading', { role: 'status', 'aria-label': 'Ajout de l’image…' });
+    const localUrl = URL.createObjectURL(images[0]);
+    const localImage = h('img', { src: localUrl, alt: images[0].name });
+    localImage.onload = () => preview.classList.remove('media-loading');
+    preview.append(localImage);
+    const anchor = target && [...this.view.body.querySelectorAll('[data-start]')].find(node => Number(node.dataset.start) >= target.offset);
+    if (anchor && anchor.parentElement === this.view.body) anchor.before(preview); else this.view.body.append(preview);
     try {
       const embeds = [];
       const paths = [];
@@ -577,6 +584,7 @@ export class ImageLayer {
       await Promise.all(paths.map((path) => app.workspace.waitFor(path)));
       this.insertEmbeds(embeds, target);
     } catch (error) { reportError(error); }
+    finally { preview.remove(); URL.revokeObjectURL(localUrl); }
   }
 
   // ------------------------------------------------------------ keyboard

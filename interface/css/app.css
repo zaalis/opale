@@ -536,3 +536,25 @@ button.status-item:active, .tree-row:active, .result-file:active, .picker-item:a
 .sync-conflict { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .sync-conflict-name { color: var(--text-0); font-weight: 600; }
 .sync-conflict-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Neutral loading surfaces. No accent ring around the editing canvas. */
+.media-loading { background-color:var(--bg-2); background-image:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--text-0) 8%,transparent) 45%,transparent 70%); background-size:240% 100%; animation:media-shimmer 1.6s ease-in-out infinite; }
+img.media-loading { min-height:100px; border-radius:6px; color:transparent; }
+.b-image.media-loading img { visibility:hidden; }
+.file-text { flex:1; min-height:0; overflow:auto; margin:0; padding:28px 36px; white-space:pre-wrap; overflow-wrap:anywhere; font:14px/1.7 var(--font-mono); color:var(--text-0); user-select:text; }
+.attachment-drop-preview { width:min(400px,100%); height:200px; border-radius:10px; overflow:hidden; margin:12px 0; }
+.attachment-drop-preview img { width:100%; height:100%; object-fit:contain; }
+@keyframes media-shimmer { from { background-position:160% 0; } to { background-position:-80% 0; } }
+@media (prefers-reduced-motion:reduce) { .media-loading { animation:none; } }
+
+.tree-row:focus-visible, .tree:focus-visible, .collab-list:focus-visible { outline: none; box-shadow: none; }
+
+.ribbon-update { position:relative; }
+.update-ring { position:absolute; inset:1px; pointer-events:none; }
+.update-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+.update-track,.update-arc { fill:none; stroke-width:2; }
+.update-track { stroke:var(--border); }
+.update-arc { stroke:var(--accent); stroke-dasharray:var(--update-progress,0) 100; transition:stroke-dasharray 200ms ease; }
+.ribbon-update:not([data-phase="downloading"]):not([data-phase="checking"]):not([data-phase="ready"]) .update-ring { display:none; }
+.ribbon-update[data-phase="checking"] .update-arc { stroke-dasharray:22 100; transform-origin:18px 18px; animation:sync-spin 1s linear infinite; }
+.ribbon-update[data-phase="ready"] { color:var(--accent); background:var(--accent-soft); }

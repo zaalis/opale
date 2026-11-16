@@ -1,3 +1,4 @@
+import { FORMATS, MIME, bitmapBlob, tiffBlob, svgBlob, webpDensity } from './image-formats.js';
 // Local visual exports. Capture the whole visible board, independent of its camera.
 import { Meta } from '../core.js';
 const Board = window.OpaleBoard;
@@ -19,6 +20,8 @@ async function copyVisual(source) {
   // No executable attributes or remote documents in the exported snapshot.
   for (const attribute of [...clone.attributes]) if (/^on/i.test(attribute.name)) clone.removeAttribute(attribute.name);
   if (source instanceof HTMLImageElement) {
+    clone.style.visibility = 'visible';
+    clone.classList.remove('media-loading', 'is-broken');
     const url = source.currentSrc || source.src;
     if (!url.startsWith('data:')) {
       const response = await fetch(url);
@@ -51,29 +54,50 @@ async function copyVisual(source) {
   return clone;
 }
 
-export async function captureBoard(view) {
+export function exportBounds(view) {
+  const visible = view.doc.elements.filter(el => view.layer(el.layer)?.visible !== false);
+  if (!visible.length) throw new Error('Le moodboard ne contient aucun élément visible à exporter.');
+  const box = Board.union(visible.map(el => {
+    if (el.kind !== 'connector') return Board.bounds(el, view.lookup);
+    const points = Board.connectorPath(el, view.lookup).points;
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+  }));
+  return { x: box.x - 48, y: box.y - 48, w: Math.ceil(box.w + 96), h: Math.ceil(box.h + 96) };
+}
+export function exportSize(box, options = {}) {
+  let width = Number(options.width), height = Number(options.height);
+  if ((options.width !== undefined && (!Number.isInteger(width) || width < 1)) || (options.height !== undefined && (!Number.isInteger(height) || height < 1))) throw new Error('Indiquez des dimensions positives en pixels.');
+  if (!width && !height) {
+    const scale = Math.min(2, 8192 / box.w, 8192 / box.h, Math.sqrt(24000000 / (box.w * box.h)));
+    width = Math.round(box.w * scale); height = Math.round(box.h * scale);
+  } else if (!height) height = Math.round(width * box.h / box.w);
+  else if (!width) width = Math.round(height * box.w / box.h);
+  if (![width, height].every(Number.isInteger) || width < 1 || height < 1 || width > 16384 || height > 16384 || width * height > 64000000)
+    throw new Error('Choisissez des dimensions entre 1 et 16 384 pixels, dans la limite de 64 mégapixels.');
+  return { width, height };
+}
+export async function captureBoard(view, options = {}) {
   if (view.editing) view.finishEdit(true);
   if (view.frame) { cancelAnimationFrame(view.frame); view.paint(); }
   await document.fonts.ready;
-  const visible = view.doc.elements.filter((el) => view.layer(el.layer)?.visible !== false);
-  if (!visible.length) throw new Error('Le moodboard ne contient aucun élément visible à exporter.');
-  const box = Board.union(visible.map((el) => {
-    if (el.kind !== 'connector') return Board.bounds(el, view.lookup);
-    const points = Board.connectorPath(el, view.lookup).points;
-    const xs = points.map((p) => p.x); const ys = points.map((p) => p.y);
-    return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
-  }));
-  const margin = 48;
-  const width = Math.ceil(box.w + margin * 2); const height = Math.ceil(box.h + margin * 2);
-  // Bound memory usage for very large infinite boards while preserving proportions.
-  const scale = Math.min(2, 8192 / width, 8192 / height, Math.sqrt(24000000 / (width * height)));
+  const box = options.box || exportBounds(view);
+  if (![box.x, box.y, box.w, box.h].every(Number.isFinite) || box.w <= 0 || box.h <= 0) throw new Error('Zone de capture invalide.');
+  const visible = view.doc.elements.filter(el => {
+    if (view.layer(el.layer)?.visible === false) return false;
+    if (!options.box) return true;
+    const bounds = Board.bounds(el, view.lookup);
+    return bounds && bounds.x <= box.x + box.w && bounds.x + bounds.w >= box.x && bounds.y <= box.y + box.h && bounds.y + bounds.h >= box.y;
+  });
+  const width = box.w, height = box.h;
+  const size = exportSize(box, options);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
+  canvas.width = size.width; canvas.height = size.height;
   const root = document.createElement('div');
   const background = getComputedStyle(view.stage).backgroundColor;
   root.style.cssText = `position:relative;width:${width}px;height:${height}px;overflow:hidden;background:${background};`;
   const world = document.createElement('div');
-  world.style.cssText = `position:absolute;left:${margin - box.x}px;top:${margin - box.y}px;width:0;height:0;`;
+  world.style.cssText = `position:absolute;left:${-box.x}px;top:${-box.y}px;width:0;height:0;`;
   root.append(world);
   for (const el of visible) {
     const source = view.nodes.get(el.id);
@@ -97,8 +121,8 @@ export async function captureBoard(view) {
 }
 
 // A single-page PDF with an RGB JPEG XObject (ISO 32000-1, DCTDecode).
-export function jpegPdf(jpeg, width, height) {
-  const pageScale = Math.min(0.5, 14400 / width, 14400 / height);
+export function jpegPdf(jpeg, width, height, dpi = 144) {
+  const pageScale = Math.min(72 / dpi, 14400 / width, 14400 / height);
   const w = Number((width * pageScale).toFixed(3)); const h = Number((height * pageScale).toFixed(3));
   const chunks = []; const offsets = [0]; let length = 0;
   const append = (value) => { const bytes = typeof value === 'string' ? encoder.encode(value) : value; chunks.push(bytes); length += bytes.length; };
@@ -119,14 +143,63 @@ export function jpegPdf(jpeg, width, height) {
   return new Blob(chunks, { type: 'application/pdf' });
 }
 
-export async function exportBoard(view, format) {
-  if (!['pdf', 'jpg'].includes(format)) throw new Error('Format d’export inconnu.');
-  const canvas = await captureBoard(view);
-  const jpeg = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
-  if (!jpeg) throw new Error('Impossible de générer l’image du moodboard.');
-  const blob = format === 'jpg' ? jpeg : jpegPdf(new Uint8Array(await jpeg.arrayBuffer()), canvas.width, canvas.height);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a'); link.href = url;
-  link.download = `${Meta.stem(view.path)}.${format}`; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
+// Set real print density metadata, independently of the pixel dimensions.
+export async function withDensity(blob, format, dpi) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (format === 'jpg') {
+    if (bytes[2] === 255 && bytes[3] === 224 && String.fromCharCode(...bytes.slice(6, 10)) === 'JFIF') {
+      bytes[13] = 1; bytes[14] = dpi >> 8; bytes[15] = dpi & 255; bytes[16] = dpi >> 8; bytes[17] = dpi & 255;
+    }
+    return new Blob([bytes], { type: 'image/jpeg' });
+  }
+  if (format !== 'png') return blob;
+  const chunk = new Uint8Array(21), data = new DataView(chunk.buffer);
+  data.setUint32(0, 9); chunk.set([112, 72, 89, 115], 4);
+  const ppm = Math.round(dpi / 0.0254); data.setUint32(8, ppm); data.setUint32(12, ppm); chunk[16] = 1;
+  let crc = 0xffffffff;
+  for (const byte of chunk.subarray(4, 17)) { crc ^= byte; for (let i = 0; i < 8; i++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); }
+  data.setUint32(17, (crc ^ 0xffffffff) >>> 0);
+  // Replace an existing pHYs chunk instead of writing contradictory densities.
+  const parts = [bytes.subarray(0, 8)];
+  for (let pos = 8; pos < bytes.length;) {
+    const length = new DataView(bytes.buffer, bytes.byteOffset + pos, 4).getUint32(0) + 12;
+    const type = String.fromCharCode(...bytes.subarray(pos + 4, pos + 8));
+    if (type !== 'pHYs') parts.push(bytes.subarray(pos, pos + length));
+    if (type === 'IHDR') parts.push(chunk);
+    pos += length;
+  }
+  return new Blob(parts, { type: 'image/png' });
+}
+export async function exportBoard(view, format, options = {}) {
+  if (!FORMATS.some(([id]) => id === format)) throw new Error('Format d’export inconnu.');
+  const dpi = Number(options.dpi || 144);
+  if (!Number.isInteger(dpi) || dpi < 36 || dpi > 1200) throw new Error('La densité doit être comprise entre 36 et 1 200 ppp.');
+  const name = `${(options.name || Meta.stem(view.path)).replace(/[<>:"|?*\\/\u0000-\u001f]/g, '-').replace(/[. ]+$/, '') || 'Moodboard'}.${format}`;
+  const mime = MIME[format];
+  // Request the destination during the user's click, before asynchronous capture.
+  let handle;
+  if (typeof window.showSaveFilePicker === 'function' && !window.chrome?.webview) {
+    try { handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: format.toUpperCase(), accept: { [mime]: [`.${format}`] } }] }); }
+    catch (error) { if (error.name === 'AbortError') return false; throw error; }
+  }
+  const canvas = await captureBoard(view, options);
+  let blob;
+  if (format === 'tiff') blob = await tiffBlob(canvas, dpi);
+  else if (format === 'bmp') blob = bitmapBlob(canvas, dpi);
+  else if (format === 'svg') blob = await svgBlob(canvas, dpi);
+  else {
+    const raster = format === 'pdf' ? 'jpg' : format;
+    const image = await new Promise(resolve => canvas.toBlob(resolve, MIME[raster], Number(options.quality ?? .95)));
+    if (!image || image.type !== MIME[raster]) throw new Error('Ce navigateur ne peut pas encoder ce format. Choisissez PNG, JPEG ou TIFF.');
+    blob = format === 'pdf' ? jpegPdf(new Uint8Array(await image.arrayBuffer()), canvas.width, canvas.height, dpi) : format === 'webp' ? await webpDensity(image, dpi) : await withDensity(image, format, dpi);
+  }
+  if (handle) {
+    const output = await handle.createWritable();
+    try { await output.write(blob); await output.close(); } catch (error) { await output.abort().catch(() => {}); throw error; }
+  } else {
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = name; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  return true;
 }

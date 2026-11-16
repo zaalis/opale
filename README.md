@@ -7,6 +7,10 @@ sans dépendance : un serveur Node, une interface web, une fenêtre native WebVi
 Un coffre Obsidian existant s'ouvre tel quel (Opale range ses réglages dans `.opale/`
 et ne touche pas à `.obsidian/`).
 
+## Opal Design
+
+Atelier visuel à nœuds pour générer, retoucher une zone protégée, transformer et comparer des images, en personnel et en partagé. Les connexions IA se règlent dans **Paramètres → Opal Design**. Voir le [guide Opal Design](docs/OPAL-DESIGN.md) et le [rapport de validation](docs/RAPPORT-OPAL-DESIGN-2026-11-16.md).
+
 ## Lancer
 
 Le plugin **Miro** est accessible dans **Paramètres → Plugins** pour importer
@@ -59,6 +63,28 @@ préservés lors de la désinstallation.
   `![[photo.png|left|320]]`
 
 Non repris d'Obsidian : extensions communautaires, Publish, rendu LaTeX, volets côte à côte.
+
+## Captures, exports et documents sur un moodboard
+
+Le bouton **appareil photo** de la barre d’outils ouvre un aperçu avant export.
+Choisissez tout le moodboard ou **Enregistrement personnalisé** pour tracer une
+zone, puis PNG, JPEG, WebP, TIFF, BMP, SVG ou PDF. Les préréglages Full HD, 4K et
+8K définissent le côté le plus long ; les dimensions en pixels, la densité en ppp
+et la compression des formats concernés sont réglables. Les proportions sont
+conservées. **Enregistrer sous…** permet de choisir le fichier de destination ;
+l’application Windows ouvre la boîte de dialogue native.
+
+Déposer un PDF ou une présentation PowerPoint (`.pptx`, `.ppt`) ajoute toutes ses
+pages sous forme d’images sur une seule rangée horizontale, sans retour à la
+ligne. Cela fonctionne également avec **Importer** et avec les fichiers du coffre.
+L’import PowerPoint utilise PowerPoint installé et activé sur l’ordinateur qui
+importe ; les destinataires d’un projet partagé reçoivent les images et n’ont pas
+besoin d’Office. Le lecteur PDF est intégré et fonctionne sans service externe.
+
+Les cartes de liens affichent l’icône du site quand elle est disponible ; cliquer
+sur leur titre ou sur leur bouton d’ouverture lance le navigateur. Ces fonctions
+sont communes aux moodboards personnels et partagés. Détails et validations :
+[rapport exports et documents](docs/RAPPORT-EXPORTS-DOCUMENTS-2026-11-16.md).
 
 ## Synchronisation Google Drive
 
@@ -172,3 +198,7 @@ npm test
 ### Client Google Drive intégré à la compilation
 
 Pour construire l'application Windows avec Drive, placer dans `lib/google-client.json` un objet contenant `clientId` et `clientSecret` du client OAuth Google pour application de bureau. Ce fichier local est ignoré par Git. `npm run build` et `npm run installer` vérifient sa présence avant d'intégrer ces valeurs au serveur compilé. Ne jamais y placer de jeton de connexion ou de données de compte. Un client OAuth intégré à une application distribuée est accessible aux destinataires de l'exécutable ; son secret ne doit pas être considéré comme confidentiel. La disponibilité pour d'autres comptes dépend également de la configuration et, si nécessaire, de la validation de l'application côté Google.
+
+## Mises à jour Windows
+
+La version Windows vérifie le paquet publié sur GitHub `main` et le télécharge en arrière-plan. Le bouton au-dessus de la connexion IDE indique la progression puis propose installation et redémarrage. `npm run installer` produit `dist/update.json` : publier ce manifeste avec le même `dist/Opale-Setup.exe`. Voir le [rapport de validation](docs/RAPPORT-DESIGN-MISES-A-JOUR-2026-11-16.md).

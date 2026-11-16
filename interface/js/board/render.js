@@ -1,3 +1,5 @@
+import { renderDesignNode } from '../design/node.js';
+import { watchImage } from '../media-loading.js';
 // Opale — how each kind of moodboard element is drawn. Every element is a
 // positioned <div> in the board's world layer; its content is rebuilt only
 // when what it shows changed (a cache key per node), while moving it only
@@ -45,7 +47,7 @@ export function place(view, el, node) {
 // Draw `el` into `node` (content only when it changed).
 export function render(view, el, node) {
   place(view, el, node);
-  if (el.kind === 'connector') return;
+  if (el.kind === 'connector' || (view.editing && view.editing.el.id === el.id)) return;
   const key = JSON.stringify([el.data, el.style, Math.round(el.w), Math.round(el.h), el.reactions || null, view.contentKey(el)]);
   if (node.renderKey === key) return;
   node.renderKey = key;
@@ -65,6 +67,7 @@ function drawReactions(el, node) {
 
 // ------------------------------------------------------------- the kinds
 const DRAW = {
+  design: renderDesignNode,
   text(view, el, body) {
     const s = el.style;
     body.className = 'b-body b-text';
@@ -120,8 +123,11 @@ const DRAW = {
     body.innerHTML = '';
     const img = h('img', { src: fileUrl(file), alt: el.data.alt || Meta.baseName(file), draggable: false, decoding: 'async' });
     img.style.opacity = el.style.opacity ?? 1;
-    img.addEventListener('error', () => { body.innerHTML = `<div class="b-missing">${icon('image', 28)}<span>Image illisible</span><button type="button" class="broken-dot" data-action="repair" title="Image illisible — cliquer pour en choisir une autre"></button></div>`; }, { once: true });
     body.append(img);
+    watchImage(img, { onError: () => {
+      if (!body.contains(img)) return;
+      body.innerHTML = `<div class="b-missing">${icon('image', 28)}<span>Image indisponible</span><button type="button" class="broken-dot" data-action="repair" title="Choisir une autre image"></button></div>`;
+    } });
   },
 
   note(view, el, body) {
@@ -151,9 +157,18 @@ const DRAW = {
 
   link(view, el, body) {
     body.className = 'b-body b-link';
-    let host = '';
-    try { host = new URL(el.data.url).hostname.replace(/^www\./, ''); } catch {}
-    body.innerHTML = `<span class="b-link-icon">${icon('external', 18)}</span><span class="b-file-text"><span class="b-file-name" data-edit="title">${esc(el.data.title || host || 'Lien')}</span><span class="b-file-meta">${esc(el.data.url || 'Aucune adresse')}</span></span><button type="button" class="b-mini" data-action="open" title="Ouvrir dans le navigateur">${icon('external', 13)}</button>`;
+    let target;
+    try { const url = new URL(el.data.url); if (['http:', 'https:'].includes(url.protocol)) target = url; } catch {}
+    const host = target ? target.hostname.replace(/^www\./, '') : '';
+    body.replaceChildren();
+    const badge = h('span.b-link-icon', { html: icon('external', 18) });
+    if (target) {
+      const favicon = h('img.b-link-favicon', { src: `/api/link-icon?url=${encodeURIComponent(target.href)}`, alt: '', referrerPolicy: 'no-referrer' });
+      favicon.onload = () => badge.replaceChildren(favicon);
+    }
+    const title = target ? h('a.b-file-name.b-link-title', { href: target.href, target: '_blank', rel: 'noopener noreferrer', dataset: { externalLink: '1' } }, el.data.title || host || 'Ouvrir le lien') : h('span.b-file-name', 'Lien invalide');
+    body.append(badge, h('span.b-file-text', title, h('span.b-file-meta', el.data.url || 'Aucune adresse')));
+    if (target) body.append(h('a.b-mini', { href: target.href, target: '_blank', rel: 'noopener noreferrer', dataset: { externalLink: '1' }, title: 'Ouvrir dans le navigateur', 'aria-label': 'Ouvrir dans le navigateur', html: icon('external', 16) }));
   },
 
   embed(view, el, body) { drawFrameUrl(view, el, body, embedUrl(el.data.url)); },

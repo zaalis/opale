@@ -1,3 +1,4 @@
+import { installMotion } from './motion.js';
 // Opale — start-up: load the vault, build the window, follow server events.
 import { api, app, bus, h, Meta, toast } from './core.js';
 import { store } from './store.js';
@@ -14,6 +15,7 @@ import { syncUi } from './sync.js';
 import { collab } from './collab/client.js';
 import { collabUi } from './collab/ui.js';
 
+installMotion();
 const root = document.getElementById('app');
 
 const ACTIVITY = {
@@ -51,6 +53,7 @@ function connectEvents() {
   source.addEventListener('agent', (event) => { app.agent = JSON.parse(event.data); bus.emit('agent', app.agent); });
   source.addEventListener('activity', (event) => onActivity(JSON.parse(event.data)));
   source.addEventListener('sync', (event) => syncUi.onStatus(JSON.parse(event.data)));
+  source.addEventListener('design', (event) => bus.emit('design-progress', JSON.parse(event.data)));
   source.addEventListener('collab', (event) => collab.onEvent(JSON.parse(event.data)));
   // An assistant asks to show a note: never replace what the user is reading.
   source.addEventListener('open-note', (event) => {

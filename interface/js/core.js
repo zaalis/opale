@@ -9,6 +9,19 @@ export const app = { settings: {}, vault: null, bookmarks: [], agent: {} };
 
 // ------------------------------------------------------------------- icons
 const ICONS = {
+  play: '<path d="m8 4 12 8-12 8Z"/>',
+  download: '<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>',
+  layers: '<path d="m12 3 10 5-10 5L2 8Zm-10 9 10 5 10-5M2 16l10 5 10-5"/>',
+  lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/>',
+  rotate: '<path d="M3 9a9 9 0 1 1 2 9M3 3v6h6"/>',
+  swap: '<path d="M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/>',
+  sparkles: '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM4 2v4M2 4h4"/>',
+
+  design: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6h5a3 3 0 0 1 3 3v5M6 10v8h8"/>',
+
+  camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"/><circle cx="12" cy="13" r="4"/>',
   'board-select': '<path d="m5 3 14 10-7 1-3 7Z"/>',
   'board-hand': '<path d="M8 12V6a1.5 1.5 0 0 1 3 0v5V4a1.5 1.5 0 0 1 3 0v7V6a1.5 1.5 0 0 1 3 0v6V9a1.5 1.5 0 0 1 3 0v6c0 4-2.5 6-6 6h-1c-2 0-3.5-1-4.5-2.5L5 14a1.6 1.6 0 0 1 2.5-2Z"/>',
   'board-text': '<path d="M5 7V4h14v3M12 4v16M8 20h8"/>',
@@ -233,11 +246,14 @@ export function confirmDialog({ title, message, confirm = 'Confirmer', danger = 
 }
 
 // -------------------------------------------------------------------- menus
-let openMenu = null;
-export function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
+let openMenu = null, menuAnchor = null;
+export function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } menuAnchor?.setAttribute("aria-expanded", "false"); menuAnchor = null; }
 // items: { label, icon, run, danger, checked, disabled, hint } or 'separator'
-export function showMenu(x, y, items) {
+export function showMenu(x, y, items, anchor = null) {
+  if (openMenu && anchor && menuAnchor === anchor) { closeMenu(); return null; }
   closeMenu();
+  menuAnchor = anchor;
+  anchor?.setAttribute("aria-expanded", "true");
   const menu = h('div.menu', { role: 'menu' });
   for (const item of items.filter(Boolean)) {
     if (item === 'separator') { menu.append(h('div.menu-separator')); continue; }
@@ -255,7 +271,7 @@ export function showMenu(x, y, items) {
   if (first) first.focus({ preventScroll: true });
   return menu;
 }
-document.addEventListener('mousedown', (event) => { if (openMenu && !openMenu.contains(event.target)) closeMenu(); }, true);
+document.addEventListener('mousedown', (event) => { if (openMenu && !openMenu.contains(event.target) && !menuAnchor?.contains(event.target)) closeMenu(); }, true);
 document.addEventListener('keydown', (event) => {
   if (!openMenu) return;
   if (event.key === 'Escape') { event.stopPropagation(); closeMenu(); return; }

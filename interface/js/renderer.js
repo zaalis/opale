@@ -1,3 +1,4 @@
+import { watchImage } from './media-loading.js';
 // Opale — what rendered Markdown does once it is in the page: links open
 // notes, embeds load their content, tasks can be ticked, code can be copied,
 // and hovering a link previews the note behind it.
@@ -56,7 +57,7 @@ export function decorate(root) {
   for (const embed of root.querySelectorAll('.embed-note[data-embed-path]:not([data-embed-state])')) fillEmbed(embed);
   for (const image of root.querySelectorAll('img.embed-image:not([data-ready])')) {
     image.dataset.ready = '1';
-    image.addEventListener('error', () => image.classList.add('is-broken'), { once: true });
+    watchImage(image);
   }
 }
 

@@ -146,6 +146,7 @@ static DWORD LaunchServer() {
 
     // Lets the server record this shell as the way to start Opale again.
     SetEnvironmentVariableW(L"OPALE_SHELL_EXE", self.c_str());
+    SetEnvironmentVariableW(L"OPALE_SHELL_PID", std::to_wstring(GetCurrentProcessId()).c_str());
 
     g_job = CreateJobObjectW(nullptr, nullptr);
     if (g_job) {
@@ -333,6 +334,43 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
 
                             EventRegistrationToken token;
                             // Links to the web open in the default browser, never in this window.
+                            // Every exported/downloaded file gets an explicit destination.
+                            ComPtr<ICoreWebView2_4> downloads;
+                            if (SUCCEEDED(g_webview.As(&downloads))) {
+                                downloads->add_DownloadStarting(
+                                    Callback<ICoreWebView2DownloadStartingEventHandler>(
+                                        [hwnd](ICoreWebView2*, ICoreWebView2DownloadStartingEventArgs* args) -> HRESULT {
+                                            LPWSTR suggested = nullptr;
+                                            args->get_ResultFilePath(&suggested);
+                                            std::wstring name = suggested ? suggested : L"Moodboard.png";
+                                            if (suggested) CoTaskMemFree(suggested);
+                                            size_t slash = name.find_last_of(L"\\/");
+                                            if (slash != std::wstring::npos) name = name.substr(slash + 1);
+                                            ComPtr<IFileSaveDialog> dialog;
+                                            if (FAILED(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) {
+                                                args->put_Cancel(TRUE); return S_OK;
+                                            }
+                                            dialog->SetTitle(L"Enregistrer sous");
+                                            dialog->SetFileName(name.c_str());
+                                            DWORD flags = 0; dialog->GetOptions(&flags);
+                                            dialog->SetOptions(flags | FOS_FORCEFILESYSTEM | FOS_OVERWRITEPROMPT | FOS_PATHMUSTEXIST);
+                                            size_t dot = name.find_last_of(L'.');
+                                            std::wstring extension = dot == std::wstring::npos ? L"" : name.substr(dot + 1);
+                                            std::wstring pattern = extension.empty() ? L"*.*" : L"*." + extension;
+                                            COMDLG_FILTERSPEC filters[] = { {L"Fichier exporté", pattern.c_str()}, {L"Tous les fichiers", L"*.*"} };
+                                            dialog->SetFileTypes(2, filters);
+                                            if (!extension.empty()) dialog->SetDefaultExtension(extension.c_str());
+                                            if (FAILED(dialog->Show(hwnd))) { args->put_Cancel(TRUE); args->put_Handled(TRUE); return S_OK; }
+                                            ComPtr<IShellItem> destination;
+                                            LPWSTR target = nullptr;
+                                            if (SUCCEEDED(dialog->GetResult(&destination)) && SUCCEEDED(destination->GetDisplayName(SIGDN_FILESYSPATH, &target))) {
+                                                args->put_ResultFilePath(target);
+                                                args->put_Handled(TRUE);
+                                                CoTaskMemFree(target);
+                                            } else args->put_Cancel(TRUE);
+                                            return S_OK;
+                                        }).Get(), &token);
+                            }
                             g_webview->add_NewWindowRequested(
                                 Callback<ICoreWebView2NewWindowRequestedEventHandler>(
                                     [](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* args) -> HRESULT {

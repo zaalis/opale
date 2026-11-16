@@ -1,3 +1,4 @@
+import { AssetTransfer } from './assets.js';
 // Opale — shared projects in the interface: the list of projects, and for
 // each open one its replica, its session with the other computers and its
 // status. Notes and boards of a shared project open in tabs under the path
@@ -34,6 +35,7 @@ export class Project extends Emitter {
     this.lastConflict = this.replica.conflicts[this.replica.conflicts.length - 1];
     this.removed = boot.me.role === 'removed';
     this.mesh = new Mesh(this);
+    this.assets = new AssetTransfer(this);
     const store = {
       persist: (changes, options) => api('/api/collab/persist', { method: 'POST', body: { project: this.id, token: this.token, changes, local: !!options.local, from: options.from || '' } }).then((result) => result.changes),
       since: (vv) => api('/api/collab/since', { method: 'POST', body: { project: this.id, vv } }),
@@ -163,6 +165,8 @@ export class Project extends Emitter {
   async onServer(event) {
     if (event.summary) { this.info = event.summary; }
     switch (event.type) {
+      case 'attachment-needed': this.assets.request(event.id); break;
+      case 'attachment-ready': bus.emit('attachment-ready', { project: this.id, id: event.id }); break;
       case 'changes': await this.pull(); break;
       case 'signal': this.mesh.onSignal(event.from, event.payload); break;
       case 'acl':
@@ -195,7 +199,7 @@ export class Project extends Emitter {
 
   close() {
     clearInterval(this.idleTimer);
-    this.session.close(); this.mesh.close();
+    this.assets.close(); this.session.close(); this.mesh.close();
     api('/api/collab/close', { method: 'POST', body: { project: this.id } }).catch(() => {});
   }
 }

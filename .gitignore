@@ -3,3 +3,7 @@ lib/google-client.json
 dist/*
 !dist/Opale-Setup.exe
 *.log
+
+!dist/update.json
+artifacts/
+*.obj

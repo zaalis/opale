@@ -1,0 +1,3 @@
+
+# Preserve bundled third-party files exactly, including their license formatting.
+interface/vendor/** -text -whitespace

@@ -1,3 +1,4 @@
+import { slide, replaceSliding } from '../motion.js';
 // Opale — shared projects in the left sidebar (« Projets partagés », under
 // the notes) and their windows: create, join, members and permissions, sync
 // status, network settings.
@@ -52,6 +53,7 @@ export const collabUi = {
   },
   toggle() {
     this.collapsed = !this.collapsed; store.set('collapsed', this.collapsed);
+    slide(this.list, !this.collapsed);
     this.el.dataset.collapsed = this.collapsed ? '1' : '';
     this.head.querySelector('.collab-toggle').setAttribute('aria-expanded', String(!this.collapsed));
     this.head.querySelector('.tree-chevron').innerHTML = icon(this.collapsed ? 'chevron-right' : 'chevron-down', 14);
@@ -66,7 +68,7 @@ export const collabUi = {
     for (const summary of overview.projects) rows.push(...this.projectRows(summary));
     if (!overview.projects.length && account.connected && account.sharedScope) rows.push(h('div.panel-empty', 'Aucun projet partagé. Créez-en un ou rejoignez celui d’un collègue avec le bouton +.'));
     this.count.textContent = overview.projects.length ? String(overview.projects.length) : '';
-    this.list.replaceChildren(...rows);
+    replaceSliding(this.list, rows);
     this.markActive();
   },
   accountCard(account) {
@@ -177,6 +179,7 @@ export const collabUi = {
     const role = project ? project.me.role : summary.role;
     showMenu(x, y, [
       { label: 'Nouvelle note', icon: 'file-plus', disabled: !writable, run: async () => this.newFile(await ensure(), 'note', '') },
+      { label: 'Nouveau document Opal Design', icon: 'design', disabled: !writable, run: async () => this.newDesign(await ensure(), '') },
       { label: 'Nouveau moodboard', icon: 'template', disabled: !writable, run: async () => this.newFile(await ensure(), 'board', '') },
       { label: 'Nouveau dossier', icon: 'folder-plus', disabled: !writable, run: async () => this.newFile(await ensure(), 'folder', '') },
       'separator',
@@ -194,6 +197,7 @@ export const collabUi = {
     const folder = file.kind === 'folder';
     showMenu(event.clientX, event.clientY, [
       folder ? { label: 'Nouvelle note ici', icon: 'file-plus', disabled: !writable, run: () => this.newFile(project, 'note', file.id) } : { label: 'Ouvrir dans un nouvel onglet', icon: 'plus', run: () => app.workspace.openPath(project.pathOf(file), { newTab: true }) },
+      folder ? { label: 'Nouveau document Opal Design ici', icon:'design', disabled:!writable,run:()=>this.newDesign(project,file.id) } : null,
       folder ? { label: 'Nouveau moodboard ici', icon: 'template', disabled: !writable, run: () => this.newFile(project, 'board', file.id) } : null,
       folder ? { label: 'Nouveau dossier ici', icon: 'folder-plus', disabled: !writable, run: () => this.newFile(project, 'folder', file.id) } : null,
       'separator',
@@ -205,6 +209,13 @@ export const collabUi = {
         toast(`« ${file.display} » a été supprimé pour tous les participants.`, { action: { label: 'Annuler', run: () => project.restore(file.id) } });
       } },
     ]);
+  },
+  async newDesign(project,parent='') {
+    const name=await promptText({title:'Nouveau document Opal Design',label:'Nom',value:project.uniqueName(parent,'Opal Design','board')});if(!name)return;
+    const id=project.createFile('board',name,parent);if(!id)return;
+    const doc=window.OpaleBoard.emptyDoc();doc.settings.design=true;
+    project.commit(window.OpaleCrdt.metaOps(project.replica,id,null,{layers:doc.layers,settings:doc.settings,vote:null}),{scope:`board:${id}`});
+    this.open.add(project.id);store.set('open',[...this.open]);this.render();app.workspace.openPath(project.pathOf(project.file(id)));
   },
   async newFile(project, kind, parent) {
     const base = kind === 'folder' ? 'Nouveau dossier' : kind === 'board' ? 'Nouveau moodboard' : 'Sans titre';

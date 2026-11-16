@@ -228,3 +228,67 @@ test('membership decisions need the right role and cannot be forged', async () =
     assert.equal(bob.service.ids().length, 0);
   } finally { w.done(); }
 });
+
+
+test('staged attachments return locally while Drive is offline and resume after restart', async () => {
+  const w = world();
+  try {
+    const alice = w.computer('stage-alice', 'alice@example.test');
+    const bob = w.computer('stage-bob', 'bob@example.test');
+    const pid = (await alice.service.create('Immédiat')).projectId;
+    const ra = alice.service.runtime(pid); ra.start();
+    const invite = await ra.invite('bob@example.test', 'editor');
+    await bob.service.join({ code: invite.code });
+    const rb = bob.service.runtime(pid); rb.start();
+    fs.writeFileSync(path.join(w.driveDir, 'offline-alice@example.test'), '');
+    const bytes = Buffer.from('Bonjour <script>aucune exécution</script>');
+    const reference = await ra.stageAttachment('texte.txt', bytes);
+    const id = reference.split('/')[3];
+    assert.match(id, /^sha256-[a-f0-9]{64}$/);
+    assert.deepEqual(fs.readFileSync(await ra.getAttachment(id)), bytes);
+    await ra.flushAttachments();
+    assert.equal(ra.pendingAttachments().length, 1);
+    assert.ok(ra.summary().drive.pending >= 1);
+    // A direct transfer needs no Drive access and is hash-verified.
+    assert.throws(() => rb.cacheAttachment(id, Buffer.from('tampered')), /corrompue/);
+    rb.cacheAttachment(id, bytes);
+    assert.deepEqual(fs.readFileSync(await rb.getAttachment(id, { cacheOnly: true })), bytes);
+    alice.service.closeAll();
+    const restarted = w.computer('stage-alice', 'alice@example.test');
+    const resumed = restarted.service.runtime(pid); resumed.load();
+    assert.equal(resumed.pendingAttachments().length, 1);
+    fs.rmSync(path.join(w.driveDir, 'offline-alice@example.test'));
+    await resumed.flushAttachments();
+    assert.equal(resumed.pendingAttachments().length, 0);
+    const driveFiles = await resumed.api.list(pid);
+    assert.equal(driveFiles.filter(f => f.props.opaleAsset === id).length, 1);
+    // A different computer retrieves by the immutable address from Drive.
+    fs.rmSync(path.join(rb.store.dir, 'attachments', id));
+    assert.deepEqual(fs.readFileSync(await rb.getAttachment(id)), bytes);
+    await resumed.setRole('bob@example.test', 'reader'); await rb.poll();
+    await assert.rejects(rb.stageAttachment('forbidden.txt', bytes), /lecture seule/);
+  } finally { w.done(); }
+});
+
+test('attachments staged during an active upload all drain without duplicate Drive objects', async () => {
+  const w = world();
+  try {
+    const alice = w.computer('parallel', 'alice@example.test');
+    const pid = (await alice.service.create('Uploads')).projectId;
+    const runtime = alice.service.runtime(pid); runtime.load();
+    const realCreate = runtime.api.createBinary.bind(runtime.api);
+    let release, entered;
+    const reached = new Promise(resolve => { entered = resolve; });
+    const hold = new Promise(resolve => { release = resolve; });
+    runtime.api.createBinary = async (...args) => { entered(); await hold; return realCreate(...args); };
+    const first = await runtime.stageAttachment('un.txt', Buffer.from('one'));
+    const upload = runtime.flushAttachments();
+    await reached;
+    const second = await runtime.stageAttachment('deux.txt', Buffer.from('two'));
+    assert.notEqual(first, second);
+    assert.equal(runtime.pendingAttachments().length, 2);
+    release(); await upload;
+    assert.equal(runtime.pendingAttachments().length, 0);
+    assert.equal((await runtime.api.list(pid)).filter(f => f.props.opaleKind === 'attachment').length, 2);
+  } finally { w.done(); }
+});

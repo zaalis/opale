@@ -1,3 +1,4 @@
+import { fetchMedia, watchImage } from './media-loading.js';
 // Opale — the central area: tabs, the view each one shows, and per-tab
 // back/forward history.
 import { api, app, bus, debounce, fileUrl, h, icon, iconButton, Meta, noteTitle, reportError, showMenu } from './core.js';
@@ -28,13 +29,24 @@ class FileView {
     else if (kind === 'pdf') content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
     else if (kind === 'audio') content = h('div.file-stage', h('audio', { controls: true, src: url }));
     else if (kind === 'video') content = h('div.file-stage', h('video.file-video', { controls: true, src: url }));
+    else if (Meta.extOf(path).toLowerCase() === 'txt') {
+      this.abort = new AbortController();
+      content = h('pre.file-text.media-loading', { tabIndex: 0, 'aria-label': Meta.baseName(path), 'aria-busy': 'true' }, 'Chargement du texte…');
+      fetchMedia(url, { signal: this.abort.signal }).then(async response => {
+        if (Number(response.headers.get('content-length')) > 8 * 1024 * 1024) throw new Error('Ce fichier dépasse 8 Mo. Téléchargez-le pour le lire.');
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const utf16 = bytes[0] === 255 && bytes[1] === 254 ? 'utf-16le' : bytes[0] === 254 && bytes[1] === 255 ? 'utf-16be' : 'utf-8';
+        content.textContent = new TextDecoder(utf16).decode(bytes);
+      }).catch(error => { if (error.name !== 'AbortError') content.textContent = error.message; }).finally(() => { content.classList.remove('media-loading'); content.setAttribute('aria-busy', 'false'); });
+    }
     else content = h('div.empty-state', h('p', `Opale n’affiche pas les fichiers « .${Meta.extOf(path) || '?'} ».`),
       isShared(path) ? h('a.btn', { href: url, download: Meta.baseName(path) }, 'Télécharger le fichier') : h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, 'Afficher dans l’Explorateur Windows'));
     this.el = h('div.view.file-view', this.header, content);
+    for (const img of content.querySelectorAll('img')) watchImage(img);
   }
   updateHeader() { this.header.update(); }
   setPath(path) { this.path = path; }
-  destroy() {}
+  destroy() { this.abort?.abort(); }
 }
 
 class EmptyView {

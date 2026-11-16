@@ -1,3 +1,4 @@
+import { installDesign } from '../design/editor.js';
 // Opale — notes and boards of a shared project. They are the usual editors;
 // only where the text comes from and where edits go changes: every edit
 // becomes operations on the project's replica (merged with everyone's, never
@@ -6,6 +7,7 @@
 import { app, bus, h, Meta, showMenu, toast } from '../core.js';
 import { NoteView } from '../note.js';
 import { BoardView, getPath, setPath } from '../board/view.js';
+import { place } from '../board/render.js';
 import { caretPoint, closeSuggest } from '../editing.js';
 import { toShown, toSource } from '../links.js';
 import { collab, parsePath, nameOf } from './client.js';
@@ -365,6 +367,7 @@ export class SharedBoardView extends BoardView {
     this.readDoc();
     this.renderAll();
     this.loaded = true;
+    installDesign(this);
     if (this.savedCamera) this.setCamera(this.savedCamera.x, this.savedCamera.y, this.savedCamera.k);
     else this.zoomToFit(false);
     this.bar = new PresenceBar(this);
@@ -372,7 +375,7 @@ export class SharedBoardView extends BoardView {
     this.header.after(this.bar.pill);
     this.othersLayer = h('div.collab-board-layer', { 'aria-hidden': 'true' });
     this.stage.append(this.othersLayer);
-    this.sendSoon = throttle(() => this.sendPresence(), PRESENCE_EVERY);
+    this.sendSoon = throttle(() => this.sendPresence(), 32);
     this.drawSoon = throttle(() => this.drawOthers(), 16);
     const p = this.project;
     const mine = (effects) => {
@@ -488,7 +491,8 @@ export class SharedBoardView extends BoardView {
     if (!this.history.open) {
       if (this.needSync) this.syncNow();
       if (this.remotePending) this.adoptRemote(this.remoteChanges);
-    } else this.sendSoon && this.sendSoon(); // a gesture in progress is shown live
+    }
+    this.sendSoon && this.sendSoon(); // includes the final position / cancelled gesture
   }
 
   undo() { this.travelShared(-1); }
@@ -640,6 +644,9 @@ export class SharedBoardView extends BoardView {
     const r = this.stageRect();
     const screen = (x, y) => ({ x: this.camera.x + x * this.camera.k, y: this.camera.y + y * this.camera.k });
     const out = [];
+    // Restore last frame's transient transforms from the durable document.
+    for (const id of this.liveGestureIds || []) { const el = this.byId.get(id), node = this.nodes.get(id); if (el && node) { node.style.transformOrigin = ''; place(this, el, node); } }
+    this.liveGestureIds = new Set();
     for (const person of this.project.participants()) {
       const presence = person.presence;
       if (presence.doc !== this.fileId || presence.kind !== 'board') continue;
@@ -653,6 +660,15 @@ export class SharedBoardView extends BoardView {
         out.push(h(`div.collab-box${idle}`, { style: `--who:${person.color};left:${a.x - 3}px;top:${a.y - 3}px;width:${box.w * this.camera.k + 6}px;height:${box.h * this.camera.k + 6}px` }));
       }
       for (const item of presence.gesture || []) {
+        const el = this.byId.get(item.id), node = this.nodes.get(item.id);
+        const ownGesture = this.history.tx && this.history.tx.before.has(item.id);
+        if (el && node && !ownGesture && this.editing?.el.id !== item.id && [item.x, item.y, item.w, item.h, item.r].every(Number.isFinite) && item.w > 0 && item.h > 0) {
+          // The actual image / element follows the remote gesture; the CRDT
+          // receives the final transaction when the pointer is released.
+          node.style.transform = `translate(${item.x}px, ${item.y}px) rotate(${item.r}deg) scale(${item.w / el.w}, ${item.h / el.h})`;
+          node.style.transformOrigin = '0 0';
+          this.liveGestureIds.add(item.id);
+        }
         const a = screen(item.x, item.y);
         out.push(h('div.collab-box.is-ghost', { style: `--who:${person.color};left:${a.x}px;top:${a.y}px;width:${item.w * this.camera.k}px;height:${item.h * this.camera.k}px;transform:rotate(${item.r}deg)` }));
       }

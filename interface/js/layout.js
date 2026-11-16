@@ -1,3 +1,4 @@
+import { installUpdater } from './updater.js';
 // Opale — window frame: ribbon, the two resizable side bars with their tabs,
 // the central area and the status bar.
 import { app, bus, debounce, h, icon, iconButton } from './core.js';
@@ -40,6 +41,7 @@ export const layout = {
       h('div.ribbon-space'),
       iconButton('sparkle', 'Connexion à zaalis IDE', () => app.commands.run('settings:connection'), '.ribbon-agent'));
     this.agentButton = ribbon.querySelector('.ribbon-agent');
+    installUpdater(ribbon);
     this.status = h('footer.statusbar');
     this.resizers = { left: this.resizer('left'), right: this.resizer('right') };
     root.append(h('div.workspace', ribbon, this.sides.left.el, this.resizers.left, this.main, this.resizers.right, this.sides.right.el), this.status);

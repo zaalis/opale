@@ -27,6 +27,7 @@ const VERSION = require('./package.json').version;
 const DEFAULT_PORT = 27184;
 const STATIC_ROOTS = { '/shared/': path.join(__dirname, 'shared'), '/': path.join(__dirname, 'interface') };
 const STATIC_TYPES = {
+  '.mjs': 'text/javascript; charset=utf-8', '.wasm': 'application/wasm', '.bcmap': 'application/octet-stream', '.pfb': 'application/octet-stream', '.ttf': 'font/ttf',
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2',
 };
@@ -79,6 +80,8 @@ function createOpale(options = {}) {
   const miroInfo = () => ({ ...miroService.info(), redirectUri: `http://127.0.0.1:${state.port}/oauth/miro` });
   const sync = new SyncService({ account: google, drive: options.drive || new DriveClient(google), interval: options.syncInterval, device: options.device });
   const collab = options.collab || createCollab(google);
+  const updater = options.updater || new (require('./lib/updater').Updater)();
+  const design = options.design || new (require('./lib/design/service').DesignService)();
 
   // ---------------------------------------------------------------- events
   function broadcast(type, payload) {
@@ -299,10 +302,79 @@ function createOpale(options = {}) {
       const requested = ctx.query.get('path') || '';
       const shared = /^@shared\/([A-Za-z0-9_-]+)\/assets\/([A-Za-z0-9_-]+)\/([^/\\]+)$/.exec(requested);
       if (shared) {
-        const full = await collab.runtime(shared[1]).getAttachment(shared[2]);
+        const full = await collab.runtime(shared[1]).getAttachment(shared[2], { cacheOnly: ctx.query.get('cacheOnly') === '1' });
         serveFile(ctx.req, ctx.res, full, shared[3], ctx.query.get('download') === '1');
       } else serveVaultFile(ctx.req, ctx.res, requested, ctx.query.get('download') === '1');
       return undefined;
+    },
+    'PUT /api/collab/attachment-cache': async (ctx) => {
+      const runtime = collab.runtime(ctx.query.get('project'));
+      runtime.checkToken(ctx.query.get('token'));
+      runtime.cacheAttachment(ctx.query.get('id'), await readBody(ctx.req, MAX_UPLOAD_BYTES));
+      return { ok: true };
+    },
+    'GET /api/design/templates': () => design.templates(),
+    'POST /api/design/templates': async ctx => design.saveTemplate(await ctx.json()),
+    'GET /api/update': () => updater.info(),
+    'POST /api/update/check': () => { updater.check(); return updater.info(); },
+    'POST /api/update/apply': () => updater.apply(),
+    'GET /api/design': () => design.info(),
+    'PUT /api/design/connection': async ctx => { const body=await ctx.json(); return design.configure(String(body.provider||''),body); },
+    'DELETE /api/design/connection': async ctx => design.disconnect(String((await ctx.json()).provider||'')),
+    'POST /api/design/models': async ctx => design.discover(String((await ctx.json()).provider||'')),
+    'POST /api/design/auth/start': async ctx => design.start(String((await ctx.json()).provider||'')),
+    'POST /api/design/auth/poll': async ctx => { const body=await ctx.json(); return design.poll(String(body.provider||''),String(body.flowId||'')); },
+    'DELETE /api/design/auth': async ctx => design.cancel(String((await ctx.json()).flowId||'')),
+    'POST /api/design/run': async ctx => {
+      const body=await ctx.json(); const source=String(body.source||'');
+      const project=/^@shared\/([A-Za-z0-9_-]+)\//.exec(source);
+      if(project){const runtime=collab.runtime(project[1]); runtime.load(); if(!runtime.myAccess().ok||runtime.role()==='reader')throw new VaultError('Ce projet est en lecture seule.',403,'readonly');}else needVault();
+      const readImage=async requested=>{
+        if(typeof requested!=='string'||!requested)throw new VaultError('Image d’entrée manquante.');
+        const shared=/^@shared\/([A-Za-z0-9_-]+)\/assets\/([A-Za-z0-9_-]+)\/([^/\\]+)$/.exec(requested);
+        if(project&&(!shared||shared[1]!==project[1]))throw new VaultError('Cette image doit appartenir au projet partagé.',403,'isolation');
+        const full=shared?await collab.runtime(shared[1]).getAttachment(shared[2]):needVault().abs(needVault().canonical(cleanRelative(requested)));
+        if(fs.statSync(full).size>25*1024*1024)throw new VaultError('L’image dépasse 25 Mo. Utilisez un nœud de redimensionnement.',413,'too-large');
+        const bytes=fs.readFileSync(full);const ext=require('./lib/miro-media').imageExtension(bytes);if(!ext)throw new VaultError('Utilisez une image PNG, JPEG, GIF ou WebP pour ce modèle.');
+        return {bytes,mime:`image/${ext==='jpg'?'jpeg':ext}`};
+      };
+      const images=await Promise.all((Array.isArray(body.images)?body.images:[]).slice(0,4).map(readImage));
+      const mask=body.mask?await readImage(body.mask):undefined;
+      const controller=new AbortController();ctx.res.on('close',()=>{if(!ctx.res.writableEnded)controller.abort();});
+      const result=await design.run({...body,images,mask},{signal:controller.signal,onDelta:delta=>broadcast('design',{runId:String(body.runId||''),delta})});
+      if(result.bytes){const ext=require('./lib/miro-media').imageExtension(result.bytes);if(!ext||result.bytes.length>25*1024*1024)throw new VaultError('Le modèle a renvoyé une image non prise en charge.',502,'invalid-image');
+        const name=`Opal Design ${Date.now()}.${ext}`;let saved;
+        if(project)saved=await collab.runtime(project[1]).stageAttachment(name,result.bytes);
+        else {const vault=needVault();saved=vault.uniquePath(vault.attachmentFolder(source),name.slice(0,-ext.length-1),ext);vault.writeBinary(saved,result.bytes);}
+        return {file:saved};
+      }
+      return {text:result.text||''};
+    },
+    'GET /api/link-icon': async (ctx) => {
+      let target;
+      try { target = new URL(ctx.query.get('url')); } catch { throw new VaultError('Lien invalide.'); }
+      if (!['https:', 'http:'].includes(target.protocol) || target.username || target.password) throw new VaultError('Lien invalide.');
+      const iconUrl = new URL('/favicon.ico', target); iconUrl.protocol = 'https:';
+      const media = require('./lib/miro-media.js');
+      const bytes = await media.download(iconUrl.href, 0, 512 * 1024);
+      const ext = media.imageExtension(bytes);
+      const ico = bytes.length > 6 && bytes.readUInt32LE(0) === 0x00010000;
+      if (!ext && !ico) throw new VaultError('Icône indisponible.', 404, 'missing');
+      ctx.res.writeHead(200, { 'Content-Type': ico ? 'image/x-icon' : `image/${ext === 'jpg' ? 'jpeg' : ext}`, 'Content-Length': bytes.length, 'Cache-Control': 'private, max-age=86400', 'Content-Security-Policy': "sandbox; default-src 'none'" });
+      ctx.res.end(bytes); return undefined;
+    },
+    'POST /api/presentation-pdf': async (ctx) => {
+      const source = ctx.query.get('source') || '';
+      const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(source);
+      if (shared) {
+        const runtime = collab.runtime(shared[1]); runtime.load();
+        if (!runtime.myAccess().ok || runtime.role() === 'reader') throw new VaultError('Ce projet est en lecture seule.', 403, 'readonly');
+      } else needVault();
+      const ext = String(ctx.query.get('ext') || '').toLowerCase();
+      const bytes = await readBody(ctx.req, MAX_UPLOAD_BYTES);
+      const pdf = await require('./lib/presentation-import.js').convertPresentation(bytes, ext);
+      ctx.res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Cache-Control': 'no-store' });
+      ctx.res.end(pdf); return undefined;
     },
     // Import only public, validated raster images; never fetch local network addresses.
     'POST /api/image-from-url': async (ctx) => {
@@ -312,7 +384,7 @@ function createOpale(options = {}) {
       const ext = media.imageExtension(bytes);
       if (!ext) throw new VaultError('Le lien ne contient pas une image PNG, JPEG, GIF ou WebP valide.', 400, 'invalid-image');
       const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(String(body.source || ''));
-      if (shared) return { path: await collab.runtime(shared[1]).putAttachment(`Image internet.${ext}`, bytes) };
+      if (shared) return { path: await collab.runtime(shared[1]).stageAttachment(`Image internet.${ext}`, bytes) };
       const vault = needVault();
       const folder = vault.attachmentFolder(String(body.source || ''));
       const target = vault.uniquePath(folder, 'Image internet', ext);
@@ -324,7 +396,7 @@ function createOpale(options = {}) {
       const name = cleanRelative(String(ctx.query.get('name') || 'Fichier'));
       if (name.includes('/')) throw new VaultError('Nom de fichier invalide.');
       const shared = /^@shared\/([A-Za-z0-9_-]+)\//.exec(ctx.query.get('source') || '');
-      if (shared) return { path: await collab.runtime(shared[1]).putAttachment(name, await readBody(ctx.req, MAX_UPLOAD_BYTES)) };
+      if (shared) return { path: await collab.runtime(shared[1]).stageAttachment(name, await readBody(ctx.req, MAX_UPLOAD_BYTES)) };
       const vault = needVault();
       // A folder is supplied only by the explicit “add image” action in the
       // explorer. Keep ordinary paste/drop attachments governed by settings.
@@ -576,7 +648,7 @@ function createOpale(options = {}) {
 
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Méthode refusée.' });
     res.setHeader('Content-Security-Policy', [
-      "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https: http:",
+      "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", "worker-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https: http:",
       "media-src 'self' blob: https:", "font-src 'self' data:", "connect-src 'self'", "frame-src 'self' https:", "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
     ].join('; '));
     return serveStatic(req, res, pathname);
@@ -611,6 +683,7 @@ function createOpale(options = {}) {
       const initial = options.vaultPath || config.lastVault;
       if (initial && fs.existsSync(initial)) { try { openVault(initial); } catch {} }
       publishInstance();
+      if (updater.info().supported) { updater.check(); updater.timer = setInterval(() => updater.check(), 3600000); updater.timer.unref(); }
       return state.port;
     },
     close() {
@@ -620,6 +693,8 @@ function createOpale(options = {}) {
         clients.clear();
         sync.detach();
         collab.closeAll();
+        design.close?.();
+        updater.close();
         if (state.vault) { state.vault.close(); state.vault = null; }
         appdata.clearInstance();
         server.close(() => resolve());

@@ -67,6 +67,37 @@ Services extérieurs utilisés : Google Drive (stockage, signalisation) et, pour
 connexion directe, les serveurs STUN de Google, qui voient l'adresse IP de chaque
 ordinateur. Les membres du projet voient aussi ces adresses dans la signalisation.
 
+## Réactivité et pièces jointes
+
+Le dépôt d’un fichier affiche immédiatement un aperçu local (ou une surface de
+chargement discrète). Le serveur enregistre les octets et leur adresse SHA-256
+localement, puis répond sans attendre Drive. Une file atomique
+`attachment-outbox.json` dans le dossier local du projet conserve les envois en
+attente ; elle est reprise à l’ouverture du projet. L’état de synchronisation
+compte aussi ces pièces jointes, même si les opérations du document sont déjà
+sauvegardées.
+
+L’adresse immuable est partagée avec la note ou l’élément du moodboard. Si les
+partenaires sont reliés par WebRTC, un fichier de 24 Mio au plus est demandé à
+un appareil qui en a une copie et transmis par blocs, avec régulation du débit
+pour laisser passer le texte et les gestes. Le destinataire vérifie le SHA-256
+avant de le mettre en cache. Drive garde une copie durable et permet aussi aux
+appareils qui arrivent plus tard de récupérer le fichier. Les anciennes adresses
+fondées sur un identifiant Drive restent lisibles.
+
+Pendant un déplacement ou un redimensionnement, l’élément lui-même suit le geste
+chez les autres, à une cadence limitée à environ 31 mises à jour par seconde ;
+la transaction définitive passe ensuite par le CRDT. Ces aperçus ne modifient pas
+l’historique d’annulation du destinataire. Le texte continue à être transmis au
+fil de la saisie. Un squelette à reflet animé réserve la place d’une image tant
+que ses octets n’ont pas été reçus ; l’animation respecte la réduction des
+mouvements. Une image en transfert est retentée pendant deux minutes, puis un
+état d’erreur est affiché plutôt qu’un chargement infini.
+
+Les deux ordinateurs doivent utiliser cette version pour le nouveau protocole de
+pièces jointes. La latence dépend du réseau ; le transfert intégral d’un fichier
+volumineux ne peut pas être instantané.
+
 ## Coordinateur
 
 Parmi les ordinateurs connectés, celui qui a le plus petit identifiant et un rôle qui

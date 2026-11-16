@@ -58,6 +58,11 @@ enum Target { NONE, PRIMARY, SECONDARY, DESKTOP, LAUNCH };
 static Stage stage = Stage::Ready;
 static bool desktopShortcut = true, launchAfter = true;
 static int hot = NONE, pressed = NONE;
+static bool updateMode = false;
+static std::wstring updateDestination;
+static HANDLE updateParents[2] = {};
+static ULONGLONG updateStarted = 0;
+static int updateProgress = 0;
 static REAL scale = 1;
 static FontFamily* uiFamily;
 static FontFamily* strongFamily;
@@ -104,7 +109,7 @@ static void RegisterUninstaller(const std::wstring& destination) {
     HKEY key = nullptr;
     if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Opale", 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS) return;
     const auto set = [&](const wchar_t* name, const std::wstring& value) { RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()), DWORD((value.size() + 1) * sizeof(wchar_t))); };
-    set(L"DisplayName", L"Opale"); set(L"DisplayVersion", L"0.1.0"); set(L"Publisher", L"zaalis");
+    set(L"DisplayName", L"Opale"); set(L"DisplayVersion", L"0.2.0"); set(L"Publisher", L"zaalis");
     set(L"InstallLocation", destination); set(L"DisplayIcon", destination + L"\\Opale.exe");
     set(L"UninstallString", L"\"" + destination + L"\\Uninstall Opale.exe\"");
     DWORD noModify = 1; RegSetValueExW(key, L"NoModify", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&noModify), sizeof(noModify));
@@ -128,6 +133,42 @@ static bool Install(HWND window) {
     // Shortcuts keep the old icon until the shell drops its cached copy.
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
     if (launchAfter) ShellExecuteW(window, L"open", exe.c_str(), nullptr, destination.c_str(), SW_SHOWNORMAL);
+    return true;
+}
+
+// The updater writes every payload before replacing any installed file.
+static bool InstallUpdate(HWND window) {
+    std::vector<std::wstring> targets, backups;
+    for (const auto& payload : payloads) {
+        std::wstring target = updateDestination + L"\\" + payload.name;
+        if (!WriteResource(payload.id, target + L".update-new")) return false;
+        targets.push_back(target);
+        updateProgress = int(targets.size() * 50 / 4);
+        InvalidateRect(window, nullptr, FALSE); UpdateWindow(window);
+    }
+    size_t committed = 0;
+    for (const auto& target : targets) {
+        const std::wstring backup = target + L".update-old";
+        DeleteFileW(backup.c_str());
+        bool existed = GetFileAttributesW(target.c_str()) != INVALID_FILE_ATTRIBUTES;
+        if (existed && !MoveFileExW(target.c_str(), backup.c_str(), MOVEFILE_WRITE_THROUGH)) break;
+        if (!MoveFileExW((target + L".update-new").c_str(), target.c_str(), MOVEFILE_WRITE_THROUGH)) {
+            if (existed) MoveFileExW(backup.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING);
+            break;
+        }
+        backups.push_back(existed ? backup : L"");
+        ++committed;
+        updateProgress = 50 + int(committed * 50 / 4);
+        InvalidateRect(window, nullptr, FALSE); UpdateWindow(window);
+    }
+    if (committed != targets.size()) {
+        for (size_t i = 0; i < committed; ++i) {
+            DeleteFileW(targets[i].c_str());
+            if (!backups[i].empty()) MoveFileExW(backups[i].c_str(), targets[i].c_str(), MOVEFILE_REPLACE_EXISTING);
+        }
+        return false;
+    }
+    for (const auto& backup : backups) if (!backup.empty()) DeleteFileW(backup.c_str());
     return true;
 }
 
@@ -220,6 +261,19 @@ static void Paint(Graphics& g) {
     g.ScaleTransform(scale, scale);
     g.Clear(BG);
 
+    if (updateMode) {
+        DrawGem(g, 34, 35, 46);
+        const wchar_t* title = stage == Stage::Done ? L"Redémarrage en cours" : stage == Stage::Failed ? L"Mise à jour interrompue" : L"Installation de la dernière version d'Opale";
+        Text(g, title, RectF(94, 35, 430, 64), 19, INK, true);
+        Text(g, stage == Stage::Failed ? L"Les fichiers précédents ont été conservés. Fermez cette fenêtre puis relancez Opale." : updateProgress == 0 ? L"Fermeture d'Opale en cours..." : L"Vos documents et vos réglages sont conservés.", RectF(34, 127, 490, 52), 13, MUTED);
+        Pen track(LINE, 5), progress(AMBER, 5);
+        g.DrawArc(&track, 38.f, 218.f, 60.f, 60.f, -90.f, 360.f);
+        g.DrawArc(&progress, 38.f, 218.f, 60.f, 60.f, -90.f, 360.f * updateProgress / 100.f);
+        std::wstring label = std::to_wstring(updateProgress) + L" %";
+        Text(g, label.c_str(), RectF(112, 226, 300, 36), 22, INK, true);
+        return;
+    }
+
     // A faint amber glow behind the gem — the only ornament.
     GraphicsPath glowPath; glowPath.AddEllipse(-140.f, -190.f, 460.f, 400.f);
     PathGradientBrush glow(&glowPath);
@@ -282,6 +336,28 @@ static void Resize(HWND window, UINT dpi) {
 
 static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
+    case WM_TIMER:
+        if (updateMode && wParam == 71) {
+            bool waiting = false;
+            for (HANDLE parent : updateParents) if (parent && WaitForSingleObject(parent, 0) == WAIT_TIMEOUT) waiting = true;
+            if (waiting && GetTickCount64() - updateStarted < 45000) return 0;
+            KillTimer(window, 71);
+            if (waiting) { stage = Stage::Failed; InvalidateRect(window, nullptr, FALSE); return 0; }
+            for (HANDLE& parent : updateParents) { if (parent) CloseHandle(parent); parent = nullptr; }
+            stage = InstallUpdate(window) ? Stage::Done : Stage::Failed;
+            InvalidateRect(window, nullptr, FALSE); UpdateWindow(window);
+            if (stage == Stage::Done) SetTimer(window, 72, 700, nullptr);
+            return 0;
+        }
+        if (updateMode && wParam == 72) {
+            KillTimer(window, 72);
+            const auto exe = updateDestination + L"\\Opale.exe";
+            const auto result = (INT_PTR)ShellExecuteW(window, L"open", exe.c_str(), nullptr, updateDestination.c_str(), SW_SHOWNORMAL);
+            if (result > 32) DestroyWindow(window);
+            else { stage = Stage::Failed; InvalidateRect(window, nullptr, FALSE); }
+            return 0;
+        }
+        break;
     case WM_ERASEBKGND: return 1;
     case WM_PAINT: {
         PAINTSTRUCT ps{}; HDC dc = BeginPaint(window, &ps);
@@ -301,7 +377,7 @@ static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPA
     case WM_SETCURSOR:
         if (LOWORD(lParam) == HTCLIENT) { SetCursor(LoadCursorW(nullptr, hot != NONE ? IDC_HAND : IDC_ARROW)); return TRUE; }
         break;
-    case WM_LBUTTONDOWN: pressed = hot; SetCapture(window); InvalidateRect(window, nullptr, FALSE); return 0;
+    case WM_LBUTTONDOWN: if (updateMode) return 0; pressed = hot; SetCapture(window); InvalidateRect(window, nullptr, FALSE); return 0;
     case WM_LBUTTONUP: {
         ReleaseCapture();
         const int target = pressed; pressed = NONE;
@@ -310,6 +386,7 @@ static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPA
         return 0;
     }
     case WM_KEYDOWN:
+        if (updateMode) { if (stage == Stage::Failed && wParam == VK_ESCAPE) DestroyWindow(window); return 0; }
         if (wParam == VK_RETURN && stage != Stage::Installing) Activate(window, PRIMARY);
         else if (wParam == VK_ESCAPE && stage != Stage::Installing) DestroyWindow(window);
         return 0;
@@ -335,6 +412,14 @@ static FontFamily* PickFamily(std::initializer_list<const wchar_t*> names) {
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
+    int argc = 0; auto argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argc == 5 && std::wstring(argv[1]) == L"--update") {
+        updateDestination = argv[4];
+        if (PathIsRelativeW(updateDestination.c_str()) || updateDestination.find(L"\"") != std::wstring::npos) { LocalFree(argv); return 1; }
+        for (int i = 0; i < 2; ++i) { DWORD pid = wcstoul(argv[i+2], nullptr, 10); if (pid) updateParents[i] = OpenProcess(SYNCHRONIZE, FALSE, pid); }
+        updateMode = true; stage = Stage::Installing; updateStarted = GetTickCount64();
+    }
+    if (argv) LocalFree(argv);
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     GdiplusStartupInput gdiplusInput; ULONG_PTR gdiplusToken = 0;
@@ -354,6 +439,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     Resize(window, GetDpiForWindow(window));
 
     ShowWindow(window, SW_SHOW); UpdateWindow(window);
+    if (updateMode) SetTimer(window, 71, 150, nullptr);
     MSG msg{}; while (GetMessageW(&msg, nullptr, 0, 0)) { TranslateMessage(&msg); DispatchMessageW(&msg); }
     delete uiFamily; delete strongFamily;
     GdiplusShutdown(gdiplusToken); CoUninitialize(); return 0;

@@ -1,3 +1,4 @@
+import { replaceSliding } from './motion.js';
 // Opale — file explorer: the vault's folders and files as a tree, with
 // create, rename, move (drag and drop), duplicate and delete.
 import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, reportError, showMenu, toast } from './core.js';
@@ -21,7 +22,8 @@ export const explorer = {
     this.el = h('div.panel.explorer',
       h('div.panel-toolbar',
         iconButton('file-plus', 'Nouvelle note (Ctrl+N)', () => this.newNote(this.targetFolder())),
-        iconButton('template', 'Nouveau moodboard', () => this.newBoard(this.targetFolder())),
+        iconButton('template', 'Nouveau moodboard', event => this.boardMenu(event)),
+        iconButton('design', 'Nouveau document Opal Design', () => this.newBoard(this.targetFolder(), 'design')),
         iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder())),
         iconButton('folder-plus', 'Nouveau dossier', () => this.newFolder(this.targetFolder())),
         iconButton('sort', 'Ordre de tri', (event) => this.sortMenu(event)),
@@ -73,7 +75,7 @@ export const explorer = {
     };
     walk('', 0);
     if (!rows.length) rows.push(h('div.panel-empty', 'Ce coffre est vide. Créez une note avec Ctrl+N.'));
-    this.list.replaceChildren(...rows);
+    replaceSliding(this.list, rows);
     if (this.renaming) this.startRename(this.renaming);
   },
 
@@ -241,9 +243,12 @@ export const explorer = {
     })));
   },
 
-  async newBoard(folder = this.targetFolder()) {
+  boardMenu(event) { const r=event.currentTarget.getBoundingClientRect();showMenu(r.left,r.bottom,[['board','Moodboard libre'],['design','Opal Design · atelier IA'],['kanban','Tableau Kanban'],['table','Tableau de données'],['mindmap','Carte mentale'],['timeline','Planning']].map(([kind,label])=>({label,icon:kind==='design'?'design':'template',run:()=>this.newBoard(this.targetFolder(),kind)}))); },
+  async newBoard(folder = this.targetFolder(), kind = 'board') {
     try {
-      const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas' } });
+      const doc=window.OpaleBoard.emptyDoc();
+      if(kind==='design')doc.settings.design=true;else if(kind!=='board')doc.elements.push(window.OpaleBoard.create(kind,{x:0,y:0}));
+      const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas', ...(kind==='design'?{name:'Opal Design'}:{}), content:window.OpaleBoard.serialize(doc) } });
       await app.workspace.waitFor(created.path);
       this.selected = created.path;
       this.reveal(created.path);

@@ -1,3 +1,4 @@
+import { designSettingsPane } from './design/settings.js';
 // Opale — settings window, and the application of settings to the page.
 import { api, app, bus, confirmDialog, h, icon, openModal, reportError, toast } from './core.js';
 import { store } from './store.js';
@@ -8,7 +9,7 @@ const ACCENTS = ['#fbbf24', '#8b7cf6', '#38bdf8', '#2dd4bf', '#4ade80', '#fb7185
 
 const SECTIONS = [
   ['editor', 'Éditeur'], ['files', 'Fichiers et liens'], ['appearance', 'Apparence'], ['daily', 'Notes quotidiennes et modèles'],
-  ['hotkeys', 'Raccourcis clavier'], ['plugins', 'Plugins'], ['integrations', 'Intégrations'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
+  ['design', 'Opal Design'], ['hotkeys', 'Raccourcis clavier'], ['plugins', 'Plugins'], ['integrations', 'Intégrations'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
 ];
 
 function row(label, hint, control) {
@@ -32,6 +33,7 @@ function text(key, label, placeholder) {
 }
 
 const PANES = {
+  design: () => [designSettingsPane()],
   plugins: () => [pluginsUi.pane()],
   editor: () => [
     row('Mode par défaut', 'Comment une note s’ouvre.', select('defaultMode', 'Mode par défaut', [['live', 'Aperçu en direct'], ['source', 'Source'], ['reading', 'Lecture']])),
