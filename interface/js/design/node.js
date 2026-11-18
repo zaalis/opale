@@ -37,6 +37,10 @@ export function renderDesignNode(view, node, body) {
     actions.append(
       button("Arrêter ce nœud", () => controller.stop(node.id), "x"),
     );
+  else if (data.tool === "start")
+    actions.append(
+      button("Exécuter la chaîne", () => controller.run(node.id), "play"),
+    );
   else if (!["prompt", "image", "note", "mask"].includes(data.tool))
     actions.append(
       button("Exécuter ce nœud", () => controller.run(node.id), "play"),
@@ -291,7 +295,9 @@ export function renderDesignNode(view, node, body) {
   content.append(footer);
   body.append(content);
   let index = 0;
-  for (const [port, type] of Object.entries(spec.inputs)) {
+  const ports = Object.entries(spec.inputs);
+  if (node.data.tool !== "start") ports.push(["flow", "flow"]);
+  for (const [port, type] of ports) {
     const connected = Graph.links(view.doc).some(
       (link) => link.to === node.id && link.port === port,
     );
@@ -306,7 +312,7 @@ export function renderDesignNode(view, node, body) {
         disabled: view.readOnly,
         onClick: () => controller.port(node.id, port),
       },
-      h("span.dn-port-label", port),
+      h("span.dn-port-label", port === "flow" ? "Suite" : port),
     );
     body.append(dot);
     index++;
@@ -316,14 +322,14 @@ export function renderDesignNode(view, node, body) {
       `button.dn-port.dn-output.design-control.type-${spec.output}`,
       {
         type: "button",
-        title: `Sortie · ${spec.output}`,
+        title: spec.output === "flow" ? "Chaîne · à relier vers Suite" : `Sortie · ${spec.output}`,
         "aria-label": `Sortie du nœud ${node.id}`,
         style: { top: "62px" },
         disabled: view.readOnly,
         onPointerdown: (event) => controller.startPortDrag(event, node.id),
         onClick: () => controller.port(node.id),
       },
-      h("span.dn-port-label", "Résultat"),
+      h("span.dn-port-label", spec.output === "flow" ? "Chaîne" : "Résultat"),
     ),
   );
 }

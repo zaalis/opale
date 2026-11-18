@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "version": "0.2.0",
-  "buildId": "a8e5cc06c12f14228327958b410a13f00b3b4bc4de80bc801eda072638881c67",
-  "builtAt": 1794858146379,
-  "file": "Opale_0.2.0_linux-amd64.tar.gz",
-  "bytes": 30397725,
-  "sha256": "3ff2650ca012975950edac07f9587a2323d6795ab63700a02482086ea828da78",
+  "version": "0.3.0",
+  "buildId": "fc8eea1491c016937c580c77eb1bac6fc7bbb407c309e970691eff181e369dfe",
+  "builtAt": 1795013876016,
+  "file": "Opale_0.3.0_linux-amd64.tar.gz",
+  "bytes": 68616317,
+  "sha256": "4683aeaaff475a6ba5140057618d10623a93afc5de0843d423864e6905285e61",
   "deb": {
-    "file": "Opale_0.2.0_amd64.deb",
-    "bytes": 30375882,
-    "sha256": "480134c4bf719a51fa206dbc409a74546955b82db5b1cd303c8fd50a11e6b9ba"
+    "file": "Opale_0.3.0_amd64.deb",
+    "bytes": 68589202,
+    "sha256": "f9cae03fb0e2c86338cd02366fa23a9ebbfa354904cd900df8444d9feaa6a1e5"
   }
 }

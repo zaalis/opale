@@ -66,6 +66,11 @@ export async function transform(tool, files, params = {}) {
   const first = await loadCanvas(files.image || files.mask);
   let width = first.width,
     height = first.height;
+  if (tool === "upscale") {
+    const scale = Math.max(1, Math.min(4, Number(params.scale) || 2));
+    width = Math.max(1, Math.round(first.width * scale));
+    height = Math.max(1, Math.round(first.height * scale));
+  }
   if (tool === "resize") {
     width = params.width === undefined ? width : Number(params.width);
     height =
@@ -223,6 +228,38 @@ export async function transform(tool, files, params = {}) {
       pixels.data[i * 4 + 3] = 255;
     }
     ctx.putImageData(pixels, 0, 0);
+  } else if (tool === "sharpen") {
+    ctx.drawImage(first, 0, 0, width, height);
+    const image = ctx.getImageData(0, 0, width, height);
+    const src = new Uint8ClampedArray(image.data);
+    const amount = Math.max(0, Math.min(100, Number(params.amount ?? 60))) / 100;
+    const at = (x, y, c) => src[(y * width + x) * 4 + c];
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const i = (y * width + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const value = at(x, y, c) * (1 + 4 * amount) - amount * (at(x - 1, y, c) + at(x + 1, y, c) + at(x, y - 1, c) + at(x, y + 1, c));
+          image.data[i + c] = Math.max(0, Math.min(255, value));
+        }
+      }
+    }
+    ctx.putImageData(image, 0, 0);
+  } else if (tool === "cutout") {
+    ctx.drawImage(first, 0, 0, width, height);
+    const image = ctx.getImageData(0, 0, width, height);
+    const sample = (x, y) => {
+      const i = (y * width + x) * 4;
+      return [image.data[i], image.data[i + 1], image.data[i + 2]];
+    };
+    const corners = [sample(0, 0), sample(width - 1, 0), sample(0, height - 1), sample(width - 1, height - 1)];
+    const bg = corners[0].map((_, c) => corners.reduce((sum, color) => sum + color[c], 0) / corners.length);
+    const tolerance = Math.max(1, Math.min(120, Number(params.threshold) || 28));
+    for (let i = 0; i < image.data.length; i += 4) {
+      const distance = Math.hypot(image.data[i] - bg[0], image.data[i + 1] - bg[1], image.data[i + 2] - bg[2]);
+      if (distance <= tolerance) image.data[i + 3] = 0;
+      else if (distance < tolerance * 1.6) image.data[i + 3] = Math.round(image.data[i + 3] * ((distance - tolerance) / (tolerance * 0.6)));
+    }
+    ctx.putImageData(image, 0, 0);
   } else {
     if (tool === "blur")
       ctx.filter = `blur(${Math.max(0, Math.min(100, Number(params.radius ?? 6)))}px)`;

@@ -57,6 +57,10 @@ test("design links are typed and cyclic graphs are refused", () => {
     Graph.plan(doc, "c").map((n) => n.id),
     ["a", "b", "c"],
   );
+  const chain = { elements: [node("s", "start"), node("p", "prompt"), node("g", "generate"), edge("sp", "s", "p", "flow"), edge("pg", "p", "g", "text")] };
+  assert.equal(Graph.validateLink(chain, "s", "p", "flow"), true);
+  assert.deepEqual(Graph.plan(chain).map((n) => n.id), ["s", "p", "g"]);
+  assert.deepEqual(Graph.plan(chain, "s").map((n) => n.id), ["s", "p", "g"]);
   doc.elements.push(edge("cb", "c", "b", "text"));
   assert.throws(() => Graph.plan(doc), /boucle/);
 });

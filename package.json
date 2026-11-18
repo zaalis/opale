@@ -1,6 +1,6 @@
 {
   "name": "opale",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Opale — carnet de notes Markdown local, relié par des liens, avec graphe et connexion MCP pour zaalis IDE.",
   "main": "server.js",
   "bin": "server.js",

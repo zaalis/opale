@@ -53,6 +53,16 @@ export function render(view, el, node) {
   node.renderKey = key;
   const draw = DRAW[el.kind] || WIDGETS[el.kind] && WIDGETS[el.kind].render || DRAW.mdcard;
   draw(view, el, node.body, node);
+  if (['text', 'sticky', 'shape', 'mdcard'].includes(el.kind)) {
+    const target = node.body.querySelector('.b-mdcard-inner,.b-shape-text,.b-sticky-text') || node.body;
+    const s = el.style;
+    if (s.fontFamily && /^[A-Za-z][A-Za-z0-9 ]{0,70}$/.test(s.fontFamily)) target.style.fontFamily = `'${s.fontFamily}'`;
+    if (s.weight && /^[1-9]00$/.test(String(s.weight))) target.style.fontWeight = String(s.weight);
+    if (s.italic !== undefined) target.style.fontStyle = s.italic ? 'italic' : 'normal';
+    target.style.textDecoration = [s.underline && 'underline', s.strike && 'line-through'].filter(Boolean).join(' ') || '';
+    if (s.highlight && /^#[a-f0-9]{6}$/i.test(s.highlight)) target.style.backgroundColor = s.highlight;
+  }
+
   node.classList.toggle('has-reactions', !!(el.reactions && Object.keys(el.reactions).length));
   drawReactions(el, node);
 }

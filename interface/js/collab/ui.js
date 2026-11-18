@@ -214,7 +214,8 @@ export const collabUi = {
     const name=await promptText({title:'Nouveau document Opal Design',label:'Nom',value:project.uniqueName(parent,'Opal Design','board')});if(!name)return;
     const id=project.createFile('board',name,parent);if(!id)return;
     const doc=window.OpaleBoard.emptyDoc();doc.settings.design=true;
-    project.commit(window.OpaleCrdt.metaOps(project.replica,id,null,{layers:doc.layers,settings:doc.settings,vote:null}),{scope:`board:${id}`});
+    doc.elements.push(window.OpaleBoard.create('design',{x:120,y:160,w:280,h:140,data:{tool:'start',title:'Départ',text:''}}));
+    project.commit(window.OpaleCrdt.boardDocOps(project.replica,id,doc),{scope:`board:${id}`});
     this.open.add(project.id);store.set('open',[...this.open]);this.render();app.workspace.openPath(project.pathOf(project.file(id)));
   },
   async newFile(project, kind, parent) {

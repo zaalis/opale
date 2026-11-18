@@ -64,5 +64,5 @@ export async function importPresentation(ui, file, at) {
     return imported;
   } catch (error) {
     if (!cancelled && error.name !== 'AbortError') throw passwordRequired ? new Error('Ce PDF est protégé par un mot de passe. Déposez une copie déverrouillée.') : error;
-  } finally { if (pdf) await pdf.destroy(); else if (task) await task.destroy().catch(() => {}); panel.remove(); }
+  } finally { if (task) await task.destroy().catch(() => {}); panel.remove(); }
 }

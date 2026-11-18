@@ -130,6 +130,13 @@ async function insertTemplate() {
 
 function format(kind) {
   const view = note();
+  if (view?.mode === 'rich' && view.rich) {
+    const commands = { bold: 'bold', italic: 'italic', strike: 'strikeThrough', bullet: 'insertUnorderedList', numbered: 'insertOrderedList', underline: 'underline' };
+    if (commands[kind]) return view.rich.command(commands[kind]);
+    if (kind === 'highlight') return view.rich.apply({ highlight: '#facc15' });
+    if (/^h[1-6]$/.test(kind)) return view.rich.command('formatBlock', kind);
+    if (kind === 'paragraph' || kind === 'quote') return view.rich.command('formatBlock', kind === 'quote' ? 'blockquote' : 'p');
+  }
   const textarea = view && view.activeTextarea();
   if (!textarea) return toast('Placez le curseur dans le texte (mode édition) pour mettre en forme.');
   textarea.focus();
@@ -231,7 +238,7 @@ export const commands = {
     register('settings:connection', 'Connexion à zaalis IDE', () => app.settings_ui.open('connection'));
     register('theme:toggle', 'Basculer entre thème clair et sombre', () => app.settings_ui.change({ theme: app.settings.theme === 'light' ? 'dark' : 'light' }));
     register('vault:switch', 'Changer de coffre', () => app.launcher.open());
-    register('vault:reveal', 'Afficher le coffre dans l’gestionnaire de fichiers', () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError));
+    register('vault:reveal', 'Afficher le coffre dans le gestionnaire de fichiers', () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError));
     register('app:reload', 'Recharger Opale', () => ws.flushAll().then(() => location.reload()), { hotkey: 'Ctrl+R' });
 
     document.addEventListener('keydown', onKeydown);

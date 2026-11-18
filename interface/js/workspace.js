@@ -26,7 +26,10 @@ class FileView {
     const kind = Meta.kindOf(path); const url = fileUrl(path);
     let content;
     if (kind === 'image') content = h('div.file-stage', h('img.file-image', { src: url, alt: Meta.baseName(path) }));
-    else if (kind === 'pdf') content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
+    else if (kind === 'pdf') {
+      content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
+      this.header.querySelector('.view-actions').append(h('button.btn.small', { type: 'button', onClick: () => import('./note-documents.js').then(m => m.editablePdfCopy(this.path)).catch(reportError) }, 'Créer une note modifiable'));
+    }
     else if (kind === 'audio') content = h('div.file-stage', h('audio', { controls: true, src: url }));
     else if (kind === 'video') content = h('div.file-stage', h('video.file-video', { controls: true, src: url }));
     else if (Meta.extOf(path).toLowerCase() === 'txt') {
@@ -40,7 +43,7 @@ class FileView {
       }).catch(error => { if (error.name !== 'AbortError') content.textContent = error.message; }).finally(() => { content.classList.remove('media-loading'); content.setAttribute('aria-busy', 'false'); });
     }
     else content = h('div.empty-state', h('p', `Opale n’affiche pas les fichiers « .${Meta.extOf(path) || '?'} ».`),
-      isShared(path) ? h('a.btn', { href: url, download: Meta.baseName(path) }, 'Télécharger le fichier') : h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, 'Afficher dans l’gestionnaire de fichiers'));
+      isShared(path) ? h('a.btn', { href: url, download: Meta.baseName(path) }, 'Télécharger le fichier') : h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, 'Afficher dans le gestionnaire de fichiers'));
     this.el = h('div.view.file-view', this.header, content);
     for (const img of content.querySelectorAll('img')) watchImage(img);
   }

@@ -52,6 +52,9 @@ const PARAMS = {
     ["saturation", "Saturation · %", 100],
     ["hue", "Teinte · degrés", 0],
   ],
+  upscale: [["scale", "Facteur", 2]],
+  sharpen: [["amount", "Force · %", 60]],
+  cutout: [["threshold", "Tolérance", 28]],
   blur: [["radius", "Rayon · px", 6]],
   growMask: [["radius", "Extension · px (négatif : réduction)", 3]],
   composite: [
@@ -201,7 +204,7 @@ export class DesignController {
       "button.btn.primary",
       { type: "button", disabled: v.readOnly, onClick: () => this.run() },
       h("span", { html: icon("play", 15) }),
-      "Exécuter",
+      "Exécuter tout",
     );
     this.top = h(
       "div.board-ui.design-topbar",
@@ -764,7 +767,7 @@ export class DesignController {
           disabled: this.view.readOnly,
           onClick: () => this.run(id),
         },
-        "Exécuter cette branche",
+        node.data.tool === "start" ? "Exécuter la chaîne" : "Exécuter cette branche",
       ),
       h(
         "button.btn",
@@ -921,6 +924,7 @@ export class DesignController {
       throw Error("Décrivez l’objet ou la zone à sélectionner.");
     if (data.tool === "segment")
       text = `Create a precise binary selection mask for the supplied image. Select only: ${text}. Output the mask alone, white for the selected object and black everywhere else. Preserve the exact composition and aspect ratio. No text, no decoration.`;
+    if (data.tool === "start") return { text: "départ", type: "flow" };
     if (data.tool === "prompt") return { text: data.text || "" };
     if (data.tool === "note")
       return {
@@ -954,7 +958,8 @@ export class DesignController {
     }
     if (data.tool === "compare") return { file: files.image };
     if (spec.ai) {
-      const mode = data.tool === "text" ? "text" : "image";
+      const mode = data.tool === "text" || data.tool === "refine" ? "text" : "image";
+      if (data.tool === "refine") text = `Réécris la consigne suivante en une instruction précise, concrète et autonome. Ne garde que la consigne réécrite :\n\n${text}`;
       const provider = data.provider
         ? this.catalog?.providers.find((p) => p.id === data.provider)
         : this.catalog?.providers.find(

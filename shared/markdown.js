@@ -4,9 +4,9 @@
 // escaped, apart from a short list of attribute-less inline tags: a note can
 // come from anywhere, and the page rendering it can write to the whole vault.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./meta.js'));
-  else root.OpaleMarkdown = factory(root.OpaleMeta);
-})(typeof self !== 'undefined' ? self : this, function (Meta) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./meta.js'), require('./typography.js'));
+  else root.OpaleMarkdown = factory(root.OpaleMeta, root.OpaleTypography);
+})(typeof self !== 'undefined' ? self : this, function (Meta, Typography) {
   'use strict';
 
   const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -106,7 +106,7 @@
   }
 
   // ------------------------------------------------------------------ inline
-  const INLINE_HTML = /<(\/?)(br|kbd|mark|sub|sup|u|s|small|b|i|em|strong|del|ins|span|center)\s*(\/?)>/gi;
+  const INLINE_HTML = /<(\/?)(br|kbd|mark|sub|sup|u|s|small|b|i|em|strong|del|ins|span|center)(?:\s+data-opale="([^"<>]*)")?\s*(\/?)>/gi;
 
   function emphasize(html) {
     return html
@@ -314,11 +314,15 @@
     // Attribute-less inline tags only, and always balanced inside this run so
     // an unclosed <b> cannot restyle the rest of the note.
     const open = [];
-    src = src.replace(INLINE_HTML, (m, closing, name, selfClosing) => {
+    src = src.replace(INLINE_HTML, (m, closing, name, typography, selfClosing) => {
       const tag = name.toLowerCase();
       if (tag === 'br') return hold('<br>');
       if (selfClosing) return '';
-      if (!closing) { open.push(tag); return hold(`<${tag}>`); }
+      if (!closing) {
+        open.push(tag);
+        const style = tag === 'span' && typography && Typography ? Typography.encode(Typography.parse(typography)) : '';
+        return hold(style ? `<span data-opale="${escapeHtml(style)}" style="${escapeHtml(Typography.css(style))}">` : `<${tag}>`);
+      }
       const at = open.lastIndexOf(tag);
       if (at < 0) return '';
       let html = '';
@@ -568,9 +572,12 @@
     const line = ` data-line="${token.start}"`;
     switch (token.type) {
       case 'frontmatter': {
-        const entries = Object.entries(Meta.parseYaml(token.yaml));
+        // opale-titre keeps the filename's typography; it is not a note property.
+        const all = Object.entries(Meta.parseYaml(token.yaml));
+        const entries = all.filter(([key]) => key !== 'opale-titre');
+        if (!entries.length) return all.length ? '' : `<div class="properties"${line}><div class="properties-title">Propriétés</div><div class="property-empty">Aucune propriété</div></div>`;
         const rows = entries.map(([key, value]) => `<div class="property"><span class="property-key">${escapeHtml(key)}</span><span class="property-value">${propertyValue(key, value, ctx)}</span></div>`).join('');
-        return `<div class="properties"${line}><div class="properties-title">Propriétés</div>${rows || '<div class="property-empty">Aucune propriété</div>'}</div>`;
+        return `<div class="properties"${line}><div class="properties-title">Propriétés</div>${rows}</div>`;
       }
       case 'heading':
         return `<h${token.level}${line} data-heading="${escapeHtml(plainText(token.text))}">${renderInline(token.text, ctx)}</h${token.level}>`;

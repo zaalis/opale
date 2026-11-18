@@ -214,7 +214,7 @@ export const explorer = {
         { label: 'Ajouter une image…', icon: 'image', run: () => this.chooseImages('') },
         { label: 'Nouveau dossier', icon: 'folder-plus', run: () => this.newFolder('') },
         'separator',
-        { label: 'Afficher le coffre dans l’gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
+        { label: 'Afficher le coffre dans le gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: '' } }).catch(reportError) },
       ]);
     }
     const bookmarked = app.bookmarks.includes(path);
@@ -229,7 +229,7 @@ export const explorer = {
       isFolder ? null : { label: bookmarked ? 'Retirer des signets' : 'Ajouter aux signets', icon: 'bookmark', run: () => app.panels.toggleBookmark(path) },
       'separator',
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(path).then(() => toast('Chemin copié')) },
-      { label: 'Afficher dans l’gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
+      { label: 'Afficher dans le gestionnaire de fichiers', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
       'separator',
       { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: 'Suppr' },
     ]);
@@ -247,7 +247,7 @@ export const explorer = {
   async newBoard(folder = this.targetFolder(), kind = 'board') {
     try {
       const doc=window.OpaleBoard.emptyDoc();
-      if(kind==='design')doc.settings.design=true;else if(kind!=='board')doc.elements.push(window.OpaleBoard.create(kind,{x:0,y:0}));
+      if(kind==='design'){doc.settings.design=true;doc.elements.push(window.OpaleBoard.create('design',{x:120,y:160,w:280,h:140,data:{tool:'start',title:'Départ',text:''}}));}else if(kind!=='board')doc.elements.push(window.OpaleBoard.create(kind,{x:0,y:0}));
       const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas', ...(kind==='design'?{name:'Opal Design'}:{}), content:window.OpaleBoard.serialize(doc) } });
       await app.workspace.waitFor(created.path);
       this.selected = created.path;
