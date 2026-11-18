@@ -36,7 +36,7 @@ const PANES = {
   design: () => [designSettingsPane()],
   plugins: () => [pluginsUi.pane()],
   editor: () => [
-    row('Mode par défaut', 'Comment une note s’ouvre.', select('defaultMode', 'Mode par défaut', [['live', 'Aperçu en direct'], ['source', 'Source'], ['reading', 'Lecture']])),
+    row('Mode par défaut', 'Comment une note s’ouvre.', select('defaultMode', 'Mode par défaut', [['rich', 'Édition enrichie'], ['live', 'Aperçu en direct'], ['source', 'Source'], ['reading', 'Lecture']])),
     row('Largeur de ligne lisible', 'Limite la largeur du texte pour le confort de lecture.', toggle('readableLineLength', 'Largeur de ligne lisible')),
     row('Taille du texte', `${app.settings.fontSize} px`, (() => {
       const input = h('input', { type: 'range', min: '12', max: '24', step: '1', value: String(app.settings.fontSize), 'aria-label': 'Taille du texte', onInput: () => { document.documentElement.style.setProperty('--font-size', `${input.value}px`); input.closest('.setting').querySelector('.setting-hint').textContent = `${input.value} px`; }, onChange: () => settingsUi.change({ fontSize: Number(input.value) }) });

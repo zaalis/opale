@@ -10,6 +10,17 @@ import { attachEditing, caretPoint, closeSuggest, embedFor, uploadFile } from '.
 import { findImages, ImageLayer, isImageFile, pickImageFiles } from './images.js';
 import { displayOf, findEmbeds, followEdit, LinkDoctor, sourceOf, toShown, toSource } from './links.js';
 import { bindNoteInteractions, decorate } from './renderer.js';
+import { RichNote, TypographyBar } from './typography.js';
+
+const Type = window.OpaleTypography;
+const TITLE_STYLE = 'opale-titre';
+
+function isFrontmatterBlock(source) {
+  const lines = String(source || '').split('\n');
+  if (lines.length < 2 || lines[0].trim() !== '---') return false;
+  const end = lines[lines.length - 1].trim();
+  return end === '---' || end === '...';
+}
 
 const EDITABLE_JOIN = new Set(['paragraph', 'heading', 'list', 'blockquote']);
 // Blocks typed exactly as written: an embed there is only text.
@@ -72,11 +83,19 @@ function mapPrefix(source, prefix) {
   return i;
 }
 
+export function noteDocumentActions(view) {
+  const locked = !!view.project?.readOnly;
+  return [
+    { label: 'Importer un PDF…', icon: 'book', disabled: locked, run: () => import('./note-documents.js').then((module) => module.pickPdf(view)).catch(reportError) },
+    { label: 'Exporter en PDF…', icon: 'external', run: () => import('./note-documents.js').then((module) => module.exportNotePdf(view)).catch(reportError) },
+  ];
+}
+
 export class NoteView {
   constructor(path, options = {}) {
     this.type = 'note';
     this.path = path;
-    const preferred = app.settings.defaultMode || 'live';
+    const preferred = app.settings.defaultMode || 'rich';
     this.mode = options.mode || preferred;
     this.editMode = this.mode !== 'reading' ? this.mode : (preferred === 'reading' ? 'live' : preferred);
     this.content = ''; this.saved = ''; this.mtime = 0; this.loaded = false;
@@ -97,10 +116,15 @@ export class NoteView {
     this.crumbs = h('div.view-crumbs');
     this.modeBtn = iconButton('book', 'Basculer lecture / édition (Ctrl+E)', () => this.toggleReading());
     this.moreBtn = iconButton('more', 'Plus d’options', (event) => this.openMenu(event));
+    this.moreBtn.setAttribute('aria-haspopup','menu');this.moreBtn.setAttribute('aria-expanded','false');
     this.header = h('div.view-header', h('div.view-nav', this.backBtn, this.forwardBtn), this.crumbs, h('div.view-actions', this.modeBtn, this.moreBtn));
     this.banner = h('div.note-banner', { hidden: true });
     this.titleEl = h('div.inline-title', { contentEditable: 'plaintext-only', spellcheck: false, role: 'textbox', 'aria-label': 'Titre de la note' });
     this.titleEl.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+        const command = { b: 'bold', i: 'italic', u: 'underline' }[event.key.toLowerCase()];
+        if (command) { event.preventDefault(); event.stopPropagation(); this.commandTitle(command); return; }
+      }
       if (event.key === 'Enter') { event.preventDefault(); this.titleEl.blur(); this.focusBody(); }
       if (event.key === 'Escape') { event.preventDefault(); this.titleEl.textContent = Meta.stem(this.path); this.titleEl.blur(); }
     });
@@ -108,7 +132,8 @@ export class NoteView {
     this.body = h('div.note-body');
     this.sizer = h('div.note-sizer', this.titleEl, this.body);
     this.scroller = h('div.note-scroll', { tabIndex: -1 }, this.sizer);
-    this.el = h('div.view.note-view', this.header, this.banner, this.scroller);
+    this.typebar = new TypographyBar(this);
+    this.el = h('div.view.note-view', this.header, this.typebar.el, this.banner, this.scroller);
     bindNoteInteractions(this.body, this);
     this.body.addEventListener('mousedown', (event) => {
       if (this.mode !== 'live') return;
@@ -158,6 +183,7 @@ export class NoteView {
     this.modeBtn.title = reading ? 'Passer en édition (Ctrl+E)' : 'Passer en lecture (Ctrl+E)';
     this.el.dataset.mode = this.mode;
     if (document.activeElement !== this.titleEl) this.titleEl.textContent = Meta.stem(this.path);
+    this.syncTitleStyle();
   }
 
   // ---------------------------------------------------------------- loading
@@ -180,15 +206,22 @@ export class NoteView {
   render() {
     this.images.reset();
     this.links.close();
-    this.active = null; this.sourceArea = null;
+    this.active = null; this.sourceArea = null; this.rich = null;
     closeSuggest();
     this.updateHeader();
     const top = this.scroller.scrollTop;
     if (this.mode === 'reading') this.renderReading();
     else if (this.mode === 'source') this.renderSource();
+    else if (this.mode === 'rich') this.renderRich();
     else this.renderLive();
     this.scroller.scrollTop = top;
+    this.typebar?.update();
     bus.emit('note-rendered', this);
+  }
+
+  renderRich() {
+    this.rich = new RichNote(this);
+    this.body.replaceChildren(this.rich.el);
   }
 
   renderReading() {
@@ -377,6 +410,27 @@ export class NoteView {
     const resize = () => { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; };
     textarea.addEventListener('input', () => { this.onBlockInput(); resize(); });
     textarea.addEventListener('keydown', (event) => this.onBlockKey(event));
+    textarea.addEventListener('paste', (event) => {
+      // A pasted document may create headings, paragraphs and lists. Rebuild
+      // the live blocks after the browser inserts it, instead of displaying
+      // every pasted line with the original block's typography.
+      if (!event.clipboardData || !/[\r\n]/.test(event.clipboardData.getData('text/plain'))) return;
+      const editing = this.active;
+      setTimeout(() => {
+        if (event.defaultPrevented || this.active !== editing) return;
+        const block = this.blocks[editing.index];
+        if (!block) return;
+        const lines = this.lines();
+        let offset = 0;
+        for (let i = 0; i < block.start; i++) offset += lines[i].length + 1;
+        offset += editing.head.length + (editing.objects ? toSource(editing.spans, textarea.selectionEnd) : textarea.selectionEnd);
+        const before = this.content.slice(0, offset);
+        const line = before.split('\n').length - 1;
+        const column = before.length - before.lastIndexOf('\n') - 1;
+        this.commitActive();
+        this.activateAt(line, column);
+      }, 0);
+    });
     textarea.addEventListener('copy', (event) => this.copyShown(event, false));
     textarea.addEventListener('cut', (event) => this.copyShown(event, true));
     textarea.addEventListener('blur', () => {
@@ -489,6 +543,15 @@ export class NoteView {
   onBlockKey(event) {
     if (event.defaultPrevented || !this.active) return;
     const { textarea, index } = this.active;
+    // A live block is only part of the document. Select the entire Markdown
+    // in the source editor so copy, cut, replacement and deletion work across blocks.
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'a') {
+      event.preventDefault();
+      this.setMode('source');
+      this.sourceArea.focus({ preventScroll: true });
+      this.sourceArea.select();
+      return;
+    }
     if (this.undoKeys(event)) return;
     if (event.key === 'Escape') { event.preventDefault(); this.commitActive(); this.scroller.focus({ preventScroll: true }); return; }
     const plain = !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && textarea.selectionStart === textarea.selectionEnd;
@@ -590,6 +653,7 @@ export class NoteView {
   }
 
   focusBody() {
+    if (this.mode === 'rich' && this.rich) { this.rich.el.focus(); return; }
     if (this.mode === 'source' && this.sourceArea) { this.sourceArea.focus(); return; }
     if (this.mode !== 'live') return;
     const first = this.blocks.findIndex((block) => block.token.type !== 'frontmatter' && this.partsOf(block));
@@ -621,6 +685,7 @@ export class NoteView {
 
   // At the caret when there is one, otherwise as a new paragraph at the end.
   insertText(text) {
+    if (this.mode === 'rich' && this.rich) { this.rich.command('insertHTML', Markdown.render(text, store.renderContext(this.path))); return; }
     const textarea = this.activeTextarea();
     if (textarea) {
       const { selectionStart: from, selectionEnd: to, value } = textarea;
@@ -669,6 +734,9 @@ export class NoteView {
     this.pushHistory();
     if (options.step) this.lastPush = 0;
     this.saveSoon();
+    this.syncTitleStyle();
+    this.patchRichFrontmatter();
+    this.mirrorSource();
     bus.emit('note-content', this);
   }
 
@@ -700,6 +768,9 @@ export class NoteView {
     const before = this.content;
     this.historyIndex += step; this.lastPush = 0;
     this.content = target.text; this._lines = null;
+    this.syncTitleStyle();
+    this.patchRichFrontmatter();
+    this.mirrorSource();
     this.saveSoon();
     bus.emit('note-content', this);
     // Land the caret where the text changed.
@@ -714,7 +785,11 @@ export class NoteView {
     const pictures = embedIn(target.text, at, changedAfter);
     const picture = pictures.find((embed) => before.slice(embed.start, embed.end) !== embed.raw) || pictures[0];
     const layout = !!picture || embedIn(before, at, changedBefore).length > 0;
-    if (this.mode === 'source' && this.sourceArea) {
+    if (this.mode === 'rich') {
+      const offsets = this.rich?.offsets();
+      this.renderRich();
+      if (caret) { this.rich.el.focus({ preventScroll: true }); if (offsets) this.rich.selectOffsets(offsets.start, offsets.end); }
+    } else if (this.mode === 'source' && this.sourceArea) {
       this.renderSource();
       this.sourceArea.focus(); this.sourceArea.setSelectionRange(at, at);
     } else if (this.mode === 'live' && (!caret || layout)) {
@@ -856,6 +931,92 @@ export class NoteView {
     if (heading) this.scrollToLine(heading.line, true);
   }
 
+  // The filename stays plain text. Its presentation (font, weight, colour)
+  // lives in frontmatter so a reload and another window keep it.
+  syncTitleStyle() {
+    if (!this.titleEl) return;
+    const raw = Meta.extract(this.content || '').frontmatter[TITLE_STYLE];
+    const encoded = Type.encode(Type.parse(typeof raw === 'string' ? raw : ''));
+    if (encoded === this.titleStyleValue) return;
+    this.titleStyleValue = encoded;
+    if (encoded) this.titleEl.style.cssText = Type.css(encoded);
+    else this.titleEl.removeAttribute('style');
+  }
+  styleTitle(patch) {
+    if (this.project?.readOnly || this.mode === 'reading') return;
+    const style = Type.parse(this.titleStyleValue || '');
+    for (const [key, value] of Object.entries(patch || {})) {
+      if (value === undefined || value === '') delete style[key];
+      else style[key] = value;
+    }
+    this.writeTitleStyle(Type.encode(style));
+  }
+  commandTitle(name) {
+    if (this.project?.readOnly || this.mode === 'reading') return;
+    if (name === 'removeFormat') { this.writeTitleStyle(''); return; }
+    const style = Type.parse(this.titleStyleValue || '');
+    const css = getComputedStyle(this.titleEl);
+    if (name === 'bold') {
+      const weight = style.weight || Number(css.fontWeight) || 700;
+      this.styleTitle({ weight: weight >= 600 ? 400 : 700 });
+    } else if (name === 'italic') {
+      const on = style.italic !== undefined ? !!style.italic : css.fontStyle === 'italic';
+      this.styleTitle({ italic: on ? 0 : 1 });
+    } else if (name === 'underline') {
+      const on = style.underline !== undefined ? !!style.underline : css.textDecorationLine.includes('underline');
+      this.styleTitle({ underline: on ? 0 : 1 });
+    } else if (name === 'strikeThrough') {
+      const on = style.strike !== undefined ? !!style.strike : css.textDecorationLine.includes('line-through');
+      this.styleTitle({ strike: on ? 0 : 1 });
+    }
+  }
+  writeTitleStyle(encoded) {
+    const current = Meta.extract(this.content || '').frontmatter;
+    const previous = Type.encode(Type.parse(typeof current[TITLE_STYLE] === 'string' ? current[TITLE_STYLE] : ''));
+    if (previous === encoded) { this.typebar?.update(); return; }
+    const next = { ...current };
+    if (encoded) next[TITLE_STYLE] = encoded;
+    else delete next[TITLE_STYLE];
+    this.setContent(Meta.withFrontmatter(this.content, next), { step: true });
+    this.typebar?.update();
+  }
+  // A rich note keeps the original frontmatter text beside the page. A title
+  // style change has to refresh that copy, or the next edit in the page
+  // writes the old frontmatter back.
+  patchRichFrontmatter() {
+    const rich = this.rich;
+    if (!rich) return;
+    const split = Meta.splitFrontmatter(this.content || '');
+    const source = split.yaml === null ? '' : `---\n${split.yaml}\n---`;
+    for (const node of rich.el.children) {
+      const saved = rich.preserved.get(node);
+      if (!saved?.locked || !isFrontmatterBlock(saved.source)) continue;
+      if (!source) { rich.preserved.delete(node); node.remove(); }
+      else saved.source = source;
+      return;
+    }
+    if (!source) return;
+    const wrapper = h('div', { contentEditable: 'false', hidden: true });
+    rich.preserved.set(wrapper, { source, html: '', locked: true });
+    rich.el.prepend(wrapper);
+    if (rich.el.firstElementChild?.contentEditable === 'false') rich.el.prepend(document.createTextNode('\u200b'));
+  }
+  mirrorSource() {
+    const area = this.sourceArea;
+    if (!area || area.value === this.content) return;
+    const previous = area.value;
+    const caret = area.selectionStart;
+    let shared = 0;
+    while (shared < previous.length && shared < this.content.length && previous[shared] === this.content[shared]) shared++;
+    area.value = this.content;
+    if (document.activeElement === area) {
+      const next = caret >= shared ? caret + (this.content.length - previous.length) : caret;
+      area.setSelectionRange(next, next);
+    }
+    const colours = this.body.querySelector('.source-highlight');
+    if (colours) colours.innerHTML = `${highlightSource(this.content)}\n`;
+  }
+
   // ------------------------------------------------------ rename and menu
   async renameFromTitle() {
     const wanted = this.titleEl.textContent.replace(/\s+/g, ' ').trim();
@@ -877,9 +1038,12 @@ export class NoteView {
     const rect = event.currentTarget.getBoundingClientRect();
     const bookmarked = app.bookmarks.includes(this.path);
     showMenu(rect.right - 220, rect.bottom + 4, [
+      { label: 'Édition enrichie', checked: this.mode === 'rich', run: () => this.setMode('rich') },
       { label: 'Aperçu en direct', checked: this.mode === 'live', run: () => this.setMode('live') },
       { label: 'Mode source', checked: this.mode === 'source', run: () => this.setMode('source') },
       { label: 'Mode lecture', checked: this.mode === 'reading', run: () => this.setMode('reading'), hint: 'Ctrl+E' },
+      'separator',
+      ...noteDocumentActions(this),
       'separator',
       { label: 'Renommer', icon: 'pencil', run: () => this.focusTitle(), hint: 'F2' },
       { label: 'Déplacer vers…', icon: 'folder', run: () => app.explorer.moveDialog(this.path) },
@@ -891,7 +1055,7 @@ export class NoteView {
       { label: 'Afficher dans l’Explorateur Windows', icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path: this.path } }).catch(reportError) },
       'separator',
       { label: 'Supprimer la note', icon: 'trash', danger: true, run: () => this.deleteNote() },
-    ]);
+    ], event.currentTarget);
   }
 
   // Right-click in the note: clipboard actions while typing, link actions on a link.
@@ -908,6 +1072,22 @@ export class NoteView {
       { label: 'Télécharger le fichier', run: () => downloadFile(media.dataset.path) },
     ]);
     const selected = String(window.getSelection() || '');
+    if (this.mode === 'rich' && this.rich) {
+      this.rich.remember();
+      const command = name => () => this.rich.command(name);
+      return showMenu(event.clientX, event.clientY, [
+        { label: 'Couper', run: command('cut'), disabled: !selected, hint: 'Ctrl+X' },
+        { label: 'Copier', run: command('copy'), disabled: !selected, hint: 'Ctrl+C' },
+        { label: 'Coller', run: async () => { try { this.rich.command('insertText', await navigator.clipboard.readText()); } catch { toast('Collez avec Ctrl+V.'); } }, hint: 'Ctrl+V' },
+        { label: 'Tout sélectionner', run: () => { this.rich.restore(); const r = document.createRange(); r.selectNodeContents(this.rich.el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); this.rich.remember(); }, hint: 'Ctrl+A' },
+        'separator',
+        { label: 'Gras', run: command('bold'), hint: 'Ctrl+B' },
+        { label: 'Italique', run: command('italic'), hint: 'Ctrl+I' },
+        { label: 'Souligner', run: command('underline'), hint: 'Ctrl+U' },
+        { label: 'Barrer', run: command('strikeThrough') },
+        { label: 'Surligner', run: () => this.rich.apply({ highlight: '#facc15' }) },
+      ]);
+    }
     if (textarea) {
       const has = textarea.selectionStart !== textarea.selectionEnd;
       const paste = async () => {
@@ -966,5 +1146,5 @@ export class NoteView {
   }
 
   onHide() { this.images.reset(); }
-  destroy() { this.images.reset(); closeSuggest(); if (this.dirty) this.flush(); }
+  destroy() { this.typebar?.destroy(); this.images.reset(); closeSuggest(); if (this.dirty) this.flush(); }
 }

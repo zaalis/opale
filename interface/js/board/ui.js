@@ -1,3 +1,4 @@
+import { fontCatalog } from '../typography.js';
 import { importPresentation, isPresentation } from './document-import.js';
 // Moodboard controls. All document edits use the view's transactions.
 import { api, app, downloadFile, fileUrl, h, iconButton, Meta, openModal, promptText, reportError, showMenu, toast } from '../core.js';
@@ -74,7 +75,7 @@ export class BoardUi {
             const p = Board.endPoint(el, end, v.lookup);
             this.selection.append(h('button.board-handle', { type: 'button', 'aria-label': `Extrémité ${end}`, dataset: { handle: end }, style: { left: `${(p.x - box.x) * k}px`, top: `${(p.y - box.y) * k}px` } }));
           }
-        } else {
+        } else if (!v.selected.every((el) => el.kind === 'design')) {
           for (const dir of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) this.selection.append(h(`button.board-handle.handle-${dir}`, { type: 'button', 'aria-label': `Redimensionner ${dir}`, dataset: { handle: dir } }));
           this.selection.append(h('button.board-handle.handle-rotate', { type: 'button', 'aria-label': 'Rotation', dataset: { handle: 'rotate' } }));
           if (v.selected.length === 1) for (const side of Board.SIDES) this.selection.append(h(`button.board-connect.connect-${side}`, { type: 'button', title: 'Relier à un nouvel élément', 'aria-label': `Relier vers ${side}`, dataset: { handle: `quick-${side}` } }, '+'));
@@ -96,6 +97,15 @@ export class BoardUi {
       }
     }
     if ('fontSize' in el.style) this.inspector.append(h('label.board-color', 'Taille', h('input', { type: 'number', min: 8, max: 160, value: el.style.fontSize || 18, 'aria-label': 'Taille du texte', onChange: (e) => this.style('fontSize', Math.max(8, Math.min(160, Number(e.target.value) || 18))) })));
+    if (['text', 'sticky', 'shape', 'mdcard'].includes(el.kind)) {
+      const fonts = h('select.text-input', { 'aria-label': 'Police du texte', onChange: e => this.style('fontFamily', e.target.value) }, h('option', { value: '' }, 'Police par défaut'));
+      this.inspector.append(fonts);
+      fontCatalog().then(list => { if (!fonts.isConnected) return; for (const font of list) fonts.append(h('option', { value: font.name, selected: font.name === el.style.fontFamily }, font.name)); }).catch(reportError);
+      const weights = h('select.text-input', { 'aria-label': 'Épaisseur du texte', onChange: e => this.style('weight', Number(e.target.value)) }, [100,200,300,400,500,600,700,800,900].map(value => h('option', { value, selected: value === (el.style.weight || (el.style.bold ? 700 : 400)) }, String(value))));
+      this.inspector.append(weights);
+      for (const [field,label] of [['italic','Italique'],['underline','Souligner'],['strike','Barrer']]) this.inspector.append(h('button.btn.small', { type: 'button', 'aria-label': label, 'aria-pressed': String(!!el.style[field]), onClick: () => this.style(field, !el.style[field]) }, label));
+      this.inspector.append(h('label.board-color', 'Surlignage', h('input', { type: 'color', value: el.style.highlight || '#facc15', 'aria-label': 'Surlignage du texte', onChange: e => this.style('highlight', e.target.value) })));
+    }
     if (el.kind === 'shape') this.inspector.append(button('Formes', () => this.library('shape')));
     if (el.kind === 'connector') this.inspector.append(h('select.text-input', { 'aria-label': 'Tracé de la flèche', value: el.style.path, onChange: (e) => this.style('path', e.target.value) }, ['curve', 'straight', 'elbow'].map((path) => h('option', { value: path }, { curve: 'Courbe', straight: 'Droite', elbow: 'Coudée' }[path]))));
     this.inspector.append(button('Modifier', () => v.editElement(el)), iconButton('copy', 'Dupliquer', () => v.input.duplicate(v.selected, 32, true)), iconButton('pin', el.locked ? 'Déverrouiller' : 'Verrouiller', () => this.toggleLock()), iconButton('trash', 'Supprimer la sélection', () => v.change(() => v.remove(v.selected.filter((item) => !item.locked).map((item) => item.id)))));

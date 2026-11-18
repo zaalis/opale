@@ -109,7 +109,7 @@ static void RegisterUninstaller(const std::wstring& destination) {
     HKEY key = nullptr;
     if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Opale", 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS) return;
     const auto set = [&](const wchar_t* name, const std::wstring& value) { RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()), DWORD((value.size() + 1) * sizeof(wchar_t))); };
-    set(L"DisplayName", L"Opale"); set(L"DisplayVersion", L"0.2.0"); set(L"Publisher", L"zaalis");
+    set(L"DisplayName", L"Opale"); set(L"DisplayVersion", L"0.3.0"); set(L"Publisher", L"zaalis");
     set(L"InstallLocation", destination); set(L"DisplayIcon", destination + L"\\Opale.exe");
     set(L"UninstallString", L"\"" + destination + L"\\Uninstall Opale.exe\"");
     DWORD noModify = 1; RegSetValueExW(key, L"NoModify", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&noModify), sizeof(noModify));

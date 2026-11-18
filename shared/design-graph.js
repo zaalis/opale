@@ -4,6 +4,13 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
   const TOOLS = {
+    start: {
+      label: "Départ",
+      category: "Entrées",
+      icon: "play",
+      inputs: {},
+      output: "flow",
+    },
     prompt: {
       label: "Consigne",
       category: "Entrées",
@@ -30,6 +37,15 @@
       category: "Intelligence artificielle",
       icon: "sparkles",
       inputs: { text: "text", image: "image" },
+      output: "text",
+      ai: true,
+    },
+    refine: {
+      label: "Réécrire la consigne",
+      category: "Intelligence artificielle",
+      icon: "sparkles",
+      inputs: { text: "text" },
+      required: ["text"],
       output: "text",
       ai: true,
     },
@@ -123,6 +139,30 @@
       required: ["image"],
       output: "image",
     },
+    upscale: {
+      label: "Agrandir",
+      category: "Transformations",
+      icon: "expand",
+      inputs: { image: "image" },
+      required: ["image"],
+      output: "image",
+    },
+    sharpen: {
+      label: "Netteté",
+      category: "Transformations",
+      icon: "sun",
+      inputs: { image: "image" },
+      required: ["image"],
+      output: "image",
+    },
+    cutout: {
+      label: "Détourer le fond",
+      category: "Transformations",
+      icon: "image",
+      inputs: { image: "image" },
+      required: ["image"],
+      output: "image",
+    },
     composite: {
       label: "Composition de calques",
       category: "Composition",
@@ -185,7 +225,10 @@
       throw Error("Choisissez deux nœuds différents.");
     const out = TOOLS[a.data.tool]?.output,
       input = TOOLS[b.data.tool]?.inputs[port];
-    if (!input || !out || (out !== "any" && out !== input))
+    if (port === "flow") {
+      if (out !== "flow")
+        throw Error("Reliez la chaîne depuis le nœud Départ.");
+    } else if (!input || !out || (out !== "any" && out !== input))
       throw Error("Ces ports ne transportent pas le même type de contenu.");
     const edges = links(doc).filter(
       (e) => e.id !== exclude && !(e.to === to && e.port === port),
@@ -217,8 +260,16 @@
       done.add(id);
       out.push(node);
     };
-    if (target) visit(target);
-    else for (const node of list) visit(node.id);
+    const downstream = (id, seen = new Set()) => {
+      if (seen.has(id)) return [];
+      seen.add(id);
+      return [id].concat(edges.filter((edge) => edge.from === id).flatMap((edge) => downstream(edge.to, seen)));
+    };
+    const starts = list.filter((node) => node.data.tool === "start");
+    const chosen = target
+      ? byId.get(target)?.data.tool === "start" ? downstream(target) : [target]
+      : starts.length ? starts.flatMap((node) => downstream(node.id)) : list.map((node) => node.id);
+    for (const id of chosen) visit(id);
     return out;
   }
   function inputs(doc, id) {

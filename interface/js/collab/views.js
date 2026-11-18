@@ -5,7 +5,7 @@ import { installDesign } from '../design/editor.js';
 // replaced wholesale), undo takes back only this person's own steps, and the
 // carets, pointers and selections of the others are drawn on top.
 import { app, bus, h, Meta, showMenu, toast } from '../core.js';
-import { NoteView } from '../note.js';
+import { NoteView, noteDocumentActions } from '../note.js';
 import { BoardView, getPath, setPath } from '../board/view.js';
 import { place } from '../board/render.js';
 import { caretPoint, closeSuggest } from '../editing.js';
@@ -83,6 +83,16 @@ export class SharedNoteView extends NoteView {
     );
     const track = () => { this.project.touch(); this.sendSoon(); };
     for (const name of ['keyup', 'mouseup', 'input', 'focusin']) this.body.addEventListener(name, track);
+    this.el.addEventListener('pointermove', (event) => {
+      const box = this.scroller.getBoundingClientRect();
+      if (!box.width) return;
+      this.pointer = {
+        x: Math.round((event.clientX - box.left + this.scroller.scrollLeft) * 10) / 10,
+        y: Math.round(Math.max(0, event.clientY - box.top + this.scroller.scrollTop) * 10) / 10,
+      };
+      this.project.touch(); this.sendSoon();
+    }, { passive: true });
+    this.el.addEventListener('pointerleave', () => { this.pointer = null; this.sendSoon(); });
     document.addEventListener('selectionchange', this.onSelection = () => { if (this.body.contains(document.activeElement)) this.sendSoon(); });
     this.scroller.addEventListener('scroll', () => this.drawSoon(), { passive: true });
     this.scroller.addEventListener('wheel', () => { if (follow.is(p)) follow.stop(); }, { passive: true });
@@ -100,6 +110,7 @@ export class SharedNoteView extends NoteView {
     if (options.focusTitle) this.focusTitle();
   }
   fileName() { const file = this.project && this.project.file(this.fileId); return file ? file.display : ''; }
+  setMode(mode) { if (this.project?.readOnly && mode !== 'reading') return; super.setMode(mode); }
 
   applyRole(first = false) {
     if (!this.project) return;
@@ -108,6 +119,7 @@ export class SharedNoteView extends NoteView {
     this.titleEl.contentEditable = locked ? 'false' : 'plaintext-only';
     if (locked && this.mode !== 'reading') { if (first) this.mode = 'reading'; else this.setMode('reading'); }
     this.updateBanner();
+    this.typebar?.update();
   }
   updateBanner() {
     const p = this.project;
@@ -121,7 +133,7 @@ export class SharedNoteView extends NoteView {
   }
 
   // ------------------------------------------------------------ the text
-  setContent(text, options = {}) { if (options.step) this.stepNext = true; super.setContent(text, options); }
+  setContent(text, options = {}) { if (options.step && text !== this.content) this.stepNext = true; super.setContent(text, options); }
   pushHistory() {}
   pushText() {
     if (!this.project || !this.loaded) return;
@@ -159,7 +171,19 @@ export class SharedNoteView extends NoteView {
     if (next === prev) return;
     const map = shiftMap(prev, next);
     const top = this.scroller.scrollTop;
-    if (this.mode === 'source' && this.sourceArea) {
+    if (this.mode === 'rich' && this.rich) {
+      const previousText = this.rich.el.textContent;
+      const offsets = this.rich.offsets() || (this.rich.bookmark && this.rich.offsets(this.rich.bookmark));
+      const focused = this.rich.el.contains(document.activeElement);
+      this.content = this.saved = next; this._lines = null;
+      this.renderRich();
+      if (offsets) {
+        const positions = shiftMap(previousText, this.rich.el.textContent);
+        this.rich.bookmark = this.rich.rangeAt(positions(offsets.start), positions(offsets.end));
+      }
+      if (focused) { this.rich.restore(); }
+      this.typebar?.update();
+    } else if (this.mode === 'source' && this.sourceArea) {
       const area = this.sourceArea; const focused = document.activeElement === area;
       const from = map(area.selectionStart); const to = map(area.selectionEnd);
       this.content = this.saved = next; this._lines = null;
@@ -204,7 +228,7 @@ export class SharedNoteView extends NoteView {
     if (!this.project || !this.loaded) return;
     const text = this.project.replica.text(this.key);
     const from = this.activeOffset(); const to = this.activeOffset(true);
-    const data = { kind: 'note', typing: Date.now() - this.lastCommit < 1500, caret: null, end: null };
+    const data = { kind: 'note', typing: Date.now() - this.lastCommit < 1500, caret: null, end: null, cursor: this.pointer || null, richSelection: this.mode === 'rich' ? this.rich?.offsets() : null };
     if (from !== null && text) { data.caret = text.anchorAt(from); data.end = to !== from ? text.anchorAt(to) : null; }
     if (app.workspace.activeView === this) this.project.setPresence(this.fileId, data);
   }
@@ -217,7 +241,20 @@ export class SharedNoteView extends NoteView {
     const out = [];
     for (const person of this.project.participants()) {
       const presence = person.presence;
-      if (presence.doc !== this.fileId || presence.kind !== 'note' || presence.caret == null || !text) continue;
+      if (presence.doc !== this.fileId || presence.kind !== 'note') continue;
+      if (presence.cursor && Number.isFinite(presence.cursor.x) && Number.isFinite(presence.cursor.y)) {
+        out.push(h(`div.collab-pointer${person.state === 'idle' ? '.is-idle' : ''}`, { style: `--who:${person.color};left:${presence.cursor.x}px;top:${presence.cursor.y}px` },
+          h('span.collab-pointer-arrow', { html: '<svg width="16" height="18" viewBox="0 0 16 18"><path d="M1 1 15 8.5 8.6 10 5.6 16.6Z" fill="var(--who)" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>' }), tag(person)));
+      }
+      if (this.mode === 'rich' && this.rich && presence.richSelection) {
+        const range = this.rich.rangeAt(presence.richSelection.start, presence.richSelection.end);
+        const rects = [...range.getClientRects()];
+        for (const rect of rects) { const p = local(rect.left, rect.top); out.push(h('div.collab-sel', { style: `--who:${person.color};left:${p.x}px;top:${p.y}px;width:${rect.width}px;height:${rect.height}px` })); }
+        range.collapse(false); const rect = range.getClientRects()[0];
+        if (rect) { const p = local(rect.left, rect.top); out.push(h('div.collab-caret', { style: `--who:${person.color};left:${p.x}px;top:${p.y}px;height:${rect.height || 20}px`, dataset: { who: person.id } }, tag(person))); }
+        continue;
+      }
+      if (presence.caret == null || !text) continue;
       const at = text.indexOfAnchor(presence.caret);
       if (at === null) continue;
       const end = presence.end ? text.indexOfAnchor(presence.end) : null;
@@ -306,6 +343,7 @@ export class SharedNoteView extends NoteView {
     this.modeBtn.innerHTML = reading ? '<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16Z"/></svg>' : '<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/></svg>';
     this.el.dataset.mode = this.mode;
     if (document.activeElement !== this.titleEl) this.titleEl.textContent = this.fileName();
+    this.syncTitleStyle();
   }
   onFiles() { this.updateHeader(); this.updateBanner(); app.workspace.renderTabs(); }
   async renameFromTitle() {
@@ -320,9 +358,12 @@ export class SharedNoteView extends NoteView {
     const rect = event.currentTarget.getBoundingClientRect();
     const locked = !this.project || this.project.readOnly;
     showMenu(rect.right - 220, rect.bottom + 4, [
+      { label: 'Édition enrichie', checked: this.mode === 'rich', run: () => this.setMode('rich'), disabled: locked },
       { label: 'Aperçu en direct', checked: this.mode === 'live', run: () => this.setMode('live'), disabled: locked },
       { label: 'Mode source', checked: this.mode === 'source', run: () => this.setMode('source'), disabled: locked },
       { label: 'Mode lecture', checked: this.mode === 'reading', run: () => this.setMode('reading'), hint: 'Ctrl+E' },
+      'separator',
+      ...noteDocumentActions(this),
       'separator',
       { label: 'Renommer', icon: 'pencil', run: () => this.focusTitle(), disabled: locked },
       { label: 'Copier le lien [[…]]', icon: 'link', run: () => navigator.clipboard.writeText(`[[${this.fileName()}]]`).then(() => toast('Lien copié')) },
@@ -330,7 +371,7 @@ export class SharedNoteView extends NoteView {
       { label: 'État de la synchronisation…', icon: 'cloud', run: () => app.collabUi && app.collabUi.status(this.project) },
       'separator',
       { label: 'Supprimer du projet', icon: 'trash', danger: true, disabled: locked, run: () => this.deleteNote() },
-    ]);
+    ], event.currentTarget);
   }
   async deleteNote() {
     if (!this.project) return;
@@ -339,6 +380,7 @@ export class SharedNoteView extends NoteView {
   }
   stats() { const meta = Meta.extract(this.content); return { words: meta.words, chars: meta.chars, backlinks: 0 }; }
   destroy() {
+    this.typebar?.destroy();
     for (const off of this.offs || []) off();
     if (this.onSelection) document.removeEventListener('selectionchange', this.onSelection);
     if (this.bar) this.bar.destroy();

@@ -1,0 +1,310 @@
+@font-face{font-family:"Inter";src:url("./inter/inter-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Inter";src:url("./inter/inter-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Roboto";src:url("./roboto/roboto-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Roboto";src:url("./roboto/roboto-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Open Sans";src:url("./opensans/opensans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Open Sans";src:url("./opensans/opensans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-0.woff2") format("woff2");font-style:normal;font-weight:100;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-1.woff2") format("woff2");font-style:italic;font-weight:100;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-2.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-3.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-4.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-5.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-6.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-7.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-8.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-9.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-10.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-11.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-12.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-13.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-14.woff2") format("woff2");font-style:normal;font-weight:800;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-15.woff2") format("woff2");font-style:italic;font-weight:800;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-16.woff2") format("woff2");font-style:normal;font-weight:900;font-display:swap;}
+@font-face{font-family:"Lato";src:url("./lato/lato-17.woff2") format("woff2");font-style:italic;font-weight:900;font-display:swap;}
+@font-face{font-family:"Montserrat";src:url("./montserrat/montserrat-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Montserrat";src:url("./montserrat/montserrat-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-0.woff2") format("woff2");font-style:normal;font-weight:100;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-1.woff2") format("woff2");font-style:italic;font-weight:100;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-2.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-3.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-4.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-5.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-6.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-7.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-8.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-9.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-10.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-11.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-12.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-13.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-14.woff2") format("woff2");font-style:normal;font-weight:800;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-15.woff2") format("woff2");font-style:italic;font-weight:800;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-16.woff2") format("woff2");font-style:normal;font-weight:900;font-display:swap;}
+@font-face{font-family:"Poppins";src:url("./poppins/poppins-17.woff2") format("woff2");font-style:italic;font-weight:900;font-display:swap;}
+@font-face{font-family:"Nunito";src:url("./nunito/nunito-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Nunito";src:url("./nunito/nunito-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Nunito Sans";src:url("./nunitosans/nunitosans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Nunito Sans";src:url("./nunitosans/nunitosans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Raleway";src:url("./raleway/raleway-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Raleway";src:url("./raleway/raleway-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-0.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-1.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-2.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-3.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-4.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-5.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-6.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Ubuntu";src:url("./ubuntu/ubuntu-7.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Work Sans";src:url("./worksans/worksans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Work Sans";src:url("./worksans/worksans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"DM Sans";src:url("./dmsans/dmsans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"DM Sans";src:url("./dmsans/dmsans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Manrope";src:url("./manrope/manrope-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Outfit";src:url("./outfit/outfit-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Plus Jakarta Sans";src:url("./plusjakartasans/plusjakartasans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Plus Jakarta Sans";src:url("./plusjakartasans/plusjakartasans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Space Grotesk";src:url("./spacegrotesk/spacegrotesk-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Sora";src:url("./sora/sora-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Figtree";src:url("./figtree/figtree-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Figtree";src:url("./figtree/figtree-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Rubik";src:url("./rubik/rubik-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Rubik";src:url("./rubik/rubik-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Karla";src:url("./karla/karla-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Karla";src:url("./karla/karla-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-0.woff2") format("woff2");font-style:normal;font-weight:100;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-1.woff2") format("woff2");font-style:italic;font-weight:100;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-2.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-3.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-4.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-5.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-6.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-7.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-8.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-9.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-10.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-11.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-12.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-13.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-14.woff2") format("woff2");font-style:normal;font-weight:800;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-15.woff2") format("woff2");font-style:italic;font-weight:800;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-16.woff2") format("woff2");font-style:normal;font-weight:900;font-display:swap;}
+@font-face{font-family:"Barlow";src:url("./barlow/barlow-17.woff2") format("woff2");font-style:italic;font-weight:900;font-display:swap;}
+@font-face{font-family:"Cabin";src:url("./cabin/cabin-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Cabin";src:url("./cabin/cabin-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Quicksand";src:url("./quicksand/quicksand-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Josefin Sans";src:url("./josefinsans/josefinsans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Josefin Sans";src:url("./josefinsans/josefinsans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Oswald";src:url("./oswald/oswald-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Bebas Neue";src:url("./bebasneue/bebasneue-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Anton";src:url("./anton/anton-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Archivo";src:url("./archivo/archivo-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Archivo";src:url("./archivo/archivo-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Roboto Condensed";src:url("./robotocondensed/robotocondensed-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Roboto Condensed";src:url("./robotocondensed/robotocondensed-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Libre Franklin";src:url("./librefranklin/librefranklin-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Libre Franklin";src:url("./librefranklin/librefranklin-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Merriweather";src:url("./merriweather/merriweather-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Merriweather";src:url("./merriweather/merriweather-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Lora";src:url("./lora/lora-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Lora";src:url("./lora/lora-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Playfair Display";src:url("./playfairdisplay/playfairdisplay-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Playfair Display";src:url("./playfairdisplay/playfairdisplay-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Libre Baskerville";src:url("./librebaskerville/librebaskerville-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Libre Baskerville";src:url("./librebaskerville/librebaskerville-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"PT Serif";src:url("./ptserif/ptserif-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"PT Serif";src:url("./ptserif/ptserif-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"PT Serif";src:url("./ptserif/ptserif-2.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"PT Serif";src:url("./ptserif/ptserif-3.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Crimson Text";src:url("./crimsontext/crimsontext-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Crimson Text";src:url("./crimsontext/crimsontext-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Crimson Text";src:url("./crimsontext/crimsontext-2.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Crimson Text";src:url("./crimsontext/crimsontext-3.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Crimson Text";src:url("./crimsontext/crimsontext-4.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Crimson Text";src:url("./crimsontext/crimsontext-5.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"EB Garamond";src:url("./ebgaramond/ebgaramond-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"EB Garamond";src:url("./ebgaramond/ebgaramond-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Cormorant Garamond";src:url("./cormorantgaramond/cormorantgaramond-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Cormorant Garamond";src:url("./cormorantgaramond/cormorantgaramond-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Source Serif 4";src:url("./sourceserif4/sourceserif4-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Source Serif 4";src:url("./sourceserif4/sourceserif4-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Bitter";src:url("./bitter/bitter-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Bitter";src:url("./bitter/bitter-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-0.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-1.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-2.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-3.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-4.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-5.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-6.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-7.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-8.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-9.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-10.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-11.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-12.woff2") format("woff2");font-style:normal;font-weight:800;font-display:swap;}
+@font-face{font-family:"Spectral";src:url("./spectral/spectral-13.woff2") format("woff2");font-style:italic;font-weight:800;font-display:swap;}
+@font-face{font-family:"DM Serif Display";src:url("./dmserifdisplay/dmserifdisplay-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"DM Serif Display";src:url("./dmserifdisplay/dmserifdisplay-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Vollkorn";src:url("./vollkorn/vollkorn-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Vollkorn";src:url("./vollkorn/vollkorn-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Alegreya";src:url("./alegreya/alegreya-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Alegreya";src:url("./alegreya/alegreya-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Arvo";src:url("./arvo/arvo-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Arvo";src:url("./arvo/arvo-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Arvo";src:url("./arvo/arvo-2.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Arvo";src:url("./arvo/arvo-3.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-0.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-1.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-2.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-3.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-4.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-5.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-6.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-7.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-8.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Zilla Slab";src:url("./zillaslab/zillaslab-9.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Dancing Script";src:url("./dancingscript/dancingscript-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Pacifico";src:url("./pacifico/pacifico-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Caveat";src:url("./caveat/caveat-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Great Vibes";src:url("./greatvibes/greatvibes-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Satisfy";src:url("./satisfy/satisfy-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Sacramento";src:url("./sacramento/sacramento-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Permanent Marker";src:url("./permanentmarker/permanentmarker-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Patrick Hand";src:url("./patrickhand/patrickhand-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Amatic SC";src:url("./amaticsc/amaticsc-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Amatic SC";src:url("./amaticsc/amaticsc-1.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Lobster";src:url("./lobster/lobster-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"JetBrains Mono";src:url("./jetbrainsmono/jetbrainsmono-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"JetBrains Mono";src:url("./jetbrainsmono/jetbrainsmono-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Fira Code";src:url("./firacode/firacode-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Source Code Pro";src:url("./sourcecodepro/sourcecodepro-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Source Code Pro";src:url("./sourcecodepro/sourcecodepro-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Space Mono";src:url("./spacemono/spacemono-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Space Mono";src:url("./spacemono/spacemono-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Space Mono";src:url("./spacemono/spacemono-2.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Space Mono";src:url("./spacemono/spacemono-3.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-0.woff2") format("woff2");font-style:normal;font-weight:100;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-1.woff2") format("woff2");font-style:italic;font-weight:100;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-2.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-3.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-4.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-5.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-6.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-7.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-8.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-9.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-10.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-11.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-12.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"IBM Plex Mono";src:url("./ibmplexmono/ibmplexmono-13.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Roboto Mono";src:url("./robotomono/robotomono-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Roboto Mono";src:url("./robotomono/robotomono-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Inconsolata";src:url("./inconsolata/inconsolata-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"DM Mono";src:url("./dmmono/dmmono-0.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"DM Mono";src:url("./dmmono/dmmono-1.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"DM Mono";src:url("./dmmono/dmmono-2.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"DM Mono";src:url("./dmmono/dmmono-3.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"DM Mono";src:url("./dmmono/dmmono-4.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"DM Mono";src:url("./dmmono/dmmono-5.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"Noto Sans";src:url("./notosans/notosans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Noto Sans";src:url("./notosans/notosans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Noto Serif";src:url("./notoserif/notoserif-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Noto Serif";src:url("./notoserif/notoserif-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Source Sans 3";src:url("./sourcesans3/sourcesans3-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Source Sans 3";src:url("./sourcesans3/sourcesans3-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"IBM Plex Sans";src:url("./ibmplexsans/ibmplexsans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"IBM Plex Sans";src:url("./ibmplexsans/ibmplexsans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-0.woff2") format("woff2");font-style:normal;font-weight:100;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-1.woff2") format("woff2");font-style:italic;font-weight:100;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-2.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-3.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-4.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-5.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-6.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-7.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-8.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-9.woff2") format("woff2");font-style:italic;font-weight:500;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-10.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-11.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-12.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"IBM Plex Serif";src:url("./ibmplexserif/ibmplexserif-13.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"PT Sans";src:url("./ptsans/ptsans-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"PT Sans";src:url("./ptsans/ptsans-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"PT Sans";src:url("./ptsans/ptsans-2.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"PT Sans";src:url("./ptsans/ptsans-3.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"PT Sans Narrow";src:url("./ptsansnarrow/ptsansnarrow-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"PT Sans Narrow";src:url("./ptsansnarrow/ptsansnarrow-1.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Exo 2";src:url("./exo2/exo2-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Exo 2";src:url("./exo2/exo2-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Exo";src:url("./exo/exo-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Exo";src:url("./exo/exo-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-0.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-1.woff2") format("woff2");font-style:italic;font-weight:200;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-2.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-3.woff2") format("woff2");font-style:italic;font-weight:300;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-4.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-5.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-6.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-7.woff2") format("woff2");font-style:italic;font-weight:600;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-8.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-9.woff2") format("woff2");font-style:italic;font-weight:700;font-display:swap;}
+@font-face{font-family:"Titillium Web";src:url("./titilliumweb/titilliumweb-10.woff2") format("woff2");font-style:normal;font-weight:900;font-display:swap;}
+@font-face{font-family:"Assistant";src:url("./assistant/assistant-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Asap";src:url("./asap/asap-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Asap";src:url("./asap/asap-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Heebo";src:url("./heebo/heebo-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Hind";src:url("./hind/hind-0.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Hind";src:url("./hind/hind-1.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Hind";src:url("./hind/hind-2.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Hind";src:url("./hind/hind-3.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Hind";src:url("./hind/hind-4.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-0.woff2") format("woff2");font-style:normal;font-weight:200;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-1.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-2.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-3.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-4.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-5.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Mukta";src:url("./mukta/mukta-6.woff2") format("woff2");font-style:normal;font-weight:800;font-display:swap;}
+@font-face{font-family:"Overpass";src:url("./overpass/overpass-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Overpass";src:url("./overpass/overpass-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Public Sans";src:url("./publicsans/publicsans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Public Sans";src:url("./publicsans/publicsans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Urbanist";src:url("./urbanist/urbanist-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Urbanist";src:url("./urbanist/urbanist-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Lexend";src:url("./lexend/lexend-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Lexend Deca";src:url("./lexenddeca/lexenddeca-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Red Hat Display";src:url("./redhatdisplay/redhatdisplay-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Red Hat Display";src:url("./redhatdisplay/redhatdisplay-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Red Hat Text";src:url("./redhattext/redhattext-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Red Hat Text";src:url("./redhattext/redhattext-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Readex Pro";src:url("./readexpro/readexpro-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Albert Sans";src:url("./albertsans/albertsans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Albert Sans";src:url("./albertsans/albertsans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Onest";src:url("./onest/onest-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Geist";src:url("./geist/geist-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Geist";src:url("./geist/geist-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Geist Mono";src:url("./geistmono/geistmono-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Geist Mono";src:url("./geistmono/geistmono-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Instrument Sans";src:url("./instrumentsans/instrumentsans-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Instrument Sans";src:url("./instrumentsans/instrumentsans-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Instrument Serif";src:url("./instrumentserif/instrumentserif-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Instrument Serif";src:url("./instrumentserif/instrumentserif-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Newsreader";src:url("./newsreader/newsreader-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Newsreader";src:url("./newsreader/newsreader-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Fraunces";src:url("./fraunces/fraunces-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Fraunces";src:url("./fraunces/fraunces-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Bodoni Moda";src:url("./bodonimoda/bodonimoda-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Bodoni Moda";src:url("./bodonimoda/bodonimoda-1.woff2") format("woff2");font-style:italic;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Cinzel";src:url("./cinzel/cinzel-0.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Cardo";src:url("./cardo/cardo-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Cardo";src:url("./cardo/cardo-1.woff2") format("woff2");font-style:italic;font-weight:400;font-display:swap;}
+@font-face{font-family:"Cardo";src:url("./cardo/cardo-2.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}
+@font-face{font-family:"Marcellus";src:url("./marcellus/marcellus-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Prata";src:url("./prata/prata-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Italiana";src:url("./italiana/italiana-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Shadows Into Light";src:url("./shadowsintolight/shadowsintolight-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Indie Flower";src:url("./indieflower/indieflower-0.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Kalam";src:url("./kalam/kalam-0.woff2") format("woff2");font-style:normal;font-weight:300;font-display:swap;}
+@font-face{font-family:"Kalam";src:url("./kalam/kalam-1.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:"Kalam";src:url("./kalam/kalam-2.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap;}

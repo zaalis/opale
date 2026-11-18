@@ -1,0 +1,2694 @@
+[
+  {
+    "id": "inter",
+    "name": "Inter",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "inter/inter-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "inter/inter-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/inter"
+  },
+  {
+    "id": "roboto",
+    "name": "Roboto",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "roboto/roboto-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "roboto/roboto-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/roboto"
+  },
+  {
+    "id": "opensans",
+    "name": "Open Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "opensans/opensans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "opensans/opensans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/opensans"
+  },
+  {
+    "id": "lato",
+    "name": "Lato",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "lato/lato-0.woff2",
+        "italic": false,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-1.woff2",
+        "italic": true,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-2.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-3.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-4.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-5.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-6.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-7.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-8.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-9.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-10.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-11.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-12.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-13.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-14.woff2",
+        "italic": false,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-15.woff2",
+        "italic": true,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-16.woff2",
+        "italic": false,
+        "weight": "900",
+        "format": "woff2"
+      },
+      {
+        "file": "lato/lato-17.woff2",
+        "italic": true,
+        "weight": "900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/lato"
+  },
+  {
+    "id": "montserrat",
+    "name": "Montserrat",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "montserrat/montserrat-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "montserrat/montserrat-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/montserrat"
+  },
+  {
+    "id": "poppins",
+    "name": "Poppins",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "poppins/poppins-0.woff2",
+        "italic": false,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-1.woff2",
+        "italic": true,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-2.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-3.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-4.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-5.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-6.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-7.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-8.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-9.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-10.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-11.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-12.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-13.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-14.woff2",
+        "italic": false,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-15.woff2",
+        "italic": true,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-16.woff2",
+        "italic": false,
+        "weight": "900",
+        "format": "woff2"
+      },
+      {
+        "file": "poppins/poppins-17.woff2",
+        "italic": true,
+        "weight": "900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/poppins"
+  },
+  {
+    "id": "nunito",
+    "name": "Nunito",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "nunito/nunito-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "nunito/nunito-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/nunito"
+  },
+  {
+    "id": "nunitosans",
+    "name": "Nunito Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "nunitosans/nunitosans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "nunitosans/nunitosans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/nunitosans"
+  },
+  {
+    "id": "raleway",
+    "name": "Raleway",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "raleway/raleway-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "raleway/raleway-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/raleway"
+  },
+  {
+    "id": "ubuntu",
+    "name": "Ubuntu",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "ubuntu/ubuntu-0.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-1.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-2.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-3.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-4.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-5.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-6.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "ubuntu/ubuntu-7.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ufl/ubuntu"
+  },
+  {
+    "id": "worksans",
+    "name": "Work Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "worksans/worksans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "worksans/worksans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/worksans"
+  },
+  {
+    "id": "dmsans",
+    "name": "DM Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "dmsans/dmsans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "dmsans/dmsans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/dmsans"
+  },
+  {
+    "id": "manrope",
+    "name": "Manrope",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "manrope/manrope-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/manrope"
+  },
+  {
+    "id": "outfit",
+    "name": "Outfit",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "outfit/outfit-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/outfit"
+  },
+  {
+    "id": "plusjakartasans",
+    "name": "Plus Jakarta Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "plusjakartasans/plusjakartasans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "plusjakartasans/plusjakartasans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/plusjakartasans"
+  },
+  {
+    "id": "spacegrotesk",
+    "name": "Space Grotesk",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "spacegrotesk/spacegrotesk-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/spacegrotesk"
+  },
+  {
+    "id": "sora",
+    "name": "Sora",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "sora/sora-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/sora"
+  },
+  {
+    "id": "figtree",
+    "name": "Figtree",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "figtree/figtree-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "figtree/figtree-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/figtree"
+  },
+  {
+    "id": "rubik",
+    "name": "Rubik",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "rubik/rubik-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "rubik/rubik-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/rubik"
+  },
+  {
+    "id": "karla",
+    "name": "Karla",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "karla/karla-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "karla/karla-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/karla"
+  },
+  {
+    "id": "barlow",
+    "name": "Barlow",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "barlow/barlow-0.woff2",
+        "italic": false,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-1.woff2",
+        "italic": true,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-2.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-3.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-4.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-5.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-6.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-7.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-8.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-9.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-10.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-11.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-12.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-13.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-14.woff2",
+        "italic": false,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-15.woff2",
+        "italic": true,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-16.woff2",
+        "italic": false,
+        "weight": "900",
+        "format": "woff2"
+      },
+      {
+        "file": "barlow/barlow-17.woff2",
+        "italic": true,
+        "weight": "900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/barlow"
+  },
+  {
+    "id": "cabin",
+    "name": "Cabin",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "cabin/cabin-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "cabin/cabin-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/cabin"
+  },
+  {
+    "id": "quicksand",
+    "name": "Quicksand",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "quicksand/quicksand-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/quicksand"
+  },
+  {
+    "id": "josefinsans",
+    "name": "Josefin Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "josefinsans/josefinsans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "josefinsans/josefinsans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/josefinsans"
+  },
+  {
+    "id": "oswald",
+    "name": "Oswald",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "oswald/oswald-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/oswald"
+  },
+  {
+    "id": "bebasneue",
+    "name": "Bebas Neue",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "bebasneue/bebasneue-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/bebasneue"
+  },
+  {
+    "id": "anton",
+    "name": "Anton",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "anton/anton-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/anton"
+  },
+  {
+    "id": "archivo",
+    "name": "Archivo",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "archivo/archivo-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "archivo/archivo-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/archivo"
+  },
+  {
+    "id": "robotocondensed",
+    "name": "Roboto Condensed",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "robotocondensed/robotocondensed-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "robotocondensed/robotocondensed-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/robotocondensed"
+  },
+  {
+    "id": "librefranklin",
+    "name": "Libre Franklin",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "librefranklin/librefranklin-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "librefranklin/librefranklin-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/librefranklin"
+  },
+  {
+    "id": "merriweather",
+    "name": "Merriweather",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "merriweather/merriweather-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "merriweather/merriweather-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/merriweather"
+  },
+  {
+    "id": "lora",
+    "name": "Lora",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "lora/lora-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "lora/lora-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/lora"
+  },
+  {
+    "id": "playfairdisplay",
+    "name": "Playfair Display",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "playfairdisplay/playfairdisplay-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "playfairdisplay/playfairdisplay-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/playfairdisplay"
+  },
+  {
+    "id": "librebaskerville",
+    "name": "Libre Baskerville",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "librebaskerville/librebaskerville-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "librebaskerville/librebaskerville-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/librebaskerville"
+  },
+  {
+    "id": "ptserif",
+    "name": "PT Serif",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "ptserif/ptserif-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ptserif/ptserif-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ptserif/ptserif-2.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "ptserif/ptserif-3.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ptserif"
+  },
+  {
+    "id": "crimsontext",
+    "name": "Crimson Text",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "crimsontext/crimsontext-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "crimsontext/crimsontext-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "crimsontext/crimsontext-2.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "crimsontext/crimsontext-3.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "crimsontext/crimsontext-4.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "crimsontext/crimsontext-5.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/crimsontext"
+  },
+  {
+    "id": "ebgaramond",
+    "name": "EB Garamond",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "ebgaramond/ebgaramond-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "ebgaramond/ebgaramond-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ebgaramond"
+  },
+  {
+    "id": "cormorantgaramond",
+    "name": "Cormorant Garamond",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "cormorantgaramond/cormorantgaramond-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "cormorantgaramond/cormorantgaramond-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/cormorantgaramond"
+  },
+  {
+    "id": "sourceserif4",
+    "name": "Source Serif 4",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "sourceserif4/sourceserif4-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "sourceserif4/sourceserif4-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/sourceserif4"
+  },
+  {
+    "id": "bitter",
+    "name": "Bitter",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "bitter/bitter-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "bitter/bitter-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/bitter"
+  },
+  {
+    "id": "spectral",
+    "name": "Spectral",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "spectral/spectral-0.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-1.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-2.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-3.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-4.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-5.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-6.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-7.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-8.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-9.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-10.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-11.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-12.woff2",
+        "italic": false,
+        "weight": "800",
+        "format": "woff2"
+      },
+      {
+        "file": "spectral/spectral-13.woff2",
+        "italic": true,
+        "weight": "800",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/spectral"
+  },
+  {
+    "id": "dmserifdisplay",
+    "name": "DM Serif Display",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "dmserifdisplay/dmserifdisplay-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "dmserifdisplay/dmserifdisplay-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/dmserifdisplay"
+  },
+  {
+    "id": "vollkorn",
+    "name": "Vollkorn",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "vollkorn/vollkorn-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "vollkorn/vollkorn-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/vollkorn"
+  },
+  {
+    "id": "alegreya",
+    "name": "Alegreya",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "alegreya/alegreya-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "alegreya/alegreya-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/alegreya"
+  },
+  {
+    "id": "arvo",
+    "name": "Arvo",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "arvo/arvo-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "arvo/arvo-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "arvo/arvo-2.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "arvo/arvo-3.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/arvo"
+  },
+  {
+    "id": "zillaslab",
+    "name": "Zilla Slab",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "zillaslab/zillaslab-0.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-1.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-2.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-3.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-4.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-5.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-6.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-7.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-8.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "zillaslab/zillaslab-9.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/zillaslab"
+  },
+  {
+    "id": "dancingscript",
+    "name": "Dancing Script",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "dancingscript/dancingscript-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/dancingscript"
+  },
+  {
+    "id": "pacifico",
+    "name": "Pacifico",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "pacifico/pacifico-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/pacifico"
+  },
+  {
+    "id": "caveat",
+    "name": "Caveat",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "caveat/caveat-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/caveat"
+  },
+  {
+    "id": "greatvibes",
+    "name": "Great Vibes",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "greatvibes/greatvibes-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/greatvibes"
+  },
+  {
+    "id": "satisfy",
+    "name": "Satisfy",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "satisfy/satisfy-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/apache/satisfy"
+  },
+  {
+    "id": "sacramento",
+    "name": "Sacramento",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "sacramento/sacramento-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/sacramento"
+  },
+  {
+    "id": "permanentmarker",
+    "name": "Permanent Marker",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "permanentmarker/permanentmarker-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/apache/permanentmarker"
+  },
+  {
+    "id": "patrickhand",
+    "name": "Patrick Hand",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "patrickhand/patrickhand-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/patrickhand"
+  },
+  {
+    "id": "amaticsc",
+    "name": "Amatic SC",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "amaticsc/amaticsc-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "amaticsc/amaticsc-1.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/amaticsc"
+  },
+  {
+    "id": "lobster",
+    "name": "Lobster",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "lobster/lobster-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/lobster"
+  },
+  {
+    "id": "jetbrainsmono",
+    "name": "JetBrains Mono",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "jetbrainsmono/jetbrainsmono-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "jetbrainsmono/jetbrainsmono-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/jetbrainsmono"
+  },
+  {
+    "id": "firacode",
+    "name": "Fira Code",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "firacode/firacode-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/firacode"
+  },
+  {
+    "id": "sourcecodepro",
+    "name": "Source Code Pro",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "sourcecodepro/sourcecodepro-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "sourcecodepro/sourcecodepro-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/sourcecodepro"
+  },
+  {
+    "id": "spacemono",
+    "name": "Space Mono",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "spacemono/spacemono-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "spacemono/spacemono-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "spacemono/spacemono-2.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "spacemono/spacemono-3.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/spacemono"
+  },
+  {
+    "id": "ibmplexmono",
+    "name": "IBM Plex Mono",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "ibmplexmono/ibmplexmono-0.woff2",
+        "italic": false,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-1.woff2",
+        "italic": true,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-2.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-3.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-4.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-5.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-6.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-7.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-8.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-9.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-10.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-11.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-12.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexmono/ibmplexmono-13.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ibmplexmono"
+  },
+  {
+    "id": "robotomono",
+    "name": "Roboto Mono",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "robotomono/robotomono-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "robotomono/robotomono-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/robotomono"
+  },
+  {
+    "id": "inconsolata",
+    "name": "Inconsolata",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "inconsolata/inconsolata-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/inconsolata"
+  },
+  {
+    "id": "dmmono",
+    "name": "DM Mono",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "dmmono/dmmono-0.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "dmmono/dmmono-1.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "dmmono/dmmono-2.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "dmmono/dmmono-3.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "dmmono/dmmono-4.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "dmmono/dmmono-5.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/dmmono"
+  },
+  {
+    "id": "notosans",
+    "name": "Noto Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "notosans/notosans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "notosans/notosans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/notosans"
+  },
+  {
+    "id": "notoserif",
+    "name": "Noto Serif",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "notoserif/notoserif-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "notoserif/notoserif-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/notoserif"
+  },
+  {
+    "id": "sourcesans3",
+    "name": "Source Sans 3",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "sourcesans3/sourcesans3-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "sourcesans3/sourcesans3-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/sourcesans3"
+  },
+  {
+    "id": "ibmplexsans",
+    "name": "IBM Plex Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "ibmplexsans/ibmplexsans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexsans/ibmplexsans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ibmplexsans"
+  },
+  {
+    "id": "ibmplexserif",
+    "name": "IBM Plex Serif",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "ibmplexserif/ibmplexserif-0.woff2",
+        "italic": false,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-1.woff2",
+        "italic": true,
+        "weight": "100",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-2.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-3.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-4.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-5.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-6.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-7.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-8.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-9.woff2",
+        "italic": true,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-10.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-11.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-12.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "ibmplexserif/ibmplexserif-13.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ibmplexserif"
+  },
+  {
+    "id": "ptsans",
+    "name": "PT Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "ptsans/ptsans-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ptsans/ptsans-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ptsans/ptsans-2.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "ptsans/ptsans-3.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ptsans"
+  },
+  {
+    "id": "ptsansnarrow",
+    "name": "PT Sans Narrow",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "ptsansnarrow/ptsansnarrow-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "ptsansnarrow/ptsansnarrow-1.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/ptsansnarrow"
+  },
+  {
+    "id": "exo2",
+    "name": "Exo 2",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "exo2/exo2-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "exo2/exo2-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/exo2"
+  },
+  {
+    "id": "exo",
+    "name": "Exo",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "exo/exo-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "exo/exo-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/exo"
+  },
+  {
+    "id": "titilliumweb",
+    "name": "Titillium Web",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "titilliumweb/titilliumweb-0.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-1.woff2",
+        "italic": true,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-2.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-3.woff2",
+        "italic": true,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-4.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-5.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-6.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-7.woff2",
+        "italic": true,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-8.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-9.woff2",
+        "italic": true,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "titilliumweb/titilliumweb-10.woff2",
+        "italic": false,
+        "weight": "900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/titilliumweb"
+  },
+  {
+    "id": "assistant",
+    "name": "Assistant",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "assistant/assistant-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/assistant"
+  },
+  {
+    "id": "asap",
+    "name": "Asap",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "asap/asap-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "asap/asap-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/asap"
+  },
+  {
+    "id": "heebo",
+    "name": "Heebo",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "heebo/heebo-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/heebo"
+  },
+  {
+    "id": "hind",
+    "name": "Hind",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "hind/hind-0.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "hind/hind-1.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "hind/hind-2.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "hind/hind-3.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "hind/hind-4.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/hind"
+  },
+  {
+    "id": "mukta",
+    "name": "Mukta",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "mukta/mukta-0.woff2",
+        "italic": false,
+        "weight": "200",
+        "format": "woff2"
+      },
+      {
+        "file": "mukta/mukta-1.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "mukta/mukta-2.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "mukta/mukta-3.woff2",
+        "italic": false,
+        "weight": "500",
+        "format": "woff2"
+      },
+      {
+        "file": "mukta/mukta-4.woff2",
+        "italic": false,
+        "weight": "600",
+        "format": "woff2"
+      },
+      {
+        "file": "mukta/mukta-5.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      },
+      {
+        "file": "mukta/mukta-6.woff2",
+        "italic": false,
+        "weight": "800",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/mukta"
+  },
+  {
+    "id": "overpass",
+    "name": "Overpass",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "overpass/overpass-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "overpass/overpass-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/overpass"
+  },
+  {
+    "id": "publicsans",
+    "name": "Public Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "publicsans/publicsans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "publicsans/publicsans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/publicsans"
+  },
+  {
+    "id": "urbanist",
+    "name": "Urbanist",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "urbanist/urbanist-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "urbanist/urbanist-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/urbanist"
+  },
+  {
+    "id": "lexend",
+    "name": "Lexend",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "lexend/lexend-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/lexend"
+  },
+  {
+    "id": "lexenddeca",
+    "name": "Lexend Deca",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "lexenddeca/lexenddeca-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/lexenddeca"
+  },
+  {
+    "id": "redhatdisplay",
+    "name": "Red Hat Display",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "redhatdisplay/redhatdisplay-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "redhatdisplay/redhatdisplay-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/redhatdisplay"
+  },
+  {
+    "id": "redhattext",
+    "name": "Red Hat Text",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "redhattext/redhattext-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "redhattext/redhattext-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/redhattext"
+  },
+  {
+    "id": "readexpro",
+    "name": "Readex Pro",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "readexpro/readexpro-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/readexpro"
+  },
+  {
+    "id": "albertsans",
+    "name": "Albert Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "albertsans/albertsans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "albertsans/albertsans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/albertsans"
+  },
+  {
+    "id": "onest",
+    "name": "Onest",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "onest/onest-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/onest"
+  },
+  {
+    "id": "geist",
+    "name": "Geist",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "geist/geist-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "geist/geist-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/geist"
+  },
+  {
+    "id": "geistmono",
+    "name": "Geist Mono",
+    "category": "Monospace",
+    "faces": [
+      {
+        "file": "geistmono/geistmono-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "geistmono/geistmono-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/geistmono"
+  },
+  {
+    "id": "instrumentsans",
+    "name": "Instrument Sans",
+    "category": "Sans sérif",
+    "faces": [
+      {
+        "file": "instrumentsans/instrumentsans-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "instrumentsans/instrumentsans-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/instrumentsans"
+  },
+  {
+    "id": "instrumentserif",
+    "name": "Instrument Serif",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "instrumentserif/instrumentserif-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "instrumentserif/instrumentserif-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/instrumentserif"
+  },
+  {
+    "id": "newsreader",
+    "name": "Newsreader",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "newsreader/newsreader-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "newsreader/newsreader-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/newsreader"
+  },
+  {
+    "id": "fraunces",
+    "name": "Fraunces",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "fraunces/fraunces-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "fraunces/fraunces-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/fraunces"
+  },
+  {
+    "id": "bodonimoda",
+    "name": "Bodoni Moda",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "bodonimoda/bodonimoda-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      },
+      {
+        "file": "bodonimoda/bodonimoda-1.woff2",
+        "italic": true,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/bodonimoda"
+  },
+  {
+    "id": "cinzel",
+    "name": "Cinzel",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "cinzel/cinzel-0.woff2",
+        "italic": false,
+        "weight": "100 900",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/cinzel"
+  },
+  {
+    "id": "cardo",
+    "name": "Cardo",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "cardo/cardo-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "cardo/cardo-1.woff2",
+        "italic": true,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "cardo/cardo-2.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/cardo"
+  },
+  {
+    "id": "marcellus",
+    "name": "Marcellus",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "marcellus/marcellus-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/marcellus"
+  },
+  {
+    "id": "prata",
+    "name": "Prata",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "prata/prata-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/prata"
+  },
+  {
+    "id": "italiana",
+    "name": "Italiana",
+    "category": "Sérif",
+    "faces": [
+      {
+        "file": "italiana/italiana-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/italiana"
+  },
+  {
+    "id": "shadowsintolight",
+    "name": "Shadows Into Light",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "shadowsintolight/shadowsintolight-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/shadowsintolight"
+  },
+  {
+    "id": "indieflower",
+    "name": "Indie Flower",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "indieflower/indieflower-0.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/indieflower"
+  },
+  {
+    "id": "kalam",
+    "name": "Kalam",
+    "category": "Manuscrites et titres",
+    "faces": [
+      {
+        "file": "kalam/kalam-0.woff2",
+        "italic": false,
+        "weight": "300",
+        "format": "woff2"
+      },
+      {
+        "file": "kalam/kalam-1.woff2",
+        "italic": false,
+        "weight": "400",
+        "format": "woff2"
+      },
+      {
+        "file": "kalam/kalam-2.woff2",
+        "italic": false,
+        "weight": "700",
+        "format": "woff2"
+      }
+    ],
+    "source": "https://github.com/google/fonts/tree/main/ofl/kalam"
+  }
+]

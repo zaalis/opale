@@ -247,7 +247,7 @@ export const explorer = {
   async newBoard(folder = this.targetFolder(), kind = 'board') {
     try {
       const doc=window.OpaleBoard.emptyDoc();
-      if(kind==='design')doc.settings.design=true;else if(kind!=='board')doc.elements.push(window.OpaleBoard.create(kind,{x:0,y:0}));
+      if(kind==='design'){doc.settings.design=true;doc.elements.push(window.OpaleBoard.create('design',{x:120,y:160,w:280,h:140,data:{tool:'start',title:'Départ',text:''}}));}else if(kind!=='board')doc.elements.push(window.OpaleBoard.create(kind,{x:0,y:0}));
       const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas', ...(kind==='design'?{name:'Opal Design'}:{}), content:window.OpaleBoard.serialize(doc) } });
       await app.workspace.waitFor(created.path);
       this.selected = created.path;

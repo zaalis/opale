@@ -48,7 +48,7 @@
 
 /* ------------------------------------------------------ carets in notes */
 .note-view.is-shared .note-scroll { position: relative; }
-.collab-carets { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.collab-carets { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; z-index: 8; }
 .collab-caret { position: absolute; width: 0; border-left: 2px solid var(--who); }
 .collab-caret.is-block { border-left-width: 3px; border-radius: 2px; opacity: .8; }
 .collab-caret.is-idle { opacity: .4; }
@@ -59,7 +59,7 @@
 
 /* ----------------------------------------------- pointers on boards */
 .collab-board-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 6; }
-.collab-pointer { position: absolute; transition: left 90ms linear, top 90ms linear; }
+.collab-pointer { position: absolute; width:16px; height:18px; transition: left 90ms linear, top 90ms linear; }
 .collab-pointer.is-idle { opacity: .45; }
 .collab-pointer-arrow { position: absolute; left: -1px; top: -1px; }
 .collab-pointer .collab-tag { position: absolute; left: 14px; top: 16px; border-radius: 0 4px 4px 4px; }

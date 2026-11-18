@@ -12,7 +12,7 @@ function blobData(blob) {
   });
 }
 
-async function copyVisual(source) {
+export async function copyVisual(source) {
   const clone = source.cloneNode(false);
   const computed = getComputedStyle(source);
   for (const property of computed) clone.style.setProperty(property, computed.getPropertyValue(property));
@@ -108,15 +108,17 @@ export async function captureBoard(view, options = {}) {
     if (view.doc.settings.privateMode) clone.querySelectorAll('.b-sticky-text').forEach((node) => { node.style.filter = 'blur(7px)'; });
     world.append(clone);
   }
+  const { embeddedFontCss } = await import('../note-documents.js');
+  const fonts = await embeddedFontCss(view.world || view.stage);
   const markup = new XMLSerializer().serializeToString(root);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${markup}</foreignObject></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><style>${fonts}</style><foreignObject width="100%" height="100%">${markup}</foreignObject></svg>`;
   const image = new Image();
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   await image.decode();
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Impossible de préparer l’export du moodboard.');
   context.fillStyle = background; context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(image, 0, 0);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 

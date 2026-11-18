@@ -26,7 +26,10 @@ class FileView {
     const kind = Meta.kindOf(path); const url = fileUrl(path);
     let content;
     if (kind === 'image') content = h('div.file-stage', h('img.file-image', { src: url, alt: Meta.baseName(path) }));
-    else if (kind === 'pdf') content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
+    else if (kind === 'pdf') {
+      content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
+      this.header.querySelector('.view-actions').append(h('button.btn.small', { type: 'button', onClick: () => import('./note-documents.js').then(m => m.editablePdfCopy(this.path)).catch(reportError) }, 'Créer une note modifiable'));
+    }
     else if (kind === 'audio') content = h('div.file-stage', h('audio', { controls: true, src: url }));
     else if (kind === 'video') content = h('div.file-stage', h('video.file-video', { controls: true, src: url }));
     else if (Meta.extOf(path).toLowerCase() === 'txt') {
