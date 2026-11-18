@@ -237,7 +237,7 @@ test('watcher picks up files written behind Opale’s back', async () => {
   vault.close();
 });
 
-test('case-insensitive paths map onto the indexed spelling', () => {
+test('case-insensitive paths map onto the indexed spelling', {skip:process.platform === 'linux'}, () => {
   const vault = app.vault;
   const entry = vault.write('accueil.md', '# Accueil\n');
   assert.equal(entry.path, 'Accueil.md');

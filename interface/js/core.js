@@ -1,7 +1,5 @@
 // Opale — shared building blocks of the interface: DOM helpers, icons, the
 // server API, a small event bus, toasts, dialogs and menus.
-import { keyLabel, keys } from './platform.js';
-
 export const Meta = window.OpaleMeta;
 export const Markdown = window.OpaleMarkdown;
 
@@ -11,6 +9,19 @@ export const app = { settings: {}, vault: null, bookmarks: [], agent: {} };
 
 // ------------------------------------------------------------------- icons
 const ICONS = {
+  play: '<path d="m8 4 12 8-12 8Z"/>',
+  download: '<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>',
+  layers: '<path d="m12 3 10 5-10 5L2 8Zm-10 9 10 5 10-5M2 16l10 5 10-5"/>',
+  lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6"/>',
+  rotate: '<path d="M3 9a9 9 0 1 1 2 9M3 3v6h6"/>',
+  swap: '<path d="M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/>',
+  sparkles: '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM4 2v4M2 4h4"/>',
+
+  design: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6h5a3 3 0 0 1 3 3v5M6 10v8h8"/>',
+
+  camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"/><circle cx="12" cy="13" r="4"/>',
   'board-select': '<path d="m5 3 14 10-7 1-3 7Z"/>',
   'board-hand': '<path d="M8 12V6a1.5 1.5 0 0 1 3 0v5V4a1.5 1.5 0 0 1 3 0v7V6a1.5 1.5 0 0 1 3 0v6V9a1.5 1.5 0 0 1 3 0v6c0 4-2.5 6-6 6h-1c-2 0-3.5-1-4.5-2.5L5 14a1.6 1.6 0 0 1 2.5-2Z"/>',
   'board-text': '<path d="M5 7V4h14v3M12 4v16M8 20h8"/>',
@@ -70,6 +81,13 @@ const ICONS = {
   pin: '<path d="M9 4h6l-1 6 3 3H7l3-3ZM12 13v7"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 6.3M20 5v6h-6"/>',
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="2.8"/>',
+  cloud: '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.8 3.8 0 0 1 17.5 18Z"/>',
+  'cloud-check': '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.8 3.8 0 0 1 17.5 18Z"/><path d="m9.5 13.5 2 2 3.5-3.5"/>',
+  'cloud-off': '<path d="M9 6.3A6 6 0 0 1 17.8 10.6 3.8 3.8 0 0 1 19.6 17M15 18H7a4.5 4.5 0 0 1-1.8-8.6M3 3l18 18"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18 19a6 6 0 0 0-2.5-4.9"/>',
+  share: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>',
+  login: '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="m10 16 4-4-4-4M14 12H4"/>',
+  alert: '<path d="M10.3 4 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
 };
 export function icon(name, size = 18) {
   return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -82,10 +100,8 @@ export function h(spec, attrs, ...children) {
   const el = document.createElement(tag || 'div');
   if (classes.length) el.className = classes.join(' ');
   if (attrs && (typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) { children.unshift(attrs); attrs = null; }
-  for (let [key, value] of Object.entries(attrs || {})) {
+  for (const [key, value] of Object.entries(attrs || {})) {
     if (value === undefined || value === null) continue;
-    // Tooltips name their shortcut in the portable spelling; show it the way this system writes it.
-    if (key === 'title' || key === 'aria-label') value = keys(value);
     // `false` must be applied, not skipped: spellcheck and draggable default to on.
     if (value === false) { if (key in el && typeof el[key] === 'boolean') el[key] = false; continue; }
     if (key === 'html') el.innerHTML = value;
@@ -141,6 +157,10 @@ export async function api(route, options = {}) {
   return data;
 }
 export const fileUrl = (path) => `/api/file?path=${encodeURIComponent(path)}`;
+export function downloadFile(path) {
+  const link = h('a', { href: `${fileUrl(path)}&download=1`, download: Meta.baseName(path) });
+  document.body.append(link); link.click(); setTimeout(() => link.remove(), 1000);
+}
 
 // ------------------------------------------------------------------- toasts
 export function toast(message, options = {}) {
@@ -226,18 +246,21 @@ export function confirmDialog({ title, message, confirm = 'Confirmer', danger = 
 }
 
 // -------------------------------------------------------------------- menus
-let openMenu = null;
-export function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
+let openMenu = null, menuAnchor = null;
+export function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } menuAnchor?.setAttribute("aria-expanded", "false"); menuAnchor = null; }
 // items: { label, icon, run, danger, checked, disabled, hint } or 'separator'
-export function showMenu(x, y, items) {
+export function showMenu(x, y, items, anchor = null) {
+  if (openMenu && anchor && menuAnchor === anchor) { closeMenu(); return null; }
   closeMenu();
+  menuAnchor = anchor;
+  anchor?.setAttribute("aria-expanded", "true");
   const menu = h('div.menu', { role: 'menu' });
   for (const item of items.filter(Boolean)) {
     if (item === 'separator') { menu.append(h('div.menu-separator')); continue; }
     menu.append(h(`button.menu-item${item.danger ? '.danger' : ''}`, {
       type: 'button', role: 'menuitem', disabled: !!item.disabled,
       onClick: () => { closeMenu(); item.run(); },
-    }, h('span.menu-icon', { html: item.checked ? icon('check', 15) : item.icon ? icon(item.icon, 15) : '' }), h('span.menu-label', item.label), item.hint ? h('span.menu-hint', keyLabel(item.hint)) : null));
+    }, h('span.menu-icon', { html: item.checked ? icon('check', 15) : item.icon ? icon(item.icon, 15) : '' }), h('span.menu-label', item.label), item.hint ? h('span.menu-hint', item.hint) : null));
   }
   document.body.append(menu);
   const rect = menu.getBoundingClientRect();
@@ -248,7 +271,7 @@ export function showMenu(x, y, items) {
   if (first) first.focus({ preventScroll: true });
   return menu;
 }
-document.addEventListener('mousedown', (event) => { if (openMenu && !openMenu.contains(event.target)) closeMenu(); }, true);
+document.addEventListener('mousedown', (event) => { if (openMenu && !openMenu.contains(event.target) && !menuAnchor?.contains(event.target)) closeMenu(); }, true);
 document.addEventListener('keydown', (event) => {
   if (!openMenu) return;
   if (event.key === 'Escape') { event.stopPropagation(); closeMenu(); return; }

@@ -1,11 +1,14 @@
+import { fetchMedia, watchImage } from './media-loading.js';
 // Opale — the central area: tabs, the view each one shows, and per-tab
 // back/forward history.
 import { api, app, bus, debounce, fileUrl, h, icon, iconButton, Meta, noteTitle, reportError, showMenu } from './core.js';
+import { TEXT } from './platform.js';
 import { store } from './store.js';
-import { keyLabel, TEXT } from './platform.js';
 import { NoteView } from './note.js';
 import { GraphView } from './graph.js';
 import { BoardView } from './board/view.js';
+import { collab, isShared } from './collab/client.js';
+import { SharedBoardView, SharedNoteView } from './collab/views.js';
 
 let nextId = 1;
 
@@ -24,23 +27,37 @@ class FileView {
     const kind = Meta.kindOf(path); const url = fileUrl(path);
     let content;
     if (kind === 'image') content = h('div.file-stage', h('img.file-image', { src: url, alt: Meta.baseName(path) }));
-    else if (kind === 'pdf') content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
+    else if (kind === 'pdf') {
+      content = h('iframe.file-frame', { src: url, title: Meta.baseName(path) });
+      this.header.querySelector('.view-actions').append(h('button.btn.small', { type: 'button', onClick: () => import('./note-documents.js').then(m => m.editablePdfCopy(this.path)).catch(reportError) }, 'Créer une note modifiable'));
+    }
     else if (kind === 'audio') content = h('div.file-stage', h('audio', { controls: true, src: url }));
     else if (kind === 'video') content = h('div.file-stage', h('video.file-video', { controls: true, src: url }));
+    else if (Meta.extOf(path).toLowerCase() === 'txt') {
+      this.abort = new AbortController();
+      content = h('pre.file-text.media-loading', { tabIndex: 0, 'aria-label': Meta.baseName(path), 'aria-busy': 'true' }, 'Chargement du texte…');
+      fetchMedia(url, { signal: this.abort.signal }).then(async response => {
+        if (Number(response.headers.get('content-length')) > 8 * 1024 * 1024) throw new Error('Ce fichier dépasse 8 Mo. Téléchargez-le pour le lire.');
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const utf16 = bytes[0] === 255 && bytes[1] === 254 ? 'utf-16le' : bytes[0] === 254 && bytes[1] === 255 ? 'utf-16be' : 'utf-8';
+        content.textContent = new TextDecoder(utf16).decode(bytes);
+      }).catch(error => { if (error.name !== 'AbortError') content.textContent = error.message; }).finally(() => { content.classList.remove('media-loading'); content.setAttribute('aria-busy', 'false'); });
+    }
     else content = h('div.empty-state', h('p', `Opale n’affiche pas les fichiers « .${Meta.extOf(path) || '?'} ».`),
-      h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, TEXT.revealItem));
+      isShared(path) ? h('a.btn', { href: url, download: Meta.baseName(path) }, 'Télécharger le fichier') : h('button.btn', { type: 'button', onClick: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) }, TEXT.revealItem));
     this.el = h('div.view.file-view', this.header, content);
+    for (const img of content.querySelectorAll('img')) watchImage(img);
   }
   updateHeader() { this.header.update(); }
   setPath(path) { this.path = path; }
-  destroy() {}
+  destroy() { this.abort?.abort(); }
 }
 
 class EmptyView {
   constructor() {
     this.type = 'empty';
     this.header = simpleHeader('Nouvel onglet');
-    const action = (label, hint, run) => h('button.empty-action', { type: 'button', onClick: run }, h('span', label), hint ? h('kbd', keyLabel(hint)) : null);
+    const action = (label, hint, run) => h('button.empty-action', { type: 'button', onClick: run }, h('span', label), hint ? h('kbd', hint) : null);
     this.el = h('div.view.empty-view', this.header, h('div.empty-state',
       h('div.empty-logo', { html: '<svg viewBox="0 0 64 64" width="56" height="56" aria-hidden="true"><defs><linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset=".5" stop-color="#f59e0b"/><stop offset="1" stop-color="#c2410c"/></linearGradient></defs><path d="M32 4 54 20 46 52 18 52 10 20Z" fill="url(#og)" opacity=".92"/><path d="M32 4 38 24 54 20M38 24 46 52M38 24 24 30 10 20M24 30 18 52M24 30 32 4" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.4" stroke-linejoin="round"/></svg>' }),
       h('div.empty-actions',
@@ -55,10 +72,11 @@ class EmptyView {
   destroy() {}
 }
 
-function entryFor(path) { const kind = Meta.kindOf(path); return { type: ['note', 'board'].includes(kind) ? kind : 'file', path }; }
+function entryFor(path) { const kind = Meta.kindOf(path); return { type: /^@shared\/[^/]+\/assets\//.test(path) ? 'file' : ['note', 'board'].includes(kind) ? kind : 'file', path }; }
 function titleOf(entry) {
   if (entry.type === 'graph') return 'Graphe';
   if (entry.type === 'empty') return 'Nouvel onglet';
+  if (isShared(entry.path)) return collab.titleOf(entry.path);
   return noteTitle(entry.path);
 }
 
@@ -84,6 +102,7 @@ export const workspace = {
   current(tab) { return tab.history[tab.index]; },
 
   makeView(entry, options) {
+    if (isShared(entry.path) && entry.type !== 'file') return entry.type === 'board' ? new SharedBoardView(entry.path, options) : new SharedNoteView(entry.path, options);
     if (entry.type === 'note') return new NoteView(entry.path, options);
     if (entry.type === 'board') return new BoardView(entry.path, options);
     if (entry.type === 'graph') return new GraphView();
@@ -139,7 +158,7 @@ export const workspace = {
     if (!tab) return;
     const entry = this.current(tab);
     document.title = `${titleOf(entry)} — ${app.vault ? app.vault.name : ''} — Opale`;
-    api('/api/active', { method: 'POST', body: { path: ['note', 'board'].includes(entry.type) ? entry.path : '' } }).catch(() => {});
+    api('/api/active', { method: 'POST', body: { path: ['note', 'board'].includes(entry.type) && !isShared(entry.path) ? entry.path : '' } }).catch(() => {});
   },
 
   openPath(path, options = {}) {
@@ -168,6 +187,7 @@ export const workspace = {
     if (resolved) return this.openPath(resolved, { newTab, subpath });
     const clean = String(target || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\.md$/i, '');
     if (!clean) return undefined;
+    if (isShared(source)) return collab.createLinked(source, clean, newTab);
     try {
       const body = clean.includes('/') ? { folder: Meta.dirName(clean), name: Meta.baseName(clean), exact: true } : { name: clean, source, exact: true };
       const created = await api('/api/note', { method: 'POST', body });

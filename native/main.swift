@@ -423,6 +423,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         guard message.frameInfo.isMainFrame, isApp(webView.url), let body = message.body as? [String: Any] else { return }
         if body["type"] as? String == "exportBoard" { exportBoard(body); return }
         if body["type"] as? String == "pickFolder" { pickFolder(body); return }
+        if body["close"] as? Bool == true { NSApp.terminate(nil); return }
         guard let theme = body["theme"] as? String else { return }
         let light = theme == "light"
         NSApp.appearance = NSAppearance(named: light ? .aqua : .darkAqua)

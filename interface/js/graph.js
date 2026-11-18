@@ -3,7 +3,6 @@
 // note, as the "local graph" of the right panel.
 import { api, app, bus, debounce, h, iconButton, Meta } from './core.js';
 import { store } from './store.js';
-import { primary } from './platform.js';
 
 const CELL = 280;
 
@@ -257,7 +256,7 @@ export class GraphView {
     }
     // Labels appear as you zoom in; the hovered node and its neighbours always show theirs.
     const labelAlpha = this.local ? 1 : Math.max(0, Math.min(1, (this.view.k - 0.45) / 0.45));
-    context.font = `${12 / this.view.k}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif`;
+    context.font = `${12 / this.view.k}px "Segoe UI", system-ui, sans-serif`;
     context.textAlign = 'center'; context.textBaseline = 'top';
     context.fillStyle = this.colours.text;
     for (const node of this.nodes) {
@@ -308,7 +307,7 @@ export class GraphView {
       const up = (upEvent) => {
         window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
         const drag = this.drag; this.drag = null;
-        if (drag && drag.node && !drag.moved) this.open(drag.node, primary(upEvent) || drag.button === 1);
+        if (drag && drag.node && !drag.moved) this.open(drag.node, upEvent.ctrlKey || upEvent.metaKey || drag.button === 1);
         canvas.style.cursor = '';
         this.kick(0.02);
       };

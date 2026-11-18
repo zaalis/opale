@@ -8,10 +8,14 @@ macOS (AppKit + WKWebView).
 Un coffre Obsidian existant s'ouvre tel quel (Opale range ses réglages dans `.opale/`
 et ne touche pas à `.obsidian/`).
 
-Cette branche est la cible macOS. Les sources communes suivent la branche
-[main](https://github.com/zaalis/opale/tree/main) (Windows) ; seuls changent la fenêtre
-native, les raccourcis (⌘), les noms propres au système (Finder, Corbeille) et les
-polices.
+Cette branche est la cible macOS, en version 0.3.0. Les sources communes suivent
+l’édition Linux/Windows du même numéro ; seuls changent la fenêtre native, les
+raccourcis (⌘), les noms propres au système (Finder, Corbeille) et les polices.
+
+La barre de typographie s’applique au texte et au titre de la note. L’import et
+l’export PDF sont dans le menu de la note, y compris dans un projet partagé, où
+le curseur des autres personnes est visible. Opal Design démarre par un nœud
+Départ : le bouton de lecture exécute la chaîne dans l’ordre.
 
 ## Lancer
 
@@ -26,15 +30,13 @@ n'importe où.
 ## Construire l'application macOS
 
 Prérequis, sur un Mac : les outils de développement Xcode (`xcode-select --install`)
-et Node.js 18 ou plus récent.
+et Node.js 22 ou plus récent.
 
 ```sh
 npm install
 npm run build             # dist/Opale.app pour l'architecture de ce Mac
-npm run dmg               # idem + dist/Opale-Setup.dmg
-npm run installer         # dist/Opale-Setup.dmg, Apple Silicon + Intel
-npm run build:universal   # même installateur universel
-bash native/build.sh --arch x86_64 --dmg  # dist/Opale-Setup-x64.dmg
+npm run dmg               # idem + dist/Opale-<version>.dmg
+npm run build:universal   # Apple silicon + Intel dans une seule app, avec le .dmg
 ```
 
 `Opale.app` contient la fenêtre (Swift, macOS 12 minimum) et le serveur empaqueté
@@ -67,6 +69,7 @@ refusée, le fichier va quand même à la Corbeille, sans « Remettre ».
 - Moodboards (fichiers `.canvas`, format JSON Canvas lu par Obsidian) : pense-bêtes, formes,
   flèches, dessins, images, notes, cadres, Kanban, cartes mentales, tableaux, imports Mermaid et
   draw.io, calques, export PDF (vectoriel) ou JPG. Pincement du trackpad et ⌘ + molette pour zoomer.
+- Opal Design, projets partagés, synchronisation Google Drive et typographie riche de la note.
 
 Non repris d'Obsidian : extensions communautaires, Sync/Publish, rendu LaTeX,
 volets côte à côte.

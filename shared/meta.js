@@ -29,8 +29,6 @@
   function joinPath(a, b) { return a ? (b ? a + '/' + b : a) : b; }
   // Collapse "." and ".." segments. Returns null when the path climbs above
   // the vault root.
-  // Key for comparing names: case-insensitive, and accents compared composed (a Mac
-  // stores "é" decomposed, a keyboard types it composed).
   function fold(text) { return String(text).normalize('NFC').toLowerCase(); }
 
   function normalizePath(p) {
@@ -321,6 +319,7 @@
   // Link resolution the way a vault user expects it: exact path first, then
   // relative to the linking note, then the closest file with that name.
   function buildResolver(paths) {
+    const exact = new Set(paths);
     const byLower = new Map(); const byBase = new Map();
     for (const path of paths) {
       byLower.set(fold(path), path);
@@ -334,10 +333,12 @@
       if (!cleaned) return sourcePath || null;
       const candidates = /\.md$/i.test(cleaned) ? [cleaned] : [cleaned + '.md', cleaned];
       for (const candidate of candidates) {
+        if (exact.has(candidate)) return candidate;
         const lower = fold(candidate);
         if (byLower.has(lower)) return byLower.get(lower);
         if (sourcePath) {
           const relative = normalizePath(joinPath(dirName(sourcePath), candidate));
+          if (relative && exact.has(relative)) return relative;
           if (relative && byLower.has(fold(relative))) return byLower.get(fold(relative));
         }
         const named = byBase.get(baseName(lower)) || [];

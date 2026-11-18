@@ -45,6 +45,7 @@
   // Default size, style and data of every kind of element. `data` holds what
   // the element says, `style` how it looks.
   const KINDS = {
+    design: { w: 340, h: 340, style: {}, data: { tool: 'prompt', title: '', text: '', provider: '', model: '', params: {}, file: '', maskFile: '', resultFile: '', resultText: '', resultType: '', versions: [], fingerprint: '' } },
     text: { w: 260, h: 44, style: { color: '', fontSize: 22, align: 'left', bold: false, italic: false, font: 'sans' }, data: { text: '' } },
     sticky: { w: 200, h: 200, style: { fill: STICKY_COLORS[0], color: '#1f1d16', fontSize: 0, align: 'center' }, data: { text: '' } },
     mdcard: { w: 320, h: 180, style: { fill: '', stroke: '', color: '' }, data: { text: '' } },
@@ -104,6 +105,7 @@
     const out = {};
     if (end.id) out.id = str(end.id);
     if (SIDES.includes(end.side)) out.side = end.side;
+    if (Number.isFinite(end.portY)) out.portY = clamp(end.portY, 0, 10000);
     out.x = finite(end.x); out.y = finite(end.y);
     return out;
   }
@@ -239,6 +241,7 @@
         if (el.style.color) edge.color = el.style.color;
         if (data.label) edge.label = data.label;
         opale.data = data;
+        opale.ends = { from: el.from, to: el.to };
         edge.opale = opale;
         edges.push(edge);
         return;
@@ -285,6 +288,7 @@
       doc.settings.grid = ['dots', 'lines', 'none'].includes(meta.settings.grid) ? meta.settings.grid : 'dots';
       doc.settings.snap = meta.settings.snap !== false;
       doc.settings.privateMode = bool(meta.settings.privateMode);
+      if (meta.settings.design === true) doc.settings.design = true;
     }
     if (isObject(meta.vote)) {
       const votes = {};
@@ -342,7 +346,7 @@
       if (edge.label !== undefined) data.label = str(edge.label);
       const el = create('connector', {
         id: unique(edge.id), style, data, layer: o.layer, locked: o.locked, group: o.group, reactions: o.reactions,
-        from: { id: str(edge.fromNode), side: edge.fromSide }, to: { id: str(edge.toNode), side: edge.toSide },
+        from: { ...(o.ends && o.ends.from || {}), id: str(edge.fromNode), side: edge.fromSide }, to: { ...(o.ends && o.ends.to || {}), id: str(edge.toNode), side: edge.toSide },
       });
       items.push({ el, z: finite(o.z, nodes.length + index) });
     });
@@ -370,7 +374,7 @@
       if (!isObject(node)) continue;
       if (node.type === 'file') add(node.file);
       const data = isObject(node.opale) && isObject(node.opale.data) ? node.opale.data : null;
-      if (data && data.image) add(data.image);
+      if (data) for (const object of [data, ...(Array.isArray(data.versions) ? data.versions : [])]) for (const key of ['file', 'image', 'resultFile', 'maskFile', 'maskSource']) if (object[key]) add(object[key]);
     }
     return [...new Set(refs)];
   }
@@ -389,9 +393,9 @@
         if (next && next !== node.file) { node.file = next; changed++; }
       }
       const data = isObject(node.opale) && isObject(node.opale.data) ? node.opale.data : null;
-      if (data && typeof data.image === 'string' && data.image) {
-        const next = map(data.image);
-        if (next && next !== data.image) { data.image = next; changed++; }
+      if (data) for (const object of [data, ...(Array.isArray(data.versions) ? data.versions : [])]) for (const key of ['file', 'image', 'resultFile', 'maskFile', 'maskSource']) {
+        if (typeof object[key] !== 'string' || !object[key]) continue;
+        const next = map(object[key]); if (next && next !== object[key]) { object[key] = next; changed++; }
       }
     }
     return changed ? { text: `${JSON.stringify(json, null, '\t')}\n`, changed } : { text, changed: 0 };
@@ -453,6 +457,10 @@
       const otherTarget = otherEnd.id && lookup ? lookup(otherEnd.id) : null;
       const toward = other || (otherTarget && otherTarget.kind !== 'connector' ? center(otherTarget) : { x: otherEnd.x, y: otherEnd.y });
       side = facingSide(target, toward);
+    }
+    if (target.kind === 'design' && Number.isFinite(end.portY)) {
+      const c=center(target),p=rotatePoint({x:side==='left'?target.x:target.x+target.w,y:target.y+Math.min(target.h,end.portY)},c,target.rotation);
+      const normal=sidePoint(target,side);return {...normal,x:p.x,y:p.y,side};
     }
     return { ...sidePoint(target, side), side };
   }

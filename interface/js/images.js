@@ -3,10 +3,9 @@
 // itself to move it elsewhere in the text, and choose how the text flows
 // around it. Every change is written back to the Markdown, for instance
 // "![[photo.png|left|320]]", so the note stays a plain text file.
-import { app, bus, h, icon, Markdown, Meta, reportError, showMenu, toast } from './core.js';
+import { app, bus, downloadFile, h, icon, Markdown, Meta, reportError, showMenu, toast } from './core.js';
 import { store } from './store.js';
 import { embedFor, uploadFile } from './editing.js';
-import { keyLabel, keys, primary } from './platform.js';
 import { findLinks } from './links.js';
 
 // Blocks whose text an image can be dropped into; any other block (code,
@@ -203,7 +202,7 @@ export class ImageLayer {
       this.sizeLabel,
       h('span.img-sep'),
       tool('image', 'Remplacer l’image… (double-clic)', false, () => this.replaceFile(start())),
-      tool('trash', `Retirer de la note (${keyLabel('Backspace')})`, false, () => this.remove(start())));
+      tool('trash', 'Retirer de la note (Suppr)', false, () => this.remove(start())));
   }
 
   // --------------------------------------------------------------- changes
@@ -260,14 +259,30 @@ export class ImageLayer {
     this.view.setContent(Markdown.removeSpan(this.view.content, entry.start, entry.end), { step: true });
     this.rerender(null);
     this.view.scroller.focus({ preventScroll: true });
-    toast(keys('Image retirée de la note. Le fichier reste dans le coffre (Ctrl+Z pour annuler).'));
+    toast('Image retirée de la note. Le fichier reste dans le coffre (Ctrl+Z pour annuler).');
   }
 
   // Point the picture at another file of the vault, in the same small window
   // that repairs a broken one. The Markdown itself is never shown.
-  replaceFile(start) {
+  async replaceFile(start) {
     const entry = typeof start === 'number' ? this.entryAt(start) : null;
     if (!entry) return;
+    if (this.view.shared) {
+      try {
+        const file = (await pickImageFiles()).find(isImageFile);
+        if (!file) return;
+        const path = await uploadFile(file, this.view.path);
+        const current = this.entryAt(start);
+        if (!current || current.raw !== entry.raw) { toast('L’image a changé pendant l’envoi ; réessayez.', { kind: 'error' }); return; }
+        const target = path.split('/').slice(2).join('/');
+        const wiki = /^!\[\[([^|\]]+)([^\]]*)\]\]$/.exec(entry.raw);
+        const raw = wiki ? `![[${target}${wiki[2]}]]` : await embedFor(path, file);
+        const content = this.view.content;
+        this.view.setContent(content.slice(0, current.start) + raw + content.slice(current.end), { step: true });
+        this.rerender(current.start);
+      } catch (error) { reportError(error); }
+      return;
+    }
     const link = findLinks(entry.raw)[0];
     if (!link) return;
     this.view.links.openFor({ ...link, base: entry.start }, this.toolbar || entry.img, { title: 'Remplacer l’image', text: 'Choisissez l’image à afficher à la place :' });
@@ -279,8 +294,8 @@ export class ImageLayer {
     if (event.target.closest('.img-frame, .img-toolbar')) return true;
     const img = event.target.closest('img.embed-image');
     if (!img || event.button !== 0 || !this.isManaged(img)) return false;
-    // ⌘-click (Ctrl+click elsewhere) opens the picture in a tab (see renderer.js).
-    if (primary(event)) { event.preventDefault(); return true; }
+    // Ctrl+click opens the picture in a tab (see renderer.js).
+    if (event.ctrlKey || event.metaKey) { event.preventDefault(); return true; }
     let entry = this.entryFor(img);
     // A picture drawn above or below the text being typed: close the typing
     // and pick the picture up.
@@ -551,6 +566,13 @@ export class ImageLayer {
   async insertFiles(files, target) {
     const images = [...files].filter(isImageFile);
     if (!images.length) { toast('Choisissez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
+    const preview = h('div.attachment-drop-preview.media-loading', { role: 'status', 'aria-label': 'Ajout de l’image…' });
+    const localUrl = URL.createObjectURL(images[0]);
+    const localImage = h('img', { src: localUrl, alt: images[0].name });
+    localImage.onload = () => preview.classList.remove('media-loading');
+    preview.append(localImage);
+    const anchor = target && [...this.view.body.querySelectorAll('[data-start]')].find(node => Number(node.dataset.start) >= target.offset);
+    if (anchor && anchor.parentElement === this.view.body) anchor.before(preview); else this.view.body.append(preview);
     try {
       const embeds = [];
       const paths = [];
@@ -562,6 +584,7 @@ export class ImageLayer {
       await Promise.all(paths.map((path) => app.workspace.waitFor(path)));
       this.insertEmbeds(embeds, target);
     } catch (error) { reportError(error); }
+    finally { preview.remove(); URL.revokeObjectURL(localUrl); }
   }
 
   // ------------------------------------------------------------ keyboard
@@ -597,11 +620,12 @@ export class ImageLayer {
       { label: 'Grande (toute la largeur)', run: () => this.setFraction(start, 1) },
       { label: 'Taille d’origine', checked: !options.width, run: () => this.update(start, { width: null }) },
       'separator',
-      { label: 'Remplacer l’image…', icon: 'image', run: () => this.replaceFile(start), hint: 'Enter' },
+      { label: 'Remplacer l’image…', icon: 'image', run: () => this.replaceFile(start), hint: 'Entrée' },
       path ? { label: 'Ouvrir l’image dans un onglet', icon: 'image', run: () => app.workspace.openPath(path, { newTab: true }) } : null,
-      path ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(path) } : null,
+      path ? { label: 'Télécharger l’image', run: () => downloadFile(path) } : null,
+      path && !path.startsWith('@shared/') ? { label: 'Afficher dans l’explorateur de fichiers', icon: 'locate', run: () => app.explorer.reveal(path) } : null,
       'separator',
-      { label: 'Retirer de la note', icon: 'trash', danger: true, run: () => this.remove(start), hint: 'Backspace' },
+      { label: 'Retirer de la note', icon: 'trash', danger: true, run: () => this.remove(start), hint: 'Suppr' },
     ]);
     return true;
   }

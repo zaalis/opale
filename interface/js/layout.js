@@ -1,7 +1,9 @@
+import { installUpdater } from './updater.js';
 // Opale — window frame: ribbon, the two resizable side bars with their tabs,
 // the central area and the status bar.
 import { app, bus, debounce, h, icon, iconButton } from './core.js';
 import { store } from './store.js';
+import { syncUi } from './sync.js';
 
 const LEFT_TABS = [['files', 'files', 'Fichiers'], ['search', 'search', 'Rechercher (Ctrl+Maj+F)'], ['bookmarks', 'bookmark', 'Signets'], ['tags', 'tag', 'Étiquettes']];
 const RIGHT_TABS = [['backlinks', 'link-in', 'Rétroliens'], ['outgoing', 'link-out', 'Liens sortants'], ['outline', 'outline', 'Plan de la note'], ['graph', 'graph', 'Graphe local']];
@@ -39,6 +41,7 @@ export const layout = {
       h('div.ribbon-space'),
       iconButton('sparkle', 'Connexion à zaalis IDE', () => app.commands.run('settings:connection'), '.ribbon-agent'));
     this.agentButton = ribbon.querySelector('.ribbon-agent');
+    installUpdater(ribbon);
     this.status = h('footer.statusbar');
     this.resizers = { left: this.resizer('left'), right: this.resizer('right') };
     root.append(h('div.workspace', ribbon, this.sides.left.el, this.resizers.left, this.main, this.resizers.right, this.sides.right.el), this.status);
@@ -121,7 +124,7 @@ export const layout = {
     this.statusBacklinks = h('button.status-item', { type: 'button', title: 'Afficher les rétroliens', onClick: () => this.show('right', 'backlinks') });
     this.statusWords = h('span.status-item');
     this.statusMode = h('button.status-item', { type: 'button', title: 'Changer de mode d’affichage', onClick: () => { const view = app.workspace.activeNote; if (view) view.toggleReading(); } });
-    this.status.append(this.statusAgent, h('div.status-space'), this.statusSave, this.statusBacklinks, this.statusWords, this.statusMode);
+    this.status.append(this.statusAgent, h('div.status-space'), syncUi.statusItem(), this.statusSave, this.statusBacklinks, this.statusWords, this.statusMode);
     const refresh = debounce(() => this.updateStatus(), 200);
     for (const event of ['active-view', 'note-content', 'note-saved', 'note-mode', 'note-rendered', 'index']) bus.on(event, refresh);
     bus.on('agent', () => this.updateAgent());

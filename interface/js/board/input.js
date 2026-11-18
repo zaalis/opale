@@ -5,7 +5,7 @@
 import { app, isTextInput, toast, topModal } from '../core.js';
 import { WIDGETS } from './widgets.js';
 import { place } from './render.js';
-import { isMac, keys, primary, secondaryCtrl } from '../platform.js';
+import { droppedImageUrl, mayDropImage } from '../drop-image.js';
 
 const Board = window.OpaleBoard;
 const DRAG = 4;
@@ -15,6 +15,8 @@ const KEEP_ASPECT = new Set(['image', 'emoji', 'sticker', 'icon', 'stroke', 'com
 export const TOOL_KEYS = { v: 'select', h: 'hand', t: 'text', n: 'sticky', s: 'shape', r: 'shape', o: 'shape', l: 'connector', p: 'pen', e: 'eraser', f: 'frame', c: 'comment', k: 'card' };
 
 const MARK = 'application/x-opale-board';
+// Panels are inside the stage, but own their pointer, wheel and keyboard events.
+const PANELS = '.board-ui, .design-library, .design-inspector';
 
 export class Input {
   constructor(view) {
@@ -27,12 +29,8 @@ export class Input {
     this.handlers = [
       [stage, 'pointerdown', (e) => this.down(e)],
       [stage, 'pointermove', (e) => this.hover(e)],
-      [stage, 'pointerleave', () => { if (!this.stop) view.ui.clearTransient(); }],
+      [stage, 'pointerleave', () => { this.clearPlacementPreview(); if (!this.stop) view.ui.clearTransient(); }],
       [stage, 'wheel', (e) => this.wheel(e), { passive: false }],
-      // Safari and WKWebView report a touchpad pinch as gesture events, not as Ctrl + wheel.
-      [stage, 'gesturestart', (e) => this.gesture(e), { passive: false }],
-      [stage, 'gesturechange', (e) => this.gesture(e), { passive: false }],
-      [stage, 'gestureend', (e) => this.gesture(e), { passive: false }],
       [stage, 'dblclick', (e) => this.dblclick(e)],
       [stage, 'contextmenu', (e) => this.contextmenu(e)],
       [stage, 'dragover', (e) => this.dragover(e)],
@@ -42,22 +40,18 @@ export class Input {
       [document, 'paste', (e) => this.paste(e)],
       [document, 'copy', (e) => this.copy(e, false)],
       [document, 'cut', (e) => this.copy(e, true)],
-      // WebKit (Safari, the macOS window) enables Edit > Copy / Cut / Paste — and so
-      // ⌘C ⌘X ⌘V — without a text selection only when the page asks for them here.
-      [document, 'beforecopy', (e) => { if (this.ownsKeys() && this.view.selection.size) e.preventDefault(); }],
-      [document, 'beforecut', (e) => { if (this.ownsKeys() && this.view.selection.size && !this.view.readOnly) e.preventDefault(); }],
-      [document, 'beforepaste', (e) => { if (this.ownsKeys() && !this.view.readOnly) e.preventDefault(); }],
       [window, 'blur', () => { this.space = false; this.stop && this.stop(); view.ui.clearTransient(); }],
     ];
     for (const [target, type, fn, options] of this.handlers) target.addEventListener(type, fn, options);
   }
-  destroy() { for (const [target, type, fn, options] of this.handlers) target.removeEventListener(type, fn, options); if (this.stop) this.stop(); this.view.ui.clearTransient(); }
+  destroy() { this.cancelCapture(); this.clearPlacementPreview(); for (const [target, type, fn, options] of this.handlers) target.removeEventListener(type, fn, options); if (this.stop) this.stop(); this.view.ui.clearTransient(); }
 
   get active() { return app.workspace.activeView === this.view && this.view.loaded && !this.view.el.hidden; }
   // Keys and clipboard belong to the board unless something else has the focus.
   ownsKeys() {
     if (!this.active || topModal()) return false;
     const focus = document.activeElement;
+    if (focus?.closest(PANELS)) return false;
     if (focus && focus !== document.body && !this.view.stage.contains(focus)) return false;
     return !isTextInput(focus);
   }
@@ -65,6 +59,7 @@ export class Input {
   setTool(tool, options = {}) {
     Object.assign(this.options, options);
     this.tool = tool;
+    this.clearPlacementPreview();
     if (tool !== 'select' && this.view.editing) this.view.finishEdit(true);
     this.cursor();
     this.view.ui.updateTools();
@@ -84,15 +79,16 @@ export class Input {
   down(event) {
     const view = this.view;
     if (!view.loaded) return;
-    if (event.target.closest('.board-ui, .b-editor, .b-note-editor')) return;
-    // ⌃-click on a Mac is a right-click: the context menu handles it.
-    if (isMac && event.ctrlKey && event.button === 0 && event.pointerType !== 'pen') return;
+    if (event.target.closest(PANELS) || event.target.closest('.b-editor, .b-note-editor, .design-control, a[data-external-link]')) return;
     view.stage.focus({ preventScroll: true });
-    if (view.editing && !event.target.closest('.b-editor')) view.finishEdit(true);
+    if (this.captureRequest) { event.preventDefault(); this.captureDown(event); return; }
+    const wasEditing = !!view.editing;
+    if (wasEditing) view.finishEdit(true);
     const handle = event.target.closest('[data-handle]');
     if (handle && event.button === 0) { event.preventDefault(); this.handle(event, handle.dataset.handle); return; }
     if (event.button === 1 || (event.button === 0 && (this.space || this.tool === 'hand'))) { event.preventDefault(); this.pan(event); return; }
     if (event.button !== 0) return;
+    if (wasEditing) this.setTool('select');
     if (CREATES.has(this.tool) && !view.readOnly) { event.preventDefault(); this.create(event); return; }
     const el = this.elementAt(event.target);
     if (el) {
@@ -111,7 +107,7 @@ export class Input {
       if (el.kind === 'mindmap' && topic) { view.widgetFocus = { id: el.id, node: topic.dataset.topic }; view.redraw(el); }
       event.preventDefault();
       if (view.doc.vote && view.doc.vote.active && el.kind !== 'connector') { this.vote(el, event); return; }
-      if (event.shiftKey || primary(event)) {
+      if (event.shiftKey || event.ctrlKey || event.metaKey) {
         if (view.selection.has(el.id)) { const next = new Set(view.selection); next.delete(el.id); view.select(next); }
         else view.select([el.id], true);
         return;
@@ -122,6 +118,41 @@ export class Input {
     }
     event.preventDefault();
     if (event.altKey) this.lasso(event); else this.marquee(event);
+  }
+
+  captureRegion() {
+    this.cancelCapture();
+    if (this.view.editing) this.view.finishEdit(true);
+    this.setTool('select'); this.view.clearSelection();
+    return new Promise(resolve => {
+      const hint = document.createElement('div'); hint.className = 'board-ui board-capture-hint';
+      hint.innerHTML = '<span>Tracez la zone à enregistrer</span><kbd>Échap pour annuler</kbd>';
+      const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Annuler'; cancel.className = 'btn'; cancel.onclick = () => this.cancelCapture(); hint.append(cancel);
+      const box = document.createElement('div'); box.className = 'board-crop-selection'; box.hidden = true;
+      this.view.stage.append(hint); this.view.overlay.append(box);
+      this.captureRequest = { resolve, hint, box };
+      this.view.stage.dataset.capture = '1'; this.view.stage.focus({ preventScroll: true });
+    });
+  }
+  cancelCapture(result = null) {
+    const request = this.captureRequest;
+    if (!request) return;
+    this.captureRequest = null; request.hint.remove(); request.box.remove();
+    delete this.view.stage.dataset.capture; request.resolve(result);
+  }
+  captureDown(event) {
+    if (event.button !== 0 || event.target.closest('.board-ui')) return;
+    const view = this.view, start = view.toWorld(event.clientX, event.clientY), request = this.captureRequest;
+    let region;
+    this.track(event, e => {
+      const end = view.toWorld(e.clientX, e.clientY);
+      region = { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), w: Math.abs(end.x - start.x), h: Math.abs(end.y - start.y) };
+      request.box.hidden = false;
+      Object.assign(request.box.style, { left: `${view.camera.x + region.x * view.camera.k}px`, top: `${view.camera.y + region.y * view.camera.k}px`, width: `${region.w * view.camera.k}px`, height: `${region.h * view.camera.k}px` });
+    }, (e, moved, cancelled) => {
+      if (cancelled) this.cancelCapture();
+      else if (region && region.w * view.camera.k >= 8 && region.h * view.camera.k >= 8) this.cancelCapture(region);
+    });
   }
 
   // Follow the pointer until it is released. `move(e)` and `up(e, moved)`.
@@ -223,7 +254,7 @@ export class Input {
       let dx = p.x - start.x; let dy = p.y - start.y;
       if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
       guides = [];
-      if (this.moveBox && view.doc.settings.snap && !primary(e)) ({ dx, dy, guides } = this.snap(this.moveBox, dx, dy));
+      if (this.moveBox && view.doc.settings.snap && !e.ctrlKey) ({ dx, dy, guides } = this.snap(this.moveBox, dx, dy));
       for (const item of items) {
         const el = item.el;
         if (el.kind === 'connector') {
@@ -532,7 +563,7 @@ export class Input {
       view.select([el.id]);
       view.sync([el.id]);
       this.setTool('select');
-      if (['text', 'sticky', 'mdcard'].includes(kind)) view.editField(el, 'text', { keepEmpty: kind !== 'text' });
+      if (['text', 'sticky', 'mdcard'].includes(kind)) view.editField(el, 'text', { keepEmpty: kind !== 'text', dropEmpty: kind === 'text' });
       else if (kind === 'frame' || kind === 'grid') view.editField(el, 'title');
       else if (kind === 'card') view.editField(el, 'title');
       else if (kind === 'comment') view.openThread(el);
@@ -680,13 +711,23 @@ export class Input {
       view.setMeta((doc) => { doc.vote.votes[el.id]--; if (!doc.vote.votes[el.id]) delete doc.vote.votes[el.id]; });
       return;
     }
-    if (used >= vote.perPerson) { toast(`Plus de vote disponible (${vote.perPerson} au total). ${isMac ? '⌥-clic' : 'Alt+clic'} retire un vote.`); return; }
+    if (used >= vote.perPerson) { toast(`Plus de vote disponible (${vote.perPerson} au total). Alt+clic retire un vote.`); return; }
     view.setMeta((doc) => { doc.vote.votes[el.id] = (doc.vote.votes[el.id] || 0) + 1; });
   }
 
   // ----------------------------------------------------------- hovering
+  clearPlacementPreview() { if (this.placementPreview) { this.placementPreview.remove(); this.placementPreview = null; } }
   hover(event) {
-    if (event.buttons) return;
+    if (event.target.closest(PANELS)) { this.clearPlacementPreview(); return; }
+    if (event.buttons) { this.clearPlacementPreview(); return; }
+    const kind = this.tool;
+    if (!this.view.readOnly && CREATES.has(kind) && Board.KINDS[kind] && !event.target.closest('.board-ui, .b-editor')) {
+      if (!this.placementPreview) { this.placementPreview = document.createElement('div'); this.placementPreview.className = 'board-placement-preview'; this.view.stage.append(this.placementPreview); }
+      const rect = this.view.stageRect(); const spec = Board.KINDS[kind]; const k = this.view.camera.k;
+      const w = Math.max(36, Math.min(260, spec.w * k)); const height = Math.max(24, Math.min(180, spec.h * k));
+      this.placementPreview.style.cssText = `left:${event.clientX - rect.left - (kind === 'text' ? 0 : w / 2)}px;top:${event.clientY - rect.top - height / 2}px;width:${w}px;height:${height}px`;
+      this.placementPreview.textContent = kind === 'text' ? 'Texte' : '';
+    } else this.clearPlacementPreview();
     const view = this.view;
     if (this.tool === 'connector') {
       const at = this.attachAt(event.clientX, event.clientY, null);
@@ -697,17 +738,15 @@ export class Input {
 
   wheel(event) {
     const view = this.view;
-    if (event.target.closest('.board-ui')) return;
+    if (event.target.closest(PANELS) || event.target.closest('.design-control')) return;
     const inside = event.target.closest('.b-mdcard-inner, .b-note-content, .b-code-body, .b-kcol-cards, .b-answers, .b-note-editor');
-    if (inside && !event.ctrlKey && !event.metaKey && inside.scrollHeight > inside.clientHeight + 1 && view.selection.size === 1) return;
+    if (inside && !event.ctrlKey && inside.scrollHeight > inside.clientHeight + 1 && view.selection.size === 1) return;
     event.preventDefault();
     const c = view.camera;
     // A pinch on a touchpad, or Ctrl + wheel: zoom where the pointer is.
     // A mouse wheel zooms too (as in Miro); a touchpad's two-finger scroll pans.
     const mouseWheel = event.deltaMode === 1 || (event.deltaX === 0 && Math.abs(event.deltaY) >= 50 && Number.isInteger(event.deltaY));
-    // ⌘ + wheel zooms too on a Mac, as in other design tools.
-    if (this.pinch && event.ctrlKey) return;
-    if (event.ctrlKey || event.metaKey || (mouseWheel && !event.shiftKey)) {
+    if (event.ctrlKey || (mouseWheel && !event.shiftKey)) {
       const unit = event.deltaMode === 1 ? 33 : 1;
       const factor = Math.exp((-event.deltaY * unit) * (event.ctrlKey && !mouseWheel ? 0.01 : 0.0018));
       const goal = Math.max(0.05, Math.min(8, (this.zoomGoal && this.zoomGoal.until > performance.now() ? this.zoomGoal.k : c.k) * factor));
@@ -720,39 +759,24 @@ export class Input {
     view.setCamera(c.x - dx, c.y - dy, c.k);
   }
 
-  // A touchpad pinch in WebKit: `scale` is relative to the start of the gesture.
-  gesture(event) {
-    const view = this.view;
-    if (event.target.closest('.board-ui')) return;
-    event.preventDefault();
-    if (event.type === 'gesturestart') { this.pinch = { k: view.camera.k }; return; }
-    if (event.type === 'gestureend') { this.pinch = null; return; }
-    if (!this.pinch || !event.scale) return;
-    const goal = Math.max(0.05, Math.min(8, this.pinch.k * event.scale));
-    view.zoomAt(event.clientX, event.clientY, goal, false);
-  }
-
   dblclick(event) {
     const view = this.view;
-    if (event.target.closest('.board-ui, .b-editor')) return;
+    if (event.target.closest(PANELS) || event.target.closest('.b-editor, .design-control')) return;
     const el = this.elementAt(event.target);
     if (el) {
       if (event.target.closest('[data-action]')) return;
-      if (el.locked) { toast(keys('Élément verrouillé : déverrouillez-le pour le modifier (Ctrl+L).')); return; }
+      if (el.locked) { toast('Élément verrouillé : déverrouillez-le pour le modifier (Ctrl+L).'); return; }
       view.select([el.id]);
       view.editElement(el, event.target);
       return;
     }
     if (view.readOnly) return;
-    // A double-click on the empty board writes a text there.
-    const p = view.toWorld(event.clientX, event.clientY);
-    const text = view.change(() => view.add(Board.create('text', { x: p.x, y: p.y - 22 })));
-    view.select([text.id]);
-    view.editField(text, 'text');
+    // Creating text is explicit (Text tool). Double-clicking empty space
+    // must never leave an unexpected text box after finishing an edit.
   }
 
   contextmenu(event) {
-    if (event.target.closest('.board-ui, .b-editor')) return;
+    if (event.target.closest(PANELS) || event.target.closest('.b-editor, .design-control')) return;
     event.preventDefault();
     const view = this.view;
     const el = this.elementAt(event.target);
@@ -763,9 +787,10 @@ export class Input {
 
   // ------------------------------------------------------------ keyboard
   keydown(event) {
+    if (this.captureRequest && this.active) { if (event.key === 'Escape') { event.preventDefault(); this.stop?.(); this.cancelCapture(); } return; }
     if (!this.ownsKeys() || event.defaultPrevented || event.isComposing) return;
     const view = this.view;
-    const ctrl = primary(event);
+    const ctrl = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
     const focus = view.widgetFocus && view.byId.get(view.widgetFocus.id);
     if (focus && WIDGETS[focus.kind] && WIDGETS[focus.kind].key && !ctrl && WIDGETS[focus.kind].key(view, focus, event)) return;
@@ -781,7 +806,7 @@ export class Input {
     if (ctrl && (key === '=' || key === '+')) { handled(); view.zoomBy(1.25); return; }
     if (ctrl && key === '-') { handled(); view.zoomBy(0.8); return; }
     if (ctrl && key === '0') { handled(); view.zoomAt(view.stageRect().left + view.stageRect().width / 2, view.stageRect().top + view.stageRect().height / 2, 1, true); return; }
-    if (ctrl || event.altKey || secondaryCtrl(event)) return;
+    if (ctrl || event.altKey) return;
     if (event.shiftKey && key === '!' || (event.shiftKey && event.code === 'Digit1')) { handled(); view.zoomToFit(); return; }
     if (event.shiftKey && (event.code === 'Digit2')) { handled(); view.zoomToSelection(); return; }
     if (event.key === 'Escape') {
@@ -905,13 +930,15 @@ export class Input {
 
   // --------------------------------------------------------- drag & drop
   dragover(event) {
+    if (event.target.closest(PANELS)) return;
     const types = [...(event.dataTransfer ? event.dataTransfer.types : [])];
-    if (types.includes('Files') || types.includes(MARK) || types.includes('text/x-opale-path') || types.includes('application/x-opale-path')) {
+    if (mayDropImage(event.dataTransfer) || types.includes(MARK) || types.includes('text/x-opale-path') || types.includes('application/x-opale-path') || types.includes('text/plain')) {
       event.preventDefault(); event.stopPropagation();
       event.dataTransfer.dropEffect = 'copy';
     }
   }
   drop(event) {
+    if (event.target.closest(PANELS)) return;
     const view = this.view;
     const at = view.toWorld(event.clientX, event.clientY);
     const transfer = event.dataTransfer;
@@ -929,7 +956,11 @@ export class Input {
     const path = transfer.getData('text/x-opale-path') || transfer.getData('application/x-opale-path');
     if (path) { event.preventDefault(); event.stopPropagation(); view.ui.addVaultFiles(path.split('\n').filter(Boolean), at, { select: false }); return; }
     const files = [...transfer.files];
-    if (files.length) { event.preventDefault(); event.stopPropagation(); view.ui.dropFiles(files, at); }
+    if (files.length) { event.preventDefault(); event.stopPropagation(); view.ui.dropFiles(files, at); return; }
+    const url = droppedImageUrl(transfer);
+    if (url) { event.preventDefault(); event.stopPropagation(); view.ui.dropImageUrl(url, at); return; }
+    const text = (transfer.getData('text/uri-list') || transfer.getData('text/plain')).trim();
+    if (text) { event.preventDefault(); event.stopPropagation(); view.ui.pasteText(text, at); }
   }
 }
 

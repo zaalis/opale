@@ -1,9 +1,9 @@
+import { watchImage } from './media-loading.js';
 // Opale — what rendered Markdown does once it is in the page: links open
 // notes, embeds load their content, tasks can be ticked, code can be copied,
 // and hovering a link previews the note behind it.
 import { app, h, icon, Markdown, Meta, toast } from './core.js';
 import { store } from './store.js';
-import { primary } from './platform.js';
 
 // The part of a note that "Note#Section" or "Note#^bloc" refers to.
 export function sectionOf(text, subpath) {
@@ -57,7 +57,7 @@ export function decorate(root) {
   for (const embed of root.querySelectorAll('.embed-note[data-embed-path]:not([data-embed-state])')) fillEmbed(embed);
   for (const image of root.querySelectorAll('img.embed-image:not([data-ready])')) {
     image.dataset.ready = '1';
-    image.addEventListener('error', () => image.classList.add('is-broken'), { once: true });
+    watchImage(image);
   }
 }
 
@@ -97,7 +97,7 @@ export function bindNoteInteractions(container, view) {
     hidePreview();
     app.workspace.openLink({
       target: link.dataset.href || '', subpath: link.dataset.subpath || '', path: link.dataset.path || '',
-      source: sourceOf(link), newTab: primary(event) || event.button === 1, view,
+      source: sourceOf(link), newTab: event.ctrlKey || event.metaKey || event.button === 1, view,
     });
   };
 
@@ -126,7 +126,7 @@ export function bindNoteInteractions(container, view) {
       return;
     }
     const image = event.target.closest('img.embed-image[data-path]');
-    if (image && primary(event)) app.workspace.openPath(image.dataset.path, { newTab: true });
+    if (image && (event.ctrlKey || event.metaKey)) app.workspace.openPath(image.dataset.path, { newTab: true });
   });
   container.addEventListener('auxclick', (event) => {
     const link = event.button === 1 && event.target.closest('a.internal-link');

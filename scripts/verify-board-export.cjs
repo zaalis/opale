@@ -37,8 +37,9 @@ const server = process.env.OPALE_TEST_SERVER ? {
   const errors = [];
   try {
     const port = await server.listen();
-    browser = await chromium.launch({ headless: true, channel: 'chrome' });
+    browser = await chromium.launch({ headless: true, ...(process.platform==='win32'?{channel:'chrome'}:{}) });
     const page = await browser.newPage({ viewport: { width: 1000, height: 800 } });
+    await page.addInitScript(() => { window.showSaveFilePicker = undefined; });
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${port}`); await page.waitForSelector('.tabs');
     await page.evaluate(async () => { const { app } = await import('/js/core.js'); window.__testApp = app; app.workspace.openPath('Export.canvas'); });
@@ -57,6 +58,15 @@ const server = process.env.OPALE_TEST_SERVER ? {
       }
       return { width: canvas.width, height: canvas.height, red, blue, png: canvas.toDataURL() };
     });
+    const boundsChecks = await page.evaluate(async () => {
+      const { exportSize } = await import('/js/board/export.js');
+      const square = exportSize({ w: 100, h: 100 }, { width: 7680 });
+      let invalid = false, tooLarge = false;
+      try { exportSize({ w: 100, h: 100 }, { width: 0, height: 10 }); } catch { invalid = true; }
+      try { exportSize({ w: 100, h: 100 }, { width: 16384, height: 16384 }); } catch { tooLarge = true; }
+      return { square, invalid, tooLarge };
+    });
+    assert.deepEqual(boundsChecks, { square: { width: 7680, height: 7680 }, invalid: true, tooLarge: true });
     const first = await capture();
     assert.ok(first.width > 2000 && first.width < 4000, 'Entire board exported; hidden distant layer omitted');
     assert.ok(first.red > 100000 && first.blue > 20000, 'Shapes and embedded local images render');
@@ -68,6 +78,7 @@ const server = process.env.OPALE_TEST_SERVER ? {
       await page.getByRole('button', { name: 'Options du moodboard', exact: true }).click();
       const downloadPromise = page.waitForEvent('download');
       await page.getByText(`Exporter en ${format.toUpperCase()} (.${format})`, { exact: true }).click();
+      await page.getByRole('button', { name: 'Enregistrer sous…', exact: true }).click();
       const download = await downloadPromise;
       assert.equal(download.suggestedFilename(), `Export.${format}`);
       const file = path.join(artifacts, `Export.${format}`); await download.saveAs(file);

@@ -1,17 +1,20 @@
+import { tellShell, TEXT } from './platform.js';
+import { designSettingsPane } from './design/settings.js';
 // Opale — settings window, and the application of settings to the page.
 import { api, app, bus, confirmDialog, h, icon, openModal, reportError, toast } from './core.js';
 import { store } from './store.js';
-import { keyLabel, keys, tellShell, TEXT } from './platform.js';
+import { syncUi } from './sync.js';
+import { pluginsUi } from './plugins.js';
 
 const ACCENTS = ['#fbbf24', '#8b7cf6', '#38bdf8', '#2dd4bf', '#4ade80', '#fb7185', '#e879f9'];
 
 const SECTIONS = [
   ['editor', 'Éditeur'], ['files', 'Fichiers et liens'], ['appearance', 'Apparence'], ['daily', 'Notes quotidiennes et modèles'],
-  ['hotkeys', 'Raccourcis clavier'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
+  ['design', 'Opal Design'], ['hotkeys', 'Raccourcis clavier'], ['plugins', 'Plugins'], ['integrations', 'Intégrations'], ['connection', 'Connexion à zaalis IDE'], ['about', 'À propos'],
 ];
 
 function row(label, hint, control) {
-  return h('div.setting', h('div.setting-text', h('div.setting-label', label), hint ? h('div.setting-hint', keys(hint)) : null), h('div.setting-control', control));
+  return h('div.setting', h('div.setting-text', h('div.setting-label', label), hint ? h('div.setting-hint', hint) : null), h('div.setting-control', control));
 }
 function toggle(key, label) {
   const input = h('input', { type: 'checkbox', checked: !!app.settings[key], 'aria-label': label, onChange: () => settingsUi.change({ [key]: input.checked }) });
@@ -31,8 +34,10 @@ function text(key, label, placeholder) {
 }
 
 const PANES = {
+  design: () => [designSettingsPane()],
+  plugins: () => [pluginsUi.pane()],
   editor: () => [
-    row('Mode par défaut', 'Comment une note s’ouvre.', select('defaultMode', 'Mode par défaut', [['live', 'Aperçu en direct'], ['source', 'Source'], ['reading', 'Lecture']])),
+    row('Mode par défaut', 'Comment une note s’ouvre.', select('defaultMode', 'Mode par défaut', [['rich', 'Édition enrichie'], ['live', 'Aperçu en direct'], ['source', 'Source'], ['reading', 'Lecture']])),
     row('Largeur de ligne lisible', 'Limite la largeur du texte pour le confort de lecture.', toggle('readableLineLength', 'Largeur de ligne lisible')),
     row('Taille du texte', `${app.settings.fontSize} px`, (() => {
       const input = h('input', { type: 'range', min: '12', max: '24', step: '1', value: String(app.settings.fontSize), 'aria-label': 'Taille du texte', onInput: () => { document.documentElement.style.setProperty('--font-size', `${input.value}px`); input.closest('.setting').querySelector('.setting-hint').textContent = `${input.value} px`; }, onChange: () => settingsUi.change({ fontSize: Number(input.value) }) });
@@ -64,7 +69,8 @@ const PANES = {
     row('Dossier des modèles', 'Les notes de ce dossier sont proposées par « Insérer un modèle ».', text('templateFolder', 'Dossier des modèles', 'Modèles')),
     h('p.setting-note', 'Dans un modèle : ', h('code', '{{title}}'), ', ', h('code', '{{date}}'), ', ', h('code', '{{time}}'), ' ou ', h('code', '{{date:dddd D MMMM YYYY}}'), '.'),
   ],
-  hotkeys: () => [h('div.hotkeys', app.commands.hotkeys().sort((a, b) => a.name.localeCompare(b.name)).map((item) => h('div.hotkey', h('span', item.name), h('kbd', keyLabel(item.hotkey)))))],
+  integrations: () => syncUi.pane(),
+  hotkeys: () => [h('div.hotkeys', app.commands.hotkeys().sort((a, b) => a.name.localeCompare(b.name)).map((item) => h('div.hotkey', h('span', item.name), h('kbd', item.hotkey))))],
   connection: () => {
     const box = h('div.connection', h('div.panel-empty', 'Chargement…'));
     api('/api/connection').then((info) => {

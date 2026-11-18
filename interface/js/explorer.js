@@ -1,9 +1,10 @@
+import { replaceSliding } from './motion.js';
 // Opale — file explorer: the vault's folders and files as a tree, with
 // create, rename, move (drag and drop), duplicate and delete.
 import { api, app, bus, confirmDialog, fuzzy, h, highlighted, icon, iconButton, Meta, openModal, reportError, showMenu, toast } from './core.js';
+import { TEXT } from './platform.js';
 import { uploadFile } from './editing.js';
 import { store } from './store.js';
-import { DELETE_HINT, isDeleteKey, primary, TEXT, keys } from './platform.js';
 
 const SORTS = {
   'name-asc': ['Nom (A → Z)', (a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' })],
@@ -22,8 +23,9 @@ export const explorer = {
     this.el = h('div.panel.explorer',
       h('div.panel-toolbar',
         iconButton('file-plus', 'Nouvelle note (Ctrl+N)', () => this.newNote(this.targetFolder())),
-        iconButton('template', 'Nouveau moodboard', () => this.newBoard(this.targetFolder())),
-        iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder() || '')),
+        iconButton('template', 'Nouveau moodboard', event => this.boardMenu(event)),
+        iconButton('design', 'Nouveau document Opal Design', () => this.newBoard(this.targetFolder(), 'design')),
+        iconButton('image', 'Ajouter une image au dossier sélectionné', () => this.chooseImages(this.targetFolder())),
         iconButton('folder-plus', 'Nouveau dossier', () => this.newFolder(this.targetFolder())),
         iconButton('sort', 'Ordre de tri', (event) => this.sortMenu(event)),
         iconButton('collapse', 'Tout replier', () => { this.expanded.clear(); this.render(); app.workspace.persist(); }),
@@ -73,8 +75,8 @@ export const explorer = {
       for (const item of node.files) rows.push(this.row(item, depth, { active: item.path === active }));
     };
     walk('', 0);
-    if (!rows.length) rows.push(h('div.panel-empty', keys('Ce coffre est vide. Créez une note avec Ctrl+N.')));
-    this.list.replaceChildren(...rows);
+    if (!rows.length) rows.push(h('div.panel-empty', 'Ce coffre est vide. Créez une note avec Ctrl+N.'));
+    replaceSliding(this.list, rows);
     if (this.renaming) this.startRename(this.renaming);
   },
 
@@ -130,7 +132,7 @@ export const explorer = {
       const path = row.dataset.path;
       this.select(path);
       if (row.dataset.folder) { if (this.expanded.has(path)) this.expanded.delete(path); else this.expanded.add(path); this.render(); app.workspace.persist(); }
-      else app.workspace.openPath(path, { newTab: primary(event) });
+      else app.workspace.openPath(path, { newTab: event.ctrlKey || event.metaKey });
     });
     list.addEventListener('auxclick', (event) => {
       const row = rowOf(event);
@@ -157,7 +159,7 @@ export const explorer = {
         this.render();
       } else if (current && event.key === 'Enter') { event.preventDefault(); current.click(); }
       else if (current && event.key === 'F2') { event.preventDefault(); this.startRename(this.selected); }
-      else if (current && isDeleteKey(event)) { event.preventDefault(); this.remove(this.selected); }
+      else if (current && event.key === 'Delete') { event.preventDefault(); this.remove(this.selected); }
     });
 
     list.addEventListener('dragstart', (event) => {
@@ -186,11 +188,11 @@ export const explorer = {
     list.addEventListener('drop', (event) => {
       const from = event.dataTransfer.getData('application/x-opale-path');
       clearDrop();
-      const files = [...event.dataTransfer.files];
-      if (files.length && !from) { event.preventDefault(); this.importImages(files, dropFolder(event)); return; }
-      if (!from) return;
       event.preventDefault();
       const folder = dropFolder(event);
+      const files = [...event.dataTransfer.files];
+      if (files.length && !from) { this.importImages(files, folder); return; }
+      if (!from) return;
       if (Meta.dirName(from) === folder || folder === from || folder.startsWith(`${from}/`)) return;
       this.move(from, Meta.joinPath(folder, Meta.baseName(from)), folder);
     });
@@ -230,7 +232,7 @@ export const explorer = {
       { label: 'Copier le chemin', icon: 'copy', run: () => navigator.clipboard.writeText(path).then(() => toast('Chemin copié')) },
       { label: TEXT.revealItem, icon: 'external', run: () => api('/api/reveal', { method: 'POST', body: { path } }).catch(reportError) },
       'separator',
-      { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: DELETE_HINT },
+      { label: 'Supprimer', icon: 'trash', danger: true, run: () => this.remove(path), hint: 'Suppr' },
     ]);
   },
 
@@ -242,9 +244,12 @@ export const explorer = {
     })));
   },
 
-  async newBoard(folder = this.targetFolder()) {
+  boardMenu(event) { const r=event.currentTarget.getBoundingClientRect();showMenu(r.left,r.bottom,[['board','Moodboard libre'],['design','Opal Design · atelier IA'],['kanban','Tableau Kanban'],['table','Tableau de données'],['mindmap','Carte mentale'],['timeline','Planning']].map(([kind,label])=>({label,icon:kind==='design'?'design':'template',run:()=>this.newBoard(this.targetFolder(),kind)}))); },
+  async newBoard(folder = this.targetFolder(), kind = 'board') {
     try {
-      const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas' } });
+      const doc=window.OpaleBoard.emptyDoc();
+      if(kind==='design'){doc.settings.design=true;doc.elements.push(window.OpaleBoard.create('design',{x:120,y:160,w:280,h:140,data:{tool:'start',title:'Départ',text:''}}));}else if(kind!=='board')doc.elements.push(window.OpaleBoard.create(kind,{x:0,y:0}));
+      const created = await api('/api/note', { method: 'POST', body: { folder, ext: 'canvas', ...(kind==='design'?{name:'Opal Design'}:{}), content:window.OpaleBoard.serialize(doc) } });
       await app.workspace.waitFor(created.path);
       this.selected = created.path;
       this.reveal(created.path);

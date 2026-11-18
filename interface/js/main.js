@@ -1,3 +1,4 @@
+import { installMotion } from './motion.js';
 // Opale — start-up: load the vault, build the window, follow server events.
 import { api, app, bus, h, Meta, toast } from './core.js';
 import { store } from './store.js';
@@ -9,7 +10,12 @@ import { commands } from './commands.js';
 import { settingsUi } from './settings.js';
 import { launcher } from './launcher.js';
 import { uploadFile } from './editing.js';
+import { droppedImageUrl, mayDropImage } from './drop-image.js';
+import { syncUi } from './sync.js';
+import { collab } from './collab/client.js';
+import { collabUi } from './collab/ui.js';
 
+installMotion();
 const root = document.getElementById('app');
 
 const ACTIVITY = {
@@ -46,6 +52,9 @@ function connectEvents() {
   source.addEventListener('vault', () => location.reload());
   source.addEventListener('agent', (event) => { app.agent = JSON.parse(event.data); bus.emit('agent', app.agent); });
   source.addEventListener('activity', (event) => onActivity(JSON.parse(event.data)));
+  source.addEventListener('sync', (event) => syncUi.onStatus(JSON.parse(event.data)));
+  source.addEventListener('design', (event) => bus.emit('design-progress', JSON.parse(event.data)));
+  source.addEventListener('collab', (event) => collab.onEvent(JSON.parse(event.data)));
   // An assistant asks to show a note: never replace what the user is reading.
   source.addEventListener('open-note', (event) => {
     const { path } = JSON.parse(event.data);
@@ -69,6 +78,22 @@ function installFileDrop() {
   let preview = 0;
   const clearPreview = () => { cancelAnimationFrame(preview); preview = 0; document.body.classList.remove('is-dropping-note'); const note = workspace.activeNote; if (note) note.clearDropPreview(); };
   const clear = () => { depth = 0; document.body.classList.remove('is-dropping'); clearPreview(); for (const target of document.querySelectorAll('.tree.drop-target, .tree .drop-target')) target.classList.remove('drop-target'); };
+  // Images dragged from browser pages can contain HTML/URL without file bytes.
+  document.addEventListener('dragover', (event) => {
+    if (workspace.activeNote && mayDropImage(event.dataTransfer) && !event.target.closest('.tree')) event.preventDefault();
+  });
+  document.addEventListener('drop', async (event) => {
+    if (event.defaultPrevented || event.dataTransfer?.files.length || event.target.closest('.tree, .board-stage')) return;
+    const url = droppedImageUrl(event.dataTransfer); const note = workspace.activeNote;
+    if (!url || !note) return;
+    event.preventDefault();
+    const target = note.dropTargetAt(event.clientX, event.clientY);
+    try {
+      const { path } = await api('/api/image-from-url', { method: 'POST', body: { url, source: note.path } });
+      await workspace.waitFor(path); await note.insertAttachments([path], { target });
+      toast('Image ajoutée à la note.');
+    } catch (error) { toast(error.message || String(error), { kind: 'error' }); }
+  });
   // Child views handle their own drops and may stop propagation.
   document.addEventListener('drop', clear, true);
   document.addEventListener('dragend', clear, true);
@@ -98,10 +123,10 @@ function installFileDrop() {
     // already owns precise caret insertion.
     if (event.target.closest('.tree, textarea')) return;
     event.preventDefault();
-    const files = [...event.dataTransfer.files].filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image');
+    const files = [...event.dataTransfer.files];
     if (!files.length) { toast('Déposez une image (PNG, JPEG, WebP, SVG…).', { kind: 'error' }); return; }
     const note = workspace.activeNote;
-    if (!note) return explorer.importImages(files, explorer.targetFolder() || '');
+    if (!note) return explorer.importImages(files.filter((file) => file.type.startsWith('image/') || Meta.kindOf(file.name) === 'image'), explorer.targetFolder() || '');
     // Decided now, before the upload: the page may move in the meantime.
     const target = note.dropTargetAt(event.clientX, event.clientY);
     try {
@@ -109,7 +134,7 @@ function installFileDrop() {
       for (const file of files) paths.push(await uploadFile(file, note.path));
       await Promise.all(paths.map((path) => workspace.waitFor(path)));
       await note.insertAttachments(paths, { files, target });
-      toast(`${paths.length} image${paths.length > 1 ? 's ajoutées' : ' ajoutée'} à la note.`);
+      toast(`${paths.length} fichier${paths.length > 1 ? 's ajoutés' : ' ajouté'} à la note.`);
     } catch (error) { console.error(error); toast(error.message || String(error), { kind: 'error' }); }
   });
 }
@@ -118,7 +143,7 @@ async function start() {
   let state;
   try { state = await api('/api/state'); }
   catch (error) { root.replaceChildren(h('div.fatal', h('h1', 'Opale ne répond pas'), h('p', error.message), h('button.btn.primary', { type: 'button', onClick: () => location.reload() }, 'Réessayer'))); return; }
-  app.version = state.version;
+  app.version = state.version; app.drive = state.drive;
   if (!state.vault) { document.title = 'Opale'; launcher.showFull(state, root); return; }
 
   app.vault = state.vault; app.settings = state.settings; app.bookmarks = state.bookmarks; app.snippets = state.snippets; app.agent = state.agent || {};
@@ -128,6 +153,7 @@ async function start() {
   layout.init(root);
   workspace.init(layout.main);
   explorer.init(layout.sides.left.panes.files);
+  collabUi.init(explorer.el);
   panels.init(layout.sides.left.panes, layout.sides.right.panes);
   commands.init();
 
@@ -135,10 +161,13 @@ async function start() {
   layout.restore(saved.layout);
   layout.setVault(app.vault);
   explorer.restore(saved.explorer);
+  // Shared projects first, so that their tabs come back too.
+  await collab.load();
   workspace.restore(saved, state.pendingOpen);
   panels.renderTags(); panels.renderBookmarks(); panels.refreshRight();
   layout.updateAgent(); layout.updateStatus();
   installFileDrop();
+  collabUi.start();
 
   // Settings that change how an open note is drawn.
   bus.on('settings', (patch) => { if (patch && ('spellcheck' in patch || 'showProperties' in patch)) for (const tab of workspace.tabs) if (tab.view.type === 'note' && tab.view.loaded && !tab.view.active) tab.view.render(); });

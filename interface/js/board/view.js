@@ -1,3 +1,4 @@
+import { installDesign } from '../design/editor.js';
 // Opale — a moodboard open in a tab: an infinite board of stickies, shapes,
 // drawings, pictures, notes and the rest, saved to its ".canvas" file as you
 // work. This module holds the document, the camera, drawing and saving; the
@@ -109,7 +110,7 @@ export class BoardView {
 
   // What, besides the element itself, changes how it looks.
   contentKey(el) {
-    const file = el.data.file || el.data.image;
+    const file = el.data.file || el.data.image || el.data.resultFile;
     const entry = file ? store.files.get(file) : null;
     return [entry ? entry.mtime : 0, el.kind === 'sticky' && this.doc.settings.privateMode, this.interacting === el.id, el.kind === 'mermaid' && document.documentElement.dataset.theme, this.widgetFocus && this.widgetFocus.id === el.id ? this.widgetFocus.node : ''];
   }
@@ -120,6 +121,7 @@ export class BoardView {
       const file = await api(`/api/note?path=${encodeURIComponent(this.path)}`);
       this.adoptText(file.content, file.mtime);
       this.loaded = true;
+      installDesign(this);
       if (this.savedCamera) this.setCamera(this.savedCamera.x, this.savedCamera.y, this.savedCamera.k);
       else this.zoomToFit(false);
       this.ui.update();
@@ -168,6 +170,7 @@ export class BoardView {
 
   paint() {
     this.frame = 0;
+    if(this.loaded && this.doc.settings.design && !this.design) installDesign(this);
     const moved = new Set();
     for (const id of this.dirtyIds) {
       const el = this.byId.get(id);
@@ -402,7 +405,7 @@ export class BoardView {
     // Pictures and notes shown on the board may have appeared, moved or changed.
     const touched = new Set([...(change.upserts || []).map((entry) => entry.path), ...(change.removes || []), ...(change.renames || []).flat()]);
     if (!touched.size) return;
-    const ids = this.doc.elements.filter((el) => touched.has(el.data.file) || touched.has(el.data.image)).map((el) => el.id);
+    const ids = this.doc.elements.filter((el) => touched.has(el.data.file) || touched.has(el.data.image) || touched.has(el.data.resultFile) || touched.has(el.data.maskFile)).map((el) => el.id);
     for (const id of ids) { const node = this.nodes.get(id); if (node) node.renderKey = null; }
     if (ids.length) this.sync(ids);
   }
@@ -567,6 +570,7 @@ export class BoardView {
   stats() { return { elements: this.doc.elements.length }; }
 
   destroy() {
+    this.design?.destroy();
     this.input.destroy();
     if (this.editing) this.finishEdit(true);
     this.flush();
